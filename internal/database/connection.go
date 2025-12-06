@@ -10,22 +10,23 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-func NewCharacterGallery(connStr string) (characters.CharacterGallery, error) {
+func NewPostgresCharacterGallery(connStr string, schemaPath string) (characters.CharacterGallery, error) {
 	var err error
 	db, err := sqlx.Connect("pgx", connStr)
 	if err != nil {
 		return nil, fmt.Errorf("could not establish connection to database: %v", err)
 	}
 
-	log.Println("Database connection established")
-
-	schema, err := os.ReadFile("./schema.sql")
+	schema, err := os.ReadFile(schemaPath)
 	if err != nil {
 		return nil, fmt.Errorf("could not load schema: %v", err)
 	}
 
 	db.MustExec(string(schema))
 
+	log.Println("Database connection established")
+
+	// Return a PostgresCharacterGallery which implements the CharacterGallery interface using a PostgreSQL backend.
 	return &PostgresCharacterGallery{
 		db: db,
 	}, nil

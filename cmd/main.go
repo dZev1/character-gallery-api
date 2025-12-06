@@ -17,7 +17,9 @@ func main() {
 	}
 	connStr := os.Getenv("DATABASE_URL")
 
-	gallery, err := database.NewCharacterGallery(connStr)
+	schemaPath := os.Getenv("SCHEMA_PATH")
+
+	gallery, err := database.NewPostgresCharacterGallery(connStr, schemaPath)
 	if err != nil {
 		panic(err)
 	}
