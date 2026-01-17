@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/dZev1/character-gallery/models/characters"
+	"github.com/dZev1/character-gallery/models/inventory"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -52,7 +53,7 @@ func (cg *PostgresCharacterGallery) insertCustomization(tx *sqlx.Tx, customizati
 	return nil
 }
 
-func (cg *PostgresCharacterGallery) getBaseCharacter(id characters.ID) (*characters.Character, error) {
+func (cg *PostgresCharacterGallery) getBaseCharacter(id characters.CharacterID) (*characters.Character, error) {
 	character := &characters.Character{}
 	query := `
 		SELECT * FROM characters
@@ -66,7 +67,7 @@ func (cg *PostgresCharacterGallery) getBaseCharacter(id characters.ID) (*charact
 	return character, nil
 }
 
-func (cg *PostgresCharacterGallery) getCustomizationByID(id characters.ID) (*characters.Customization, error) {
+func (cg *PostgresCharacterGallery) getCustomizationByID(id characters.CharacterID) (*characters.Customization, error) {
 	customization := &characters.Customization{}
 	query := `
 			SELECT * FROM customizations
@@ -81,7 +82,7 @@ func (cg *PostgresCharacterGallery) getCustomizationByID(id characters.ID) (*cha
 	return customization, nil
 }
 
-func (cg *PostgresCharacterGallery) getStatsByID(id characters.ID) (*characters.Stats, error) {
+func (cg *PostgresCharacterGallery) getStatsByID(id characters.CharacterID) (*characters.Stats, error) {
 	stats := &characters.Stats{}
 	query := `
 			SELECT * FROM stats
@@ -148,6 +149,22 @@ func (cg *PostgresCharacterGallery) updateStats(tx *sqlx.Tx, stats *characters.S
 	_, err := tx.NamedExec(query, stats)
 	if err != nil {
 		return fmt.Errorf("%w: %v", ErrCouldNotFind, err)
+	}
+
+	return nil
+}
+
+func (cg *PostgresCharacterGallery) insertItem(item *inventory.Item) error {
+	query := `
+		INSERT INTO items (id, name, type, description, equippable, rarity, damage, defense, heal_amount, mana_cost, duration)
+		VALUES (:id, :name, :type, :description, :equippable, :rarity, :damage, :defense, :heal_amount, :mana_cost, :duration)
+		ON CONFLICT (id) DO NOTHING;
+	`
+
+	_, err := cg.db.NamedExec(query, item)
+
+	if err != nil {
+		return fmt.Errorf("could not add item to database: %v", err)
 	}
 
 	return nil

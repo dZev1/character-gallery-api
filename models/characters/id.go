@@ -2,8 +2,8 @@ package characters
 
 import "fmt"
 
-type ID uint64
+type CharacterID uint64
 
-func (id ID) String() string {
+func (id CharacterID) String() string {
 	return fmt.Sprintf("Nº%d", id)
 }

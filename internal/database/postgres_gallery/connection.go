@@ -5,12 +5,12 @@ import (
 	"log"
 	"os"
 
-	"github.com/dZev1/character-gallery/models/characters"
+	"github.com/dZev1/character-gallery/models"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/jmoiron/sqlx"
 )
 
-func NewPostgresCharacterGallery(connStr string, schemaPath string) (characters.CharacterGallery, error) {
+func NewPostgresCharacterGallery(connStr string, schemaPath string) (models.CharacterGallery, error) {
 	var err error
 	db, err := sqlx.Connect("pgx", connStr)
 	if err != nil {
@@ -26,7 +26,6 @@ func NewPostgresCharacterGallery(connStr string, schemaPath string) (characters.
 
 	log.Println("Database connection established")
 
-	// Return a PostgresCharacterGallery which implements the CharacterGallery interface using a PostgreSQL backend.
 	return &PostgresCharacterGallery{
 		db: db,
 	}, nil

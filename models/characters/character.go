@@ -5,7 +5,7 @@ import "fmt"
 const formatString = "\nName: %v\nSpecies: %v\nBody Type: %v\nClass: %v\n\n-STATS-\n%v\n\nCustomization: %v\n\n"
 
 type Character struct {
-	ID            ID             `db:"id" json:"id"`
+	ID            CharacterID             `db:"id" json:"id"`
 	Name          string         `db:"name" json:"name"`
 	BodyType      BodyType       `db:"body_type" json:"body_type"`
 	Species       Species        `db:"species" json:"species"`

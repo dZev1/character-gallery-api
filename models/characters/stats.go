@@ -3,7 +3,7 @@ package characters
 import "fmt"
 
 type Stats struct {
-	ID           ID    `db:"id" json:"-"`
+	ID           CharacterID    `db:"id" json:"-"`
 	Strength     uint8 `db:"strength" json:"strength"`
 	Dexterity    uint8 `db:"dexterity" json:"dexterity"`
 	Constitution uint8 `db:"constitution" json:"constitution"`

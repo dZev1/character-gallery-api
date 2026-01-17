@@ -28,6 +28,8 @@ func main() {
 		defer g.Close()
 	}
 
+	gallery.SeedItems()
+
 	handler := &handlers.CharacterHandler{
 		Gallery: gallery,
 	}

@@ -3,7 +3,7 @@ package characters
 import "fmt"
 
 type Customization struct {
-	ID    ID    `db:"id" json:"-"`
+	ID    CharacterID    `db:"id" json:"-"`
 	Hair  uint8 `db:"hair"  json:"hair"`
 	Face  uint8 `db:"face"  json:"face"`
 	Shirt uint8 `db:"shirt" json:"shirt"`

@@ -5,11 +5,12 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/dZev1/character-gallery/models"
 	"github.com/dZev1/character-gallery/models/characters"
 )
 
 type CharacterHandler struct {
-	Gallery characters.CharacterGallery
+	Gallery models.CharacterGallery
 }
 
 func (h *CharacterHandler) CreateCharacter(w http.ResponseWriter, r *http.Request) {
@@ -54,7 +55,7 @@ func (h *CharacterHandler) GetCharacter(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	character, err := h.Gallery.Get(characters.ID(id))
+	character, err := h.Gallery.Get(characters.CharacterID(id))
 	if err != nil {
 		http.Error(w, "Character not found", http.StatusNotFound)
 		return
@@ -81,9 +82,9 @@ func (h *CharacterHandler) EditCharacter(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	characterToEdit.ID = characters.ID(id)
-	characterToEdit.Stats.ID = characters.ID(id)
-	characterToEdit.Customization.ID = characters.ID(id)
+	characterToEdit.ID = characters.CharacterID(id)
+	characterToEdit.Stats.ID = characters.CharacterID(id)
+	characterToEdit.Customization.ID = characters.CharacterID(id)
 
 	err = h.Gallery.Edit(characterToEdit)
 	if err != nil {
@@ -105,7 +106,7 @@ func (h *CharacterHandler) DeleteCharacter(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	err = h.Gallery.Remove(characters.ID(id))
+	err = h.Gallery.Remove(characters.CharacterID(id))
 	if err != nil {
 		http.Error(w, "Not found", http.StatusNotFound)
 		return

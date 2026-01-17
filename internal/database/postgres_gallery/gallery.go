@@ -52,7 +52,7 @@ func (cg *PostgresCharacterGallery) Create(character *characters.Character) erro
 	return nil
 }
 
-func (cg *PostgresCharacterGallery) Get(id characters.ID) (*characters.Character, error) {
+func (cg *PostgresCharacterGallery) Get(id characters.CharacterID) (*characters.Character, error) {
 	character, err := cg.getBaseCharacter(id)
 	if err != nil {
 		return nil, err
@@ -135,7 +135,7 @@ func (cg *PostgresCharacterGallery) Edit(character *characters.Character) error 
 	return nil
 }
 
-func (cg *PostgresCharacterGallery) Remove(id characters.ID) error {
+func (cg *PostgresCharacterGallery) Remove(id characters.CharacterID) error {
 	tx, err := cg.db.Beginx()
 	if err != nil {
 		return fmt.Errorf("%w: %w", ErrFailedInitializeTransaction, err)
