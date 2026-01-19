@@ -1,68 +1,78 @@
 package postgres_gallery
 
 import (
+	"fmt"
+
 	"github.com/dZev1/character-gallery/models/characters"
 	"github.com/dZev1/character-gallery/models/inventory"
-	
 )
 
 func (cg *PostgresCharacterGallery) SeedItems() error {
+	tx, err := cg.db.Beginx()
+	if err != nil {
+		return fmt.Errorf("%w: %w", ErrFailedInitializeTransaction, err)
+	}
+	defer tx.Rollback()
+
 	for _, item := range inventory.Items {
-		err := cg.insertItem(&item)
+		err := cg.insertItemIntoPool(tx, &item)
 		if err != nil {
 			return err
 		}
 	}
+
+	if err = tx.Commit(); err != nil {
+		return fmt.Errorf("%w: %w", ErrFailedCommitTransaction, err)
+	}
+
 	return nil
 }
 
 func (cg *PostgresCharacterGallery) AddItemToCharacter(characterID characters.CharacterID, itemID inventory.ItemID, quantity uint8) error {
-	query := `
-		INSERT INTO inventory (character_id, item_id, quantity, is_equipped)
-		VALUES ($1, $2, $3, FALSE)
-		ON CONFLICT (character_id, item_id)
-		DO UPDATE SET quantity = inventory.quantity + EXCLUDED.quantity;
-	`
+	tx, err := cg.db.Beginx()
+	if err != nil {
+		return fmt.Errorf("%w: %w", ErrFailedInitializeTransaction, err)
+	}
+	defer tx.Rollback()
 
-	_, err := cg.db.Exec(query, characterID, itemID, quantity)
+	err = insertIntoCharacterInventory(tx, characterID, itemID, quantity)
 	if err != nil {
 		return err
+	}
+
+	if err = tx.Commit(); err != nil {
+		return fmt.Errorf("%w: %w", ErrFailedCommitTransaction, err)
 	}
 
 	return nil
 }
 
 func (cg *PostgresCharacterGallery) RemoveItemFromCharacter(characterID characters.CharacterID, itemID inventory.ItemID, quantity uint8) error {
-	querySelect := `
-		SELECT quantity FROM inventory
-		WHERE character_id = $1 AND item_id = $2;
-	`
+	tx, err := cg.db.Beginx()
+	if err != nil {
+		return fmt.Errorf("%w: %w", ErrFailedInitializeTransaction, err)
+	}
+	defer tx.Rollback()
 
-	var currentQuantity uint8
-	err := cg.db.QueryRow(querySelect, characterID, itemID).Scan(&currentQuantity)
+	currentQuantity, err := cg.selectCurrentQuantity(characterID, itemID)
 	if err != nil {
 		return err
 	}
 
 	if currentQuantity > quantity {
-		queryUpdate := `
-			UPDATE inventory
-			SET quantity = quantity - $1
-			WHERE character_id = $2 AND item_id = $3;
-		`
-		_, err = cg.db.Exec(queryUpdate, quantity, characterID, itemID)
+		err = updateItemQuantity(tx, quantity, characterID, itemID)
 		if err != nil {
 			return err
 		}
 	} else {
-		queryDelete := `
-			DELETE FROM inventory
-			WHERE character_id = $1 AND item_id = $2;
-		`
-		_, err = cg.db.Exec(queryDelete, characterID, itemID)
+		err = deleteItemFromCharacter(tx, characterID, itemID)
 		if err != nil {
 			return err
 		}
+	}
+
+	if err = tx.Commit(); err != nil {
+		return fmt.Errorf("%w: %w", ErrFailedCommitTransaction, err)
 	}
 
 	return nil

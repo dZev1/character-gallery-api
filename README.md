@@ -21,20 +21,20 @@ A RESTful API built in Go to create, manage and see a gallery of Role Playing Ga
 
 3. Configure the database
 
-    - Make sure PostgreSQL is installed and running.
     - Create a database for the project.
-    - The database schema is found on `schema.sql` and it will apply automatically when starting the application.
+    - Select one of the supported database engines (PostgreSQL, MariaDB, SQLite), de-comment it in `config.env` file.
+    - The database schema will be created automatically when the application starts.
 
 4. Configure environment variables
 
     - Create a `.env` file in the root of the project.
-    - Add the following variable with the URL to your database:
+    - Add the following variable with the connection URL to your database:
 
         ```(.env)
         DATABASE_URL="postgres://user:password@localhost:XXXX/database_name?sslmode=disable"
         ```
 
-5. Execute the application:
+5. Run the application:
 
     - Build the application:
 
@@ -48,7 +48,11 @@ A RESTful API built in Go to create, manage and see a gallery of Role Playing Ga
 
 ## API References
 
-### Create a character
+---
+
+### Character Management
+
+#### Create a character
 
 - **Endpoint**: `POST /characters`
 - **Description**: Creates a new character with their stats and customization.
@@ -80,7 +84,7 @@ A RESTful API built in Go to create, manage and see a gallery of Role Playing Ga
 
 - **Succesful Response (`201 Created`)**: Returns the object of the created character, including their new `id`.
 
-### Get all characters
+#### Get all characters
 
 - **Endpoint**: `GET /characters`
 - **Description**: Returns an array of all characters in the database.
@@ -118,7 +122,7 @@ A RESTful API built in Go to create, manage and see a gallery of Role Playing Ga
 ]
 ```
 
-### Get a character
+#### Get a character
 
 - **Endpoint**: `GET /characters/{id}`
 - **Description**: Returns a single character by their `id`.
@@ -140,7 +144,7 @@ A RESTful API built in Go to create, manage and see a gallery of Role Playing Ga
 }
 ```
 
-### Edit a character
+#### Edit a character
 
 - **Endpoint**: `PUT /characters/{id}`
 - **Description**: Updates an existing character by their `id`.
@@ -172,8 +176,23 @@ A RESTful API built in Go to create, manage and see a gallery of Role Playing Ga
 
 - **Succesful Response (`200 OK`)**: Returns the object of the updated character, including their `id`.
 
-### Delete a character
+#### Delete a character
 
 - **Endpoint**: `DELETE /characters/{id}`
 - **Description**: Deletes an existing character by their `id`.
 - **Succesful Response (`200 OK`)**.
+
+### Character Inventory Management
+
+#### Add item to character inventory
+
+- **Endpoint**: `POST /characters/{id}/inventory`
+- **Description**: Adds an item to the specified character's inventory.
+- **Request Body**:
+
+```JSON
+{
+    "item_name": "Health Potion",
+    "quantity": 3
+}
+```

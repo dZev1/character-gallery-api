@@ -1,4 +1,4 @@
-package postgres_gallery 
+package postgres_gallery
 
 import (
 	"fmt"
@@ -166,18 +166,72 @@ func (cg *PostgresCharacterGallery) updateStats(tx *sqlx.Tx, stats *characters.S
  *
  */
 
-func (cg *PostgresCharacterGallery) insertItem(item *inventory.Item) error {
+func (cg *PostgresCharacterGallery) insertItemIntoPool(tx *sqlx.Tx, item *inventory.Item) error {
 	query := `
-		INSERT INTO items (id, name, type, description, equippable, rarity, damage, defense, heal_amount, mana_cost, duration)
-		VALUES (:id, :name, :type, :description, :equippable, :rarity, :damage, :defense, :heal_amount, :mana_cost, :duration)
-		ON CONFLICT (id) DO NOTHING;
+	INSERT INTO items (id, name, type, description, equippable, rarity, damage, defense, heal_amount, mana_cost, duration)
+	VALUES (:id, :name, :type, :description, :equippable, :rarity, :damage, :defense, :heal_amount, :mana_cost, :duration)
+	ON CONFLICT (id) DO NOTHING;
 	`
 
-	_, err := cg.db.NamedExec(query, item)
+	_, err := tx.NamedExec(query, item)
 
 	if err != nil {
 		return fmt.Errorf("could not add item to database: %v", err)
 	}
 
+	return nil
+}
+
+func insertIntoCharacterInventory(tx *sqlx.Tx, characterID characters.CharacterID, itemID inventory.ItemID, quantity uint8) error {
+	query := `
+		INSERT INTO inventory (character_id, item_id, quantity, is_equipped)
+		VALUES ($1, $2, $3, FALSE)
+		ON CONFLICT (character_id, item_id)
+		DO UPDATE SET quantity = inventory.quantity + EXCLUDED.quantity;
+	`
+
+	_, err := tx.Exec(query, characterID, itemID, quantity)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (cg *PostgresCharacterGallery) selectCurrentQuantity(characterID characters.CharacterID, itemID inventory.ItemID) (uint8, error) {
+	querySelect := `
+		SELECT quantity FROM inventory
+		WHERE character_id = $1 AND item_id = $2;
+	`
+
+	var currentQuantity uint8
+	err := cg.db.QueryRow(querySelect, characterID, itemID).Scan(&currentQuantity)
+	if err != nil {
+		return 0, err
+	}
+	return currentQuantity, nil
+}
+
+func updateItemQuantity(tx *sqlx.Tx, quantity uint8, characterID characters.CharacterID, itemID inventory.ItemID) error {
+	queryUpdate := `
+			UPDATE inventory
+			SET quantity = quantity - $1
+			WHERE character_id = $2 AND item_id = $3;
+		`
+	_, err := tx.Exec(queryUpdate, quantity, characterID, itemID)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func deleteItemFromCharacter(tx *sqlx.Tx, characterID characters.CharacterID, itemID inventory.ItemID) error {
+	queryDelete := `
+			DELETE FROM inventory
+			WHERE character_id = $1 AND item_id = $2;
+		`
+	_, err := tx.Exec(queryDelete, characterID, itemID)
+	if err != nil {
+		return err
+	}
 	return nil
 }
