@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/dZev1/character-gallery/handlers"
-	"github.com/dZev1/character-gallery/internal/database/postgres_gallery"
+	"github.com/dZev1/character-gallery/internal/database"
 	"github.com/joho/godotenv"
 )
 
@@ -15,18 +15,16 @@ func main() {
 	if err != nil {
 		log.Fatal("error loading .env file")
 	}
-	connStr := os.Getenv("DATABASE_URL")
+	connectionString := os.Getenv("DATABASE_URL")
 
-	schemaPath := os.Getenv("SCHEMA_PATH")
+	err = godotenv.Overload("./config.env")
+	dbType := os.Getenv("DATABASE_TYPE")
 
-	gallery, err := database.NewPostgresCharacterGallery(connStr, schemaPath)
+	gallery, err := database.NewCharacterGallery(dbType, connectionString)
 	if err != nil {
 		panic(err)
 	}
-
-	if g, ok := gallery.(*database.PostgresCharacterGallery); ok {
-		defer g.Close()
-	}
+	defer gallery.Close()
 
 	gallery.SeedItems()
 

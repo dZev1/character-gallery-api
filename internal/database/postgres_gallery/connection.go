@@ -1,4 +1,4 @@
-package database
+package postgres_gallery
 
 import (
 	"fmt"
@@ -10,14 +10,14 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-func NewPostgresCharacterGallery(connStr string, schemaPath string) (models.CharacterGallery, error) {
+func NewPostgresCharacterGallery(connStr string) (models.CharacterGallery, error) {
 	var err error
 	db, err := sqlx.Connect("pgx", connStr)
 	if err != nil {
 		return nil, fmt.Errorf("could not establish connection to database: %v", err)
 	}
 
-	schema, err := os.ReadFile(schemaPath)
+	schema, err := os.ReadFile("./internal/database/postgres_gallery/schema.sql")
 	if err != nil {
 		return nil, fmt.Errorf("could not load schema: %v", err)
 	}
@@ -31,10 +31,11 @@ func NewPostgresCharacterGallery(connStr string, schemaPath string) (models.Char
 	}, nil
 }
 
-func (cg *PostgresCharacterGallery) Close() {
+func (cg *PostgresCharacterGallery) Close() error {
 	log.Println("Database connection terminated")
 	err := cg.db.Close()
 	if err != nil {
-		log.Printf("error closing database connection: %v\n", err)
+		return fmt.Errorf("error closing database connection: %v\n", err)
 	}
+	return nil
 }

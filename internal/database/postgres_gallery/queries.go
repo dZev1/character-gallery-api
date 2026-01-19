@@ -1,4 +1,4 @@
-package database
+package postgres_gallery 
 
 import (
 	"fmt"
