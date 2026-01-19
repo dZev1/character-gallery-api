@@ -71,7 +71,7 @@ func (cg *PostgresCharacterGallery) Get(id characters.CharacterID) (*characters.
 	return character, nil
 }
 
-func (cg *PostgresCharacterGallery) GetAll() ([]characters.Character, error) {
+func (cg *PostgresCharacterGallery) GetAll(page, limit int) ([]characters.Character, error) {
 	var chars []characters.Character
 	query := `
 		SELECT
@@ -96,9 +96,11 @@ func (cg *PostgresCharacterGallery) GetAll() ([]characters.Character, error) {
             	stats s ON c.id = s.id
         	LEFT JOIN
             	customizations cust ON c.id = cust.id
+		ORDER BY c.id
+		OFFSET $1 LIMIT $2
 	`
 
-	err := cg.db.Select(&chars, query)
+	err := cg.db.Select(&chars, query, page, limit)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrCouldNotGet, err)
 	}

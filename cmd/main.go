@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/dZev1/character-gallery/internal/database/postgres_gallery"
 	"github.com/dZev1/character-gallery/handlers"
+	"github.com/dZev1/character-gallery/internal/database/postgres_gallery"
 	"github.com/joho/godotenv"
 )
 

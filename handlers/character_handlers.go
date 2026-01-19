@@ -35,7 +35,24 @@ func (h *CharacterHandler) CreateCharacter(w http.ResponseWriter, r *http.Reques
 }
 
 func (h *CharacterHandler) GetAllCharacters(w http.ResponseWriter, r *http.Request) {
-	chars, err := h.Gallery.GetAll()
+	page := 0
+	limit := 20
+
+	if pageStr := r.URL.Query().Get("page"); pageStr != "" {
+		p, err := strconv.Atoi(pageStr)
+		if err == nil && p >= 0 {
+			page = p
+		}
+	}
+
+	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
+		l, err := strconv.Atoi(limitStr)
+		if err == nil && l > 0 && l <= 100 {
+			limit = l
+		}
+	}
+
+	chars, err := h.Gallery.GetAll(page, limit)
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusFailedDependency)

@@ -8,6 +8,12 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
+/*
+ *
+ * Character related queries
+ *
+ */
+
 func (cg *PostgresCharacterGallery) insertBaseCharacter(tx *sqlx.Tx, character *characters.Character) error {
 	query := `
 		INSERT INTO characters (name, body_type, species, class)
@@ -153,6 +159,12 @@ func (cg *PostgresCharacterGallery) updateStats(tx *sqlx.Tx, stats *characters.S
 
 	return nil
 }
+
+/*
+ *
+ * Item related queries
+ *
+ */
 
 func (cg *PostgresCharacterGallery) insertItem(item *inventory.Item) error {
 	query := `
