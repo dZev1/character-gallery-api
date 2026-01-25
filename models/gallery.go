@@ -14,6 +14,7 @@ type CharacterGallery interface {
 	Remove(id characters.CharacterID) error
 
 	SeedItems() error
+	DisplayPoolItems() ([]inventory.Item, error)
 	AddItemToCharacter(characterID characters.CharacterID, itemID inventory.ItemID, quantity uint8) error
 	RemoveItemFromCharacter(characterID characters.CharacterID, itemID inventory.ItemID, quantity uint8) error
 	GetCharacterInventory(characterID characters.CharacterID) ([]inventory.InventoryItem, error)

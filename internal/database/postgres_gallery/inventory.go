@@ -32,16 +32,19 @@ func (cg *PostgresCharacterGallery) SeedItems() error {
 func (cg *PostgresCharacterGallery) AddItemToCharacter(characterID characters.CharacterID, itemID inventory.ItemID, quantity uint8) error {
 	tx, err := cg.db.Beginx()
 	if err != nil {
+		fmt.Println("Error de comienzo de transacción")
 		return fmt.Errorf("%w: %w", ErrFailedInitializeTransaction, err)
 	}
 	defer tx.Rollback()
 
 	err = insertIntoCharacterInventory(tx, characterID, itemID, quantity)
 	if err != nil {
+		fmt.Println("Error al insertar en el inventario del personaje")
 		return err
 	}
 
 	if err = tx.Commit(); err != nil {
+		fmt.Println("Error al commitear!")
 		return fmt.Errorf("%w: %w", ErrFailedCommitTransaction, err)
 	}
 
@@ -81,18 +84,47 @@ func (cg *PostgresCharacterGallery) RemoveItemFromCharacter(characterID characte
 
 func (cg *PostgresCharacterGallery) GetCharacterInventory(characterID characters.CharacterID) ([]inventory.InventoryItem, error) {
 	query := `
-		SELECT i.id, i.name, i.type, i.description, i.equippable, i.rarity, i.damage, i.defense, i.heal_amount, i.mana_cost, i.duration
-		, ci.quantity, ci.is_equipped
-		FROM character_inventory ci
-		JOIN items i ON ci.item_id = i.id
+		SELECT
+			i.id          AS "item.id",
+			i.name        AS "item.name",
+			i.type        AS "item.type",
+			i.description AS "item.description",
+			i.equippable  AS "item.equippable",
+			i.rarity      AS "item.rarity",
+			i.damage      AS "item.damage",
+			i.defense     AS "item.defense",
+			i.heal_amount AS "item.heal_amount",
+			i.mana_cost   AS "item.mana_cost",
+			i.duration    AS "item.duration",
+			ci.quantity,
+			ci.is_equipped
+		FROM items i
+		JOIN inventory ci ON ci.item_id = i.id
 		WHERE ci.character_id = $1
+		ORDER BY i.id
 	`
 
 	var characterInventory []inventory.InventoryItem
 	err := cg.db.Select(&characterInventory, query, characterID)
 	if err != nil {
-		
+		fmt.Println("Error al seleccionar el inventario del personaje")
 		return nil, fmt.Errorf("%w: %w", ErrFailedSelectCharacterInventory, err)
 	}
 	return characterInventory, nil
+}
+
+func (cg *PostgresCharacterGallery) DisplayPoolItems() ([]inventory.Item, error) {
+	query := `
+		SELECT id, name, type, description, equippable, rarity, damage, defense, heal_amount, mana_cost, duration
+		FROM items
+		ORDER BY id;
+	`
+
+	var items []inventory.Item
+	err := cg.db.Select(&items, query)
+	if err != nil {
+		return nil, fmt.Errorf("could not retrieve items from pool: %v", err)
+	}
+
+	return items, nil
 }

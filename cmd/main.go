@@ -10,16 +10,15 @@ import (
 	"github.com/joho/godotenv"
 )
 
-
 func main() {
 	err := godotenv.Load()
 	if err != nil {
 		log.Fatal("error loading .env file")
 	}
 	connectionString := os.Getenv("DATABASE_URL")
-	
+
 	currentVersion := os.Getenv("API_VERSION")
-	
+
 	err = godotenv.Overload("./config.env")
 	dbType := os.Getenv("DATABASE_TYPE")
 
@@ -46,6 +45,8 @@ func main() {
 	http.HandleFunc("POST "+baseRoute+"/characters/{character_id}/inventory/{item_id}", handler.AddItemToCharacter)
 	http.HandleFunc("DELETE "+baseRoute+"/characters/{character_id}/inventory/{item_id}", handler.RemoveItemFromCharacter)
 	http.HandleFunc("GET "+baseRoute+"/characters/{character_id}/inventory", handler.GetCharacterInventory)
+
+	http.HandleFunc("GET "+baseRoute+"/items", handler.ShowPoolItems)
 
 	log.Println("Server listening on http://localhost:8080")
 	if err = http.ListenAndServe(":8080", nil); err != nil {

@@ -225,3 +225,15 @@ func (h *CharacterHandler) GetCharacterInventory(w http.ResponseWriter, r *http.
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(invItems)
 }
+
+func (h *CharacterHandler) ShowPoolItems(w http.ResponseWriter, r *http.Request) {
+	items, err := h.Gallery.DisplayPoolItems()
+	if err != nil {
+		http.Error(w, "Could not retrieve pool items", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(items)
+}
