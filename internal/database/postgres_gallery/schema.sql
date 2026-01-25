@@ -5,7 +5,7 @@ IF NOT EXISTS "items"
   "name" text,
   "type" text CHECK
 (type IN
-('weapon', 'armor', 'potion', 'spell', 'explosive', 'misc')),
+('weapon','sorcery', 'armor', 'accessory', 'potion', 'spell', 'food', 'explosive', 'ammo', 'treasure', 'misc')),
   "description" text,
   "equippable" boolean,
   "rarity" int,

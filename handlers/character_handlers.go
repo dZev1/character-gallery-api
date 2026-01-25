@@ -7,6 +7,7 @@ import (
 
 	"github.com/dZev1/character-gallery/models"
 	"github.com/dZev1/character-gallery/models/characters"
+	"github.com/dZev1/character-gallery/models/inventory"
 )
 
 type CharacterHandler struct {
@@ -131,4 +132,96 @@ func (h *CharacterHandler) DeleteCharacter(w http.ResponseWriter, r *http.Reques
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
+}
+
+func (h *CharacterHandler) AddItemToCharacter(w http.ResponseWriter, r *http.Request) {
+	characterIDStr := r.PathValue("character_id")
+	itemIDStr := r.PathValue("item_id")
+	quantityStr := r.URL.Query().Get("quantity")
+
+	characterID, err := strconv.Atoi(characterIDStr)
+	if err != nil {
+		http.Error(w, "Invalid character ID", http.StatusBadRequest)
+		return
+	}
+
+	itemID, err := strconv.Atoi(itemIDStr)
+	if err != nil {
+		http.Error(w, "Invalid item ID", http.StatusBadRequest)
+		return
+	}
+
+	quantity, err := strconv.Atoi(quantityStr)
+	if err != nil {
+		http.Error(w, "Invalid quantity", http.StatusBadRequest)
+		return
+	}
+
+	err = h.Gallery.AddItemToCharacter(characters.CharacterID(characterID), inventory.ItemID(itemID), uint8(quantity))
+	if err != nil {
+		http.Error(w, "Could not add item to character", http.StatusInternalServerError)
+		return
+	}
+
+	item := inventory.Items[itemID-1]
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(item)
+}
+
+func (h *CharacterHandler) RemoveItemFromCharacter(w http.ResponseWriter, r *http.Request) {
+	characterIDStr := r.PathValue("character_id")
+	itemIDStr := r.PathValue("item_id")
+	quantityStr := r.URL.Query().Get("quantity")
+
+	characterID, err := strconv.Atoi(characterIDStr)
+	if err != nil {
+		http.Error(w, "Invalid character ID", http.StatusBadRequest)
+		return
+	}
+
+	itemID, err := strconv.Atoi(itemIDStr)
+	if err != nil {
+		http.Error(w, "Invalid item ID", http.StatusBadRequest)
+		return
+	}
+
+	quantity, err := strconv.Atoi(quantityStr)
+	if err != nil {
+		http.Error(w, "Invalid quantity", http.StatusBadRequest)
+		return
+	}
+
+	err = h.Gallery.RemoveItemFromCharacter(characters.CharacterID(characterID), inventory.ItemID(itemID), uint8(quantity))
+	if err != nil {
+		http.Error(w, "Could not remove item from character", http.StatusInternalServerError)
+		return
+	}
+
+	item := inventory.Items[itemID-1]
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(item)
+}
+
+func (h *CharacterHandler) GetCharacterInventory(w http.ResponseWriter, r *http.Request) {
+	characterIDStr := r.PathValue("character_id")
+
+	characterID, err := strconv.Atoi(characterIDStr)
+	if err != nil {
+		http.Error(w, "Invalid character ID", http.StatusBadRequest)
+		return
+	}
+
+	invItems, err := h.Gallery.GetCharacterInventory(characters.CharacterID(characterID))
+	if err != nil {
+		http.Error(w, "Could not retrieve inventory", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(invItems)
 }

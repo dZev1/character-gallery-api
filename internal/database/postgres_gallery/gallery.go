@@ -1,7 +1,6 @@
 package postgres_gallery
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/dZev1/character-gallery/models/characters"
@@ -9,13 +8,6 @@ import (
 )
 
 // Errors
-var (
-	ErrCouldNotInsert              = errors.New(`could not insert character`)
-	ErrCouldNotGet                 = errors.New(`could not get character`)
-	ErrCouldNotFind                = errors.New(`could not find character`)
-	ErrFailedInitializeTransaction = errors.New(`failed to initialize transaction`)
-	ErrFailedCommitTransaction     = errors.New(`failed to commit transaction`)
-)
 
 type PostgresCharacterGallery struct {
 	db *sqlx.DB

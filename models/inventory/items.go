@@ -82,7 +82,7 @@ var Items = []Item{
 	{
 		ID:          8,
 		Name:        "Favor and Protection Ring",
-		Type:        Misc,
+		Type:        Accessory,
 		Description: "A ring symbolizing the favor and protection of the goddess Fina, known in legend to possess 'fateful beauty'. This ring boosts its wearer's HP, stamina, and max equipment load, but breaks if ever removed.",
 		Equippable:  true,
 		Rarity:      5,

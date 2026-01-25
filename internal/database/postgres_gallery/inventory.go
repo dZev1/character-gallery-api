@@ -79,6 +79,20 @@ func (cg *PostgresCharacterGallery) RemoveItemFromCharacter(characterID characte
 	return nil
 }
 
-func (cg *PostgresCharacterGallery) GetCharacterInventory(characterID characters.CharacterID) ([]inventory.Item, error) {
-	return nil, nil
+func (cg *PostgresCharacterGallery) GetCharacterInventory(characterID characters.CharacterID) ([]inventory.InventoryItem, error) {
+	query := `
+		SELECT i.id, i.name, i.type, i.description, i.equippable, i.rarity, i.damage, i.defense, i.heal_amount, i.mana_cost, i.duration
+		, ci.quantity, ci.is_equipped
+		FROM character_inventory ci
+		JOIN items i ON ci.item_id = i.id
+		WHERE ci.character_id = $1
+	`
+
+	var characterInventory []inventory.InventoryItem
+	err := cg.db.Select(&characterInventory, query, characterID)
+	if err != nil {
+		
+		return nil, fmt.Errorf("%w: %w", ErrFailedSelectCharacterInventory, err)
+	}
+	return characterInventory, nil
 }

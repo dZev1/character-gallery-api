@@ -10,6 +10,10 @@ func NewCharacterGallery(dbType string, connectionString string) (models.Charact
 	switch dbType {
 	case "postgres":
 		return postgres_gallery.NewPostgresCharacterGallery(connectionString)
+	// case "mariadb":
+	// 	return mariadb_gallery.NewMariaDBCharacterGallery(connectionString)
+	// case "sqlite":
+	// 	return sqlite_gallery.NewSQLiteCharacterGallery(connectionString)
 	default:
 		return nil, fmt.Errorf("unsupported database type: %s", dbType)
 	}

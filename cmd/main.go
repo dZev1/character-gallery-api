@@ -18,7 +18,7 @@ func main() {
 	}
 	connectionString := os.Getenv("DATABASE_URL")
 	
-	currentVersion := os.Getenv("CURRENT_API_VERSION")
+	currentVersion := os.Getenv("API_VERSION")
 	
 	err = godotenv.Overload("./config.env")
 	dbType := os.Getenv("DATABASE_TYPE")
@@ -42,7 +42,11 @@ func main() {
 	http.HandleFunc("GET "+baseRoute+"/characters/{id}", handler.GetCharacter)
 	http.HandleFunc("PUT "+baseRoute+"/characters/{id}", handler.EditCharacter)
 	http.HandleFunc("DELETE "+baseRoute+"/characters/{id}", handler.DeleteCharacter)
-	
+
+	http.HandleFunc("POST "+baseRoute+"/characters/{character_id}/inventory/{item_id}", handler.AddItemToCharacter)
+	http.HandleFunc("DELETE "+baseRoute+"/characters/{character_id}/inventory/{item_id}", handler.RemoveItemFromCharacter)
+	http.HandleFunc("GET "+baseRoute+"/characters/{character_id}/inventory", handler.GetCharacterInventory)
+
 	log.Println("Server listening on http://localhost:8080")
 	if err = http.ListenAndServe(":8080", nil); err != nil {
 		log.Fatalf("Could not start server: %v", err)
