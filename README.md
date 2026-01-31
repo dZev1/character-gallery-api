@@ -186,13 +186,189 @@ A RESTful API built in Go to create, manage and see a gallery of Role Playing Ga
 
 #### Add item to character inventory
 
-- **Endpoint**: `POST /characters/{id}/inventory`
-- **Description**: Adds an item to the specified character's inventory.
-- **Request Body**:
+- **Endpoint**: `POST /characters/{character_id}/inventory/{item_id}`
+- **Description**: Adds a specific item to the character's inventory.
+- **Path Variables**:
+  - `character_id`: The ID of the character.
+  - `item_id`: The ID of the item to be added to the character's inventory.
+- **Query Parameters**:
+  - `quantity`: *(OPTIONAL)* The amount of items to add. If no value is specified, defaults to 1.
+- **Successful Response (`200 OK`)**: returns the object of the item added:
 
 ```JSON
 {
-    "item_name": "Health Potion",
-    "quantity": 3
+  "id": 3,
+  "name": "Healing Potion",
+  "type": "potion",
+  "description": "A potion that restores health.",
+  "equippable": false,
+  "rarity": 1,
+  "heal_amount": 60
 }
+```
+
+### Delete item from character's inventory
+
+- **Endpoint**: `DELETE /characters/{character_id}/inventory/{item_id}`
+- **Description**: Deletes a specific item.
+- **Path Variables**:
+  - `character_id`: The ID of the character.
+  - `item_id`: The ID of the item to be added to the character's inventory.
+- **Query Parameters**:
+  - `quantity`: *(OPTIONAL)* The amount of items to add. If no value is specified, defaults to 1.
+- **Successful Response (`200 OK`)**: returns the object of the item added:
+
+```JSON
+{
+  "id": 3,
+  "name": "Healing Potion",
+  "type": "potion",
+  "description": "A potion that restores health.",
+  "equippable": false,
+  "rarity": 1,
+  "heal_amount": 60
+}
+```
+
+### Get a character's inventory
+
+- **Endpoint**: `GET /characters/{character_id}/inventory`
+- **Description**: Gets a character's inventory.
+- **Path Variables**:
+  - `character_id`: The ID of the character.
+- **Successful Response(`200 ok`)**: returns an array of the items belonging to the character.
+
+```JSON
+[
+  {
+    "item": {
+      "id": 2,
+      "name": "Carl's Doomsday Scenario",
+      "type": "explosive",
+      "description": "Created  by  a  man  who  murders  babies  and  steals  rare collectibles from his elders, this device is powerful enough to level an entire city and all the suburbs around it. It is created by combining  a  massively  overloaded  soul crystal and  a  Sheol Glass Reaper Case.",
+      "equippable": false,
+      "rarity": 5,
+      "damage": 1000
+    },
+    "quantity": 4,
+    "is_equipped": false
+  },
+  {
+    "item": {
+      "id": 3,
+      "name": "Healing Potion",
+      "type": "potion",
+      "description": "A potion that restores health.",
+      "equippable": false,
+      "rarity": 1,
+      "heal_amount": 60
+    },
+    "quantity": 3,
+    "is_equipped": false
+  }
+]
+```
+
+### Get the current Item Pool
+
+- **Endpoint**: `GET /items`
+- **Description**: Gets the whole item pool.
+- **Successful Response(`200 ok`)**: returns an array that represents the current item pool.
+
+```JSON
+[
+  {
+    "id": 1,
+    "name": "Master Sword",
+    "type": "weapon",
+    "description": "A legendary sword with immense power.",
+    "equippable": true,
+    "rarity": 5,
+    "damage": 100
+  },
+  {
+    "id": 2,
+    "name": "Carl's Doomsday Scenario",
+    "type": "explosive",
+    "description": "Created  by  a  man  who  murders  babies  and  steals  rare collectibles from his elders, this device is powerful enough to level an entire city and all the suburbs around it. It is created by combining  a  massively  overloaded  soul crystal and  a  Sheol Glass Reaper Case.",
+    "equippable": false,
+    "rarity": 5,
+    "damage": 1000
+  },
+  {
+    "id": 3,
+    "name": "Healing Potion",
+    "type": "potion",
+    "description": "A potion that restores health.",
+    "equippable": false,
+    "rarity": 1,
+    "heal_amount": 60
+  },
+  {
+    "id": 4,
+    "name": "Steel Armor",
+    "type": "armor",
+    "description": "Sturdy armor made of steel.",
+    "equippable": true,
+    "rarity": 3,
+    "defense": 40
+  },
+  {
+    "id": 5,
+    "name": "Magic Missile",
+    "type": "spell",
+    "description": "A spell that launches a magic missile at the target.",
+    "equippable": false,
+    "rarity": 2,
+    "mana_cost": 30
+  },
+  {
+    "id": 6,
+    "name": "Invisibility Cloak",
+    "type": "misc",
+    "description": "A cloak that grants invisibility to the wearer.",
+    "equippable": true,
+    "rarity": 4,
+    "duration": "5 minutes"
+  },
+  {
+    "id": 7,
+    "name": "Paris's Bow",
+    "type": "weapon",
+    "description": "A finely crafted bow used by the legendary archer Paris.",
+    "equippable": true,
+    "rarity": 4,
+    "damage": 80
+  },
+  {
+    "id": 8,
+    "name": "Favor and Protection Ring",
+    "type": "accessory",
+    "description": "A ring symbolizing the favor and protection of the goddess Fina, known in legend to possess 'fateful beauty'. This ring boosts its wearer's HP, stamina, and max equipment load, but breaks if ever removed.",
+    "equippable": true,
+    "rarity": 5,
+    "defense": 10,
+    "mana_cost": 20
+  }
+]
+```
+
+### Get item from current Item Pool
+
+- **Endpoint**: `GET /items`
+- **Description**: Gets an item from the current item pool.
+- **Path Parameters**:
+- **Successful Response(`200 ok`)**: returns an object of the item from the item pool.
+
+```JSON
+  {
+    "id": 8,
+    "name": "Favor and Protection Ring",
+    "type": "accessory",
+    "description": "A ring symbolizing the favor and protection of the goddess Fina, known in legend to possess 'fateful beauty'. This ring boosts its wearer's HP, stamina, and max equipment load, but breaks if ever removed.",
+    "equippable": true,
+    "rarity": 5,
+    "defense": 10,
+    "mana_cost": 20
+  }
 ```

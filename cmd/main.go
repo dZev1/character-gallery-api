@@ -47,6 +47,7 @@ func main() {
 	http.HandleFunc("GET "+baseRoute+"/characters/{character_id}/inventory", handler.GetCharacterInventory)
 
 	http.HandleFunc("GET "+baseRoute+"/items", handler.ShowPoolItems)
+	http.HandleFunc("GET "+baseRoute+"/items/{item_id}", handler.ShowItem)
 
 	log.Println("Server listening on http://localhost:8080")
 	if err = http.ListenAndServe(":8080", nil); err != nil {

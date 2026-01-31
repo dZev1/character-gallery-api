@@ -115,7 +115,7 @@ func (cg *PostgresCharacterGallery) GetCharacterInventory(characterID characters
 
 func (cg *PostgresCharacterGallery) DisplayPoolItems() ([]inventory.Item, error) {
 	query := `
-		SELECT id, name, type, description, equippable, rarity, damage, defense, heal_amount, mana_cost, duration
+		SELECT *
 		FROM items
 		ORDER BY id;
 	`
@@ -127,4 +127,20 @@ func (cg *PostgresCharacterGallery) DisplayPoolItems() ([]inventory.Item, error)
 	}
 
 	return items, nil
+}
+
+func (cg *PostgresCharacterGallery) DisplayItem(itemID inventory.ItemID) (*inventory.Item, error) {
+	query := `
+		SELECT *
+		FROM items
+		WHERE id = $1; 
+	`
+	item := &inventory.Item{}
+	err := cg.db.Get(item, query, itemID)
+
+	if err != nil {
+		return nil, fmt.Errorf("could not retrieve item from item pool: %v", err)
+	}
+
+	return item, nil
 }
