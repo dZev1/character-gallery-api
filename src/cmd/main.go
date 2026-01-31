@@ -7,6 +7,7 @@ import (
 
 	"github.com/dZev1/character-gallery/handlers"
 	"github.com/dZev1/character-gallery/internal/database"
+	"github.com/dZev1/character-gallery/internal/middleware"
 	"github.com/joho/godotenv"
 )
 
@@ -50,7 +51,7 @@ func main() {
 	http.HandleFunc("GET "+baseRoute+"/items/{item_id}", handler.ShowItem)
 
 	log.Println("Server listening on http://localhost:8080")
-	if err = http.ListenAndServe(":8080", nil); err != nil {
+	if err = http.ListenAndServe(":8080", middleware.EnableCors(http.DefaultServeMux)); err != nil {
 		log.Fatalf("Could not start server: %v", err)
 	}
 }
