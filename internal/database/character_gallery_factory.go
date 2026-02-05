@@ -2,8 +2,8 @@ package database
 
 import (
 	"fmt"
-	"github.com/dZev1/character-gallery/models"
 	"github.com/dZev1/character-gallery/internal/database/postgres_gallery"
+	"github.com/dZev1/character-gallery/models"
 )
 
 func NewCharacterGallery(dbType string, connectionString string) (models.CharacterGallery, error) {

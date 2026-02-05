@@ -16,7 +16,7 @@ type CharacterHandler struct {
 
 func (h *CharacterHandler) CreateCharacter(w http.ResponseWriter, r *http.Request) {
 	newCharacter := &characters.Character{}
-	
+
 	err := json.NewDecoder(r.Body).Decode(newCharacter)
 	if err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
@@ -103,7 +103,7 @@ func (h *CharacterHandler) EditCharacter(w http.ResponseWriter, r *http.Request)
 		http.Error(w, "Invalid Request Body", http.StatusBadRequest)
 		return
 	}
-	
+
 	if len(characterToEdit.Name) < 2 {
 		http.Error(w, "Character name is too short", http.StatusBadRequest)
 		return
@@ -112,7 +112,7 @@ func (h *CharacterHandler) EditCharacter(w http.ResponseWriter, r *http.Request)
 	characterToEdit.ID = characters.CharacterID(id)
 	characterToEdit.Stats.ID = characters.CharacterID(id)
 	characterToEdit.Customization.ID = characters.CharacterID(id)
-	
+
 	err = h.Gallery.Edit(characterToEdit)
 	if err != nil {
 		http.Error(w, "Could not edit character", http.StatusInternalServerError)
