@@ -7,15 +7,15 @@ import (
 	"github.com/dZev1/character-gallery/models/inventory"
 )
 
-func (cg *PostgresCharacterGallery) SeedItems() error {
+func (cg *PostgresCharacterGallery) SeedItems(items []inventory.Item) error {
 	tx, err := cg.db.Beginx()
 	if err != nil {
 		return fmt.Errorf("%w: %w", ErrFailedInitializeTransaction, err)
 	}
 	defer tx.Rollback()
 
-	for _, item := range inventory.Items {
-		err := cg.insertItemIntoPool(tx, &item)
+	for _, item := range items {
+		err := cg.seedItemPool(tx, &item)
 		if err != nil {
 			fmt.Println("Error inserting item:", err)
 			return err
@@ -143,4 +143,23 @@ func (cg *PostgresCharacterGallery) DisplayItem(itemID inventory.ItemID) (*inven
 	}
 
 	return item, nil
+}
+
+func (cg *PostgresCharacterGallery) CreateItem(item *inventory.Item) error {
+	tx, err := cg.db.Beginx()
+	if err != nil {
+		return fmt.Errorf("%w: %w", ErrFailedInitializeTransaction, err)
+	}
+	defer tx.Rollback()
+
+	err = cg.insertIntoItemPool(tx, item)
+	if err != nil {
+		return err
+	}
+
+	if err = tx.Commit(); err != nil {
+		return fmt.Errorf("%w: %w", ErrFailedCommitTransaction, err)
+	}
+
+	return nil
 }

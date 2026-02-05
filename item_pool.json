@@ -1,0 +1,18 @@
+[
+    {
+        "name": "Master Sword",
+        "type": "weapon",
+        "description": "The blade of evil's bane.",
+        "equippable": true,
+        "rarity": 5,
+        "damage": 100
+    },
+    {
+        "name": "Healing Potion",
+        "type": "potion",
+        "description": "Restore Health",
+        "equippable": false,
+        "rarity": 1,
+        "heal_amount": 50
+    }
+]

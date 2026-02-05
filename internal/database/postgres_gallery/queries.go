@@ -166,17 +166,37 @@ func (cg *PostgresCharacterGallery) updateStats(tx *sqlx.Tx, stats *characters.S
  *
  */
 
-func (cg *PostgresCharacterGallery) insertItemIntoPool(tx *sqlx.Tx, item *inventory.Item) error {
+func (cg *PostgresCharacterGallery) seedItemPool(tx *sqlx.Tx, item *inventory.Item) error {
 	query := `
-	INSERT INTO items (id, name, type, description, equippable, rarity, damage, defense, heal_amount, mana_cost, duration)
-	VALUES (:id, :name, :type, :description, :equippable, :rarity, :damage, :defense, :heal_amount, :mana_cost, :duration)
-	ON CONFLICT (id) DO NOTHING;
+	INSERT INTO items (name, type, description, equippable, rarity, damage, defense, heal_amount, mana_cost, duration)
+	VALUES (:name, :type, :description, :equippable, :rarity, :damage, :defense, :heal_amount, :mana_cost, :duration)
+	ON CONFLICT (name, rarity) DO NOTHING;
 	`
 
 	_, err := tx.NamedExec(query, item)
 
 	if err != nil {
+		fmt.Println("NO PUDE CARGAR NADA MACHO")
 		return fmt.Errorf("could not add item to database: %v", err)
+	}
+
+	return nil
+}
+
+func (cg *PostgresCharacterGallery) insertIntoItemPool(tx *sqlx.Tx, item *inventory.Item) error {
+	query := `
+	INSERT INTO items (name, type, description, equippable, rarity, damage, defense, heal_amount, mana_cost, duration)
+	VALUES (:name, :type, :description, :equippable, :rarity, :damage, :defense, :heal_amount, :mana_cost, :duration)
+	RETURNING id;
+	`
+
+	stmt, err := tx.PrepareNamed(query)
+	if err != nil {
+		return fmt.Errorf("could not prepare statement: %w", err)
+	}
+	err = stmt.Get(&item.ID, item)
+	if err != nil {
+		return fmt.Errorf("could not insert item (duplicate?): %w", err)
 	}
 
 	return nil

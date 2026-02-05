@@ -13,7 +13,8 @@ type CharacterGallery interface {
 	Edit(character *characters.Character) error
 	Remove(id characters.CharacterID) error
 
-	SeedItems() error
+	CreateItem(item *inventory.Item) error
+	SeedItems(items []inventory.Item) error
 	DisplayPoolItems() ([]inventory.Item, error)
 	DisplayItem(itemID inventory.ItemID) (*inventory.Item, error)
 	AddItemToCharacter(characterID characters.CharacterID, itemID inventory.ItemID, quantity uint8) error

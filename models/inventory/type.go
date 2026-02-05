@@ -17,6 +17,7 @@ const (
 	// Other
 	Explosive Type = "explosive"
 	Ammo      Type = "ammo"
+	Tool      Type = "tool"
 	Treasure  Type = "treasure"
 	Misc      Type = "misc"
 )

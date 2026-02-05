@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -8,6 +10,7 @@ import (
 	"github.com/dZev1/character-gallery/handlers"
 	"github.com/dZev1/character-gallery/internal/database"
 	"github.com/dZev1/character-gallery/internal/middleware"
+	"github.com/dZev1/character-gallery/models/inventory"
 	"github.com/joho/godotenv"
 )
 
@@ -29,7 +32,18 @@ func main() {
 	}
 	defer gallery.Close()
 
-	gallery.SeedItems()
+	itemFile, err := os.Open("./item_pool.json")
+	if err != nil {
+		log.Print(fmt.Errorf("could not open seed file: %w", err))
+	}
+	defer itemFile.Close()
+	
+	var items []inventory.Item
+	if err := json.NewDecoder(itemFile).Decode(&items); err != nil {
+		log.Print(fmt.Errorf("could not decode items json: %w", err))
+	}
+
+	gallery.SeedItems(items)
 
 	handler := &handlers.CharacterHandler{
 		Gallery: gallery,
@@ -48,6 +62,7 @@ func main() {
 	http.HandleFunc("GET "+baseRoute+"/characters/{character_id}/inventory", handler.GetCharacterInventory)
 
 	http.HandleFunc("GET "+baseRoute+"/items", handler.ShowPoolItems)
+	http.HandleFunc("POST "+baseRoute+"/items", handler.CreateItem)
 	http.HandleFunc("GET "+baseRoute+"/items/{item_id}", handler.ShowItem)
 
 	log.Println("Server listening on http://localhost:8080")

@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS "items" (
       'food',
       'explosive',
       'ammo',
+      'tool',
       'treasure',
       'misc'
     )
@@ -113,3 +114,11 @@ ALTER TABLE "customizations"
 ADD FOREIGN KEY ("id") REFERENCES "characters" ("id") ON DELETE CASCADE;
 ALTER TABLE "inventory"
 ADD FOREIGN KEY ("character_id") REFERENCES "characters" ("id") ON DELETE CASCADE;
+
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'items_name_rarity_unique') THEN
+        ALTER TABLE items ADD CONSTRAINT items_name_rarity_unique UNIQUE (name, rarity);
+    END IF;
+END $$;
