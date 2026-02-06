@@ -3,18 +3,26 @@ package characters
 type Species string
 
 const (
-	AASIMAR    Species = "aasimar"
-	DRAGONBORN Species = "dragonborn"
-	DWARF      Species = "dwarf"
-	ELF        Species = "elf"
-	GNOME      Species = "gnome"
-	GOLIATH    Species = "goliath"
-	HALFLING   Species = "halfling"
-	HUMAN      Species = "human"
-	ORC        Species = "orc"
-	TIEFLING   Species = "tiefling"
+	Aasimar    Species = "aasimar"
+	Dragonborn Species = "dragonborn"
+	Dwarf      Species = "dwarf"
+	Elf        Species = "elf"
+	Gnome      Species = "gnome"
+	Goliath    Species = "goliath"
+	Halfling   Species = "halfling"
+	Human      Species = "human"
+	Orc        Species = "orc"
+	Tiefling   Species = "tiefling"
 )
 
 func (s Species) String() string {
 	return string(s)
+}
+
+func (s Species) Validate() bool {
+	switch s {
+	case Aasimar, Dragonborn, Dwarf, Elf, Gnome, Goliath, Halfling, Human, Orc, Tiefling:
+		return true
+	}
+	return false
 }

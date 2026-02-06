@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import './App.css'
-import { CharacterCard, type CharacterData } from './components/CharacterCard'
+import { CharacterCard } from './components/CharacterCard'
+import type { CharacterData } from './types/CharacterData'
 
 const CHARACTER_API_URL = 'http://localhost:8080/api/v0'
 

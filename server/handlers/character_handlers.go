@@ -21,8 +21,8 @@ func (h *CharacterHandler) CreateCharacter(w http.ResponseWriter, r *http.Reques
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
-	if len(newCharacter.Name) < 2 {
-		http.Error(w, "Character's name is too short", http.StatusBadRequest)
+
+	if valid := validateCharacter(newCharacter, w); !valid {
 		return
 	}
 
@@ -59,7 +59,9 @@ func (h *CharacterHandler) GetAllCharacters(w http.ResponseWriter, r *http.Reque
 	chars, err := h.Gallery.GetAll(page, limit)
 
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusFailedDependency)
+		log.Printf("")
+		http.Error(w, "Page not found", http.StatusNotFound)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -103,8 +105,7 @@ func (h *CharacterHandler) EditCharacter(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if len(characterToEdit.Name) < 2 {
-		http.Error(w, "Character name is too short", http.StatusBadRequest)
+	if valid := validateCharacter(characterToEdit, w); !valid {
 		return
 	}
 
