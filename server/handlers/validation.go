@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"dZev1/character-gallery/models/characters"
+	"dZev1/character-gallery/models/inventory"
 	"net/http"
 )
 
@@ -20,6 +21,14 @@ func validateCharacter(character *characters.Character, w http.ResponseWriter) b
 	}
 	if !character.Species.Validate() {
 		http.Error(w, "Character's species not valid", http.StatusBadRequest)
+		return false
+	}
+	return true
+}
+
+func validateItem(item *inventory.Item, w http.ResponseWriter) bool {
+	if !item.Validate() || !item.Type.Validate() {
+		http.Error(w, "Item not valid", http.StatusBadRequest)
 		return false
 	}
 	return true

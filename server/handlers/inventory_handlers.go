@@ -149,10 +149,13 @@ func (h *CharacterHandler) CreateItem(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
-
+	if !validateItem(newItem, w) {
+		http.Error(w, "Invalid item", http.StatusBadRequest)
+		return
+	}
 	err = h.Gallery.CreateItem(newItem)
 	if err != nil {
-		http.Error(w, "Could not create item: "+err.Error(), http.StatusConflict)
+		http.Error(w, "Could not create item", http.StatusConflict)
 		return
 	}
 

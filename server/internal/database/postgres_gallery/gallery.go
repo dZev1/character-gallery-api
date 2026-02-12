@@ -3,6 +3,7 @@ package postgres_gallery
 import (
 	"fmt"
 
+	"dZev1/character-gallery/models/auth"
 	"dZev1/character-gallery/models/characters"
 	"github.com/jmoiron/sqlx"
 )
@@ -11,6 +12,7 @@ import (
 
 type PostgresCharacterGallery struct {
 	db *sqlx.DB
+	AuthStore auth.AuthStore
 }
 
 func (cg *PostgresCharacterGallery) Create(character *characters.Character) error {
@@ -160,4 +162,8 @@ func (cg *PostgresCharacterGallery) Remove(id characters.CharacterID) error {
 	}
 
 	return nil
+}
+
+func (cg *PostgresCharacterGallery) GetAuthStore() auth.AuthStore {
+	return cg.AuthStore
 }

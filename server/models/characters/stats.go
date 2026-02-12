@@ -22,3 +22,12 @@ func (s *Stats) String() string {
 		s.Charisma,
 	)
 }
+
+func (s *Stats) Validate() bool {
+	for _, stat := range []uint8{s.Strength, s.Dexterity, s.Constitution, s.Intelligence, s.Wisdom, s.Charisma} {
+		if stat < 1 || stat > 99 {
+			return false
+		}
+	}
+	return true
+}

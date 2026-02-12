@@ -20,3 +20,12 @@ func (c *Customization) String() string {
 		c.Shoes,
 	)
 }
+
+func (c *Customization) Validate() bool {
+	for _, customization := range []uint8{c.Hair, c.Face, c.Shirt, c.Pants, c.Shoes} {
+		if customization > 30 {
+			return false
+		}
+	}
+	return true
+}

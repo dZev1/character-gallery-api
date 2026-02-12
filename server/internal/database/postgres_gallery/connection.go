@@ -28,6 +28,7 @@ func NewPostgresCharacterGallery(connStr string) (models.CharacterGallery, error
 
 	return &PostgresCharacterGallery{
 		db: db,
+		AuthStore: NewAuthStore(db),
 	}, nil
 }
 

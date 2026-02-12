@@ -16,3 +16,29 @@ type Item struct {
 	Cooldown   *uint64 `db:"cooldown" json:"cooldown,omitempty"`
 	Capacity   *uint64 `db:"capacity" json:"capacity,omitempty"`
 }
+
+func (i *Item) Validate() bool {
+	if len(i.Name) < 3 || len(i.Name) > 50 {
+		return false
+	}
+	if len(i.Description) < 3 || len(i.Description) > 300 {
+		return false
+	}
+	if i.Rarity < 1 || i.Rarity > 5 {
+		return false
+	}
+	if !ValidateStats(i) && i.Equippable {
+		return false
+	}
+	return true
+}
+
+func ValidateStats(i *Item) bool {
+	return i.Damage != nil &&
+		i.Defense != nil &&
+		i.HealAmount != nil &&
+		i.ManaCost != nil &&
+		i.Duration != nil &&
+		i.Cooldown != nil &&
+		i.Capacity != nil
+}

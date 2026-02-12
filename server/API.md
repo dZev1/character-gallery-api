@@ -207,7 +207,7 @@ A RESTful API built in Go to create, manage and see a gallery of Role Playing Ga
 }
 ```
 
-### Delete item from character's inventory
+#### Delete item from character's inventory
 
 - **Endpoint**: `DELETE /characters/{character_id}/inventory/{item_id}`
 - **Description**: Deletes a specific item.
@@ -230,7 +230,7 @@ A RESTful API built in Go to create, manage and see a gallery of Role Playing Ga
 }
 ```
 
-### Get a character's inventory
+#### Get a character's inventory
 
 - **Endpoint**: `GET /characters/{character_id}/inventory`
 - **Description**: Gets a character's inventory.
@@ -269,7 +269,9 @@ A RESTful API built in Go to create, manage and see a gallery of Role Playing Ga
 ]
 ```
 
-### Get the current Item Pool
+### Item Pool Management
+
+#### Get the current Item Pool
 
 - **Endpoint**: `GET /items`
 - **Description**: Gets the whole item pool.
@@ -353,7 +355,7 @@ A RESTful API built in Go to create, manage and see a gallery of Role Playing Ga
 ]
 ```
 
-### Get item from current Item Pool
+#### Get item from current Item Pool
 
 - **Endpoint**: `GET /items`
 - **Description**: Gets an item from the current item pool.

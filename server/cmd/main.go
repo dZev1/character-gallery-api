@@ -65,8 +65,8 @@ func main() {
 	http.HandleFunc("POST "+baseRoute+"/items", handler.CreateItem)
 	http.HandleFunc("GET "+baseRoute+"/items/{item_id}", handler.ShowItem)
 
-	log.Println("Server listening on http://localhost:8080")
-	if err = http.ListenAndServe(":8080", middleware.EnableCors(http.DefaultServeMux)); err != nil {
+	log.Println("Server listening on http://localhost:8080/"+baseRoute)
+	if err = http.ListenAndServe(":8080", middleware.EnableCors(middleware.RequireAPIKey(gallery.GetAuthStore())(http.DefaultServeMux))); err != nil {
 		log.Fatalf("Could not start server: %v", err)
 	}
 }
