@@ -34,11 +34,11 @@ func (i *Item) Validate() bool {
 }
 
 func ValidateStats(i *Item) bool {
-	return i.Damage != nil &&
-		i.Defense != nil &&
-		i.HealAmount != nil &&
-		i.ManaCost != nil &&
-		i.Duration != nil &&
-		i.Cooldown != nil &&
-		i.Capacity != nil
+	return (i.Damage != nil && *i.Damage > 0) ||
+		(i.Defense != nil && *i.Defense > 0) ||
+		(i.HealAmount != nil && *i.HealAmount > 0) ||
+		(i.ManaCost != nil && *i.ManaCost > 0) ||
+		(i.Duration != nil && *i.Duration > 0) ||
+		(i.Cooldown != nil && *i.Cooldown > 0) ||
+		(i.Capacity != nil && *i.Capacity > 0)
 }

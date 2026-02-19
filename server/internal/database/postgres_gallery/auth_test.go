@@ -9,8 +9,6 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 )
 
-// ==================== ValidateAPIKey Tests ====================
-
 func TestValidateAPIKey_Success(t *testing.T) {
 	authStore, mock := setupMockAuthStore(t)
 
@@ -69,8 +67,6 @@ func TestValidateAPIKey_DBError(t *testing.T) {
 	}
 }
 
-// ==================== UpdateLastUsed Tests ====================
-
 func TestUpdateLastUsed_Success(t *testing.T) {
 	authStore, mock := setupMockAuthStore(t)
 
@@ -103,8 +99,6 @@ func TestUpdateLastUsed_DBError(t *testing.T) {
 		t.Fatalf("unmet expectations: %v", err)
 	}
 }
-
-// ==================== CreateAPIKey Tests ====================
 
 func TestCreateAPIKey_Success(t *testing.T) {
 	authStore, mock := setupMockAuthStore(t)
@@ -183,8 +177,6 @@ func TestCreateAPIKey_CommitError(t *testing.T) {
 	}
 }
 
-// ==================== GenerateAPIKey Tests ====================
-
 func TestGenerateAPIKey(t *testing.T) {
 	keyHash, rawKey, err := auth.GenerateAPIKey()
 	if err != nil {
@@ -199,7 +191,6 @@ func TestGenerateAPIKey(t *testing.T) {
 		t.Fatalf("expected SHA-256 hash (64 hex chars), got length: %d", len(keyHash))
 	}
 
-	// Verify hashing is consistent
 	rehash := auth.HashAPIKey(rawKey)
 	if rehash != keyHash {
 		t.Fatal("hashing the raw key should produce the same hash")
@@ -207,7 +198,6 @@ func TestGenerateAPIKey(t *testing.T) {
 }
 
 func TestHashAPIKey(t *testing.T) {
-	// Same input should produce same hash
 	hash1 := auth.HashAPIKey("test_key")
 	hash2 := auth.HashAPIKey("test_key")
 
@@ -215,7 +205,6 @@ func TestHashAPIKey(t *testing.T) {
 		t.Fatal("hashing same input should produce same output")
 	}
 
-	// Different input should produce different hash
 	hash3 := auth.HashAPIKey("different_key")
 	if hash1 == hash3 {
 		t.Fatal("different inputs should produce different hashes")

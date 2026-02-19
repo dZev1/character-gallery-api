@@ -2,6 +2,7 @@ package postgres_gallery
 
 import (
 	"fmt"
+	"log"
 
 	"dZev1/character-gallery/models/characters"
 	"dZev1/character-gallery/models/inventory"
@@ -37,26 +38,48 @@ func (cg *PostgresCharacterGallery) SeedItems(items []inventory.Item) error {
 	return nil
 }
 
-func (cg *PostgresCharacterGallery) AddItemToCharacter(characterID characters.CharacterID, itemID inventory.ItemID, quantity uint8) error {
+func (cg *PostgresCharacterGallery) AddItemToCharacter(characterID characters.CharacterID, itemID inventory.ItemID, quantity uint8) (*inventory.InventoryItem, error) {
 	tx, err := cg.db.Beginx()
 	if err != nil {
-		fmt.Println("Error de comienzo de transacción")
-		return fmt.Errorf("%w: %w", ErrFailedInitializeTransaction, err)
+		return nil, fmt.Errorf("%w: %w", ErrFailedInitializeTransaction, err)
 	}
 	defer tx.Rollback()
-
+	
 	err = insertIntoCharacterInventory(tx, characterID, itemID, quantity)
 	if err != nil {
-		fmt.Println("Error al insertar en el inventario del personaje")
-		return err
+		log.Print("Error luego de insert")
+		return nil, err
+	}
+
+	item := &inventory.InventoryItem{}
+	err = tx.Get(item, `
+		SELECT
+			i.id          AS "item.id",
+			i.name        AS "item.name",
+			i.type        AS "item.type",
+			i.description AS "item.description",
+			i.equippable  AS "item.equippable",
+			i.rarity      AS "item.rarity",
+			i.damage      AS "item.damage",
+			i.defense     AS "item.defense",
+			i.heal_amount AS "item.heal_amount",
+			i.mana_cost   AS "item.mana_cost",
+			i.duration    AS "item.duration",
+			ci.quantity,
+			ci.is_equipped
+		FROM items i
+		JOIN inventory ci ON ci.item_id = i.id
+		WHERE ci.character_id = $1 AND ci.item_id = $2;
+	`, characterID, itemID)
+	if err != nil {
+		return nil, fmt.Errorf("could not retrieve item after adding to character: %w", err)
 	}
 
 	if err = tx.Commit(); err != nil {
-		fmt.Println("Error al commitear!")
-		return fmt.Errorf("%w: %w", ErrFailedCommitTransaction, err)
+		return nil,fmt.Errorf("%w: %w", ErrFailedCommitTransaction, err)
 	}
 
-	return nil
+	return item, nil
 }
 
 func (cg *PostgresCharacterGallery) RemoveItemFromCharacter(characterID characters.CharacterID, itemID inventory.ItemID, quantity uint8) error {

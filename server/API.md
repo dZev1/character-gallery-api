@@ -1,5 +1,18 @@
 # Character Gallery
 
+## Table of Contents
+
+1. [**Description**](#description)
+2. [**Getting Started**](#getting-started)
+3. **About...**
+    - [**Characters**](#about-characters)
+    - [**Items**](#about-items)
+    - [**Entity Diagram**](#entity-diagram)
+4. [**API References**](#api-references)
+    - [**Character Management**](#character-management)
+    - [**Character Inventory Management**](#character-inventory-management)
+    - [**Item Pool Management**](#item-pool-management)
+
 ## Description
 
 A RESTful API built in Go to create, manage and see a gallery of Role Playing Game characters. The API allows CRUD complete operations, including management of base stats and character appearance customization.
@@ -8,21 +21,21 @@ A RESTful API built in Go to create, manage and see a gallery of Role Playing Ga
 
 1. Clone repository
 
-    ```(bash)
-    git clone https://github.com/dZev1/fantasy-character-gallery.git
-    cd character-gallery
+    ```Bash
+    git clone https://github.com/dZev1/character-gallery.git
+    cd character-gallery/server
     ```
 
 2. Install dependencies
 
-    ```(bash)
+    ```Bash
     go mod tidy
     ```
 
 3. Configure the database
 
     - Create a database for the project.
-    - Select one of the supported database engines (PostgreSQL, MariaDB, SQLite), de-comment it in `config.env` file.
+    - Select one of the supported database engines (currently only PostgreSQL), de-comment it in `config.env` file.
     - The database schema will be created automatically when the application starts.
 
 4. Configure environment variables
@@ -30,25 +43,136 @@ A RESTful API built in Go to create, manage and see a gallery of Role Playing Ga
     - Create a `.env` file in the root of the project.
     - Add the following variable with the connection URL to your database:
 
-        ```(.env)
-        DATABASE_URL="postgres://user:password@localhost:XXXX/database_name?params"
+        ```.env
+        DATABASE_URL="postgres://user:password@localhost:XXXX/database_name?sslmode=disable"
         ```
 
 5. Run the application:
 
     - Build the application:
 
-        ```(bash)
-        go build ./cmd/
+        ```bash
+        go build ./cmd/main
         ```
 
     - Run `cmd.exe`.
 
     - Server will be listening in `http://localhost:8080`.
 
-## API References
+6. Generate API Keys:
+
+    - Run the following command:
+
+      ```Bash
+        ./apikey_gen -name "a string"
+      ```
+
+    - An api key will be generated and returned to the user:
+
+      ```Bash
+       API Key Generated Successfully!
+       ID:   X
+       Name: a string
+       Key:  dz_chars_{KEY_NUMBER}
+
+       WARNING: This key will NOT be shown again. Save it securely!
+      ```
+
+    - Remember to save the api key, as the warning says!
 
 ---
+
+## About Characters
+
+### Classes supported
+
+This is a list of the supported character classes.
+
+|   Class   |    JSON Tag     |
+|-----------|-----------------|
+| Barbarian | "barbarian"     |
+| Bard      | "bard"          |
+| Cleric    | "cleric"        |
+| Druid     | "druid"         |
+| Fighter   | "fighter"       |
+| Monk      | "monk"          |
+| Paladin   | "paladin"       |
+| Ranger    | "ranger"        |
+| Rogue     | "rogue"         |
+| Sorcerer  | "sorcerer"      |
+| Warlock   | "warlock"       |
+| Wizard    | "wizard"        |
+
+### Species supported
+
+This is a list of the supported character species.
+
+|   Species   |    JSON Tag     |
+|-------------|-----------------|
+| Aasimar     | "aasimar"       |
+| Dragonborn  | "dragonborn"    |
+| Dwarf       | "dwarf"         |
+| Elf         | "elf"           |
+| Gnome       | "gnome"         |
+| Goliath     | "goliath"       |
+| Halfling    | "halfling"      |
+| Human       | "human"         |
+| Orc         | "orc"           |
+| Tiefling    | "tiefling"      |
+
+### Statistics and Customization
+
+Each character has their statistics:
+
+|    Stat      |    JSON Tag     |
+|--------------|-----------------|
+| Strength     | "strength"      |
+| Dexterity    | "dexterity"     |
+| Constitution | "constitution"  |
+| Intelligence | "intelligence"  |
+| Wisdom       | "wisdom"        |
+| Charisma     | "charisma"      |
+
+Each characters also has their own customization fields:
+
+| Field  |   JSON Tag   |
+|--------|--------------|
+| Hair   | "hair"       |
+| Face   | "face"       |
+| Shirt  | "shirt"      |
+| Pants  | "pants"      |
+| Shoes  | "shoes"      |
+
+---
+
+## About items
+
+### Item types
+
+Each item has its own unique type/category. This is a list of the supported ones:
+
+|       Type       |      JSON Tag       |
+|------------------|---------------------|
+| Armor            | "armor"             |
+| Ring             | "ring"              |
+| Weapon           | "weapon"            |
+| Shield           | "shield"            |
+| Tool             | "tool"              |
+| Adventuring Gear | "adventuring_gear"  |
+| Rod              | "rod"               |
+| Staff            | "staff"             |
+| Wand             | "wand"              |
+| Scroll           | "scroll"            |
+| Potion           | "potion"            |
+| Ammo             | "ammo"              |
+| Consumable       | "consumable"        |
+| Wondrous Item    | "wondrous_item"     |
+
+### Entity Diagram
+
+![Entity Diagram](./db-diagram.svg)
+
+## API References
 
 ### Character Management
 
@@ -56,7 +180,7 @@ A RESTful API built in Go to create, manage and see a gallery of Role Playing Ga
 
 - **Endpoint**: `POST /characters`
 - **Description**: Creates a new character with their stats and customization.
-- **Request Body**:
+- **Request Body**: A character
 
 ```JSON
 {
@@ -87,39 +211,37 @@ A RESTful API built in Go to create, manage and see a gallery of Role Playing Ga
 #### Get all characters
 
 - **Endpoint**: `GET /characters`
-- **Description**: Returns an array of all characters in the database.
+- **Description**: Returns a JSON object with an array of all characters, including their stats and customization fields. It also supports pagination with `page` and `limit` query parameters (e.g., `GET /characters?page=1`).
+- **Query Parameters**:
+  - `page`: The page number (starting from 0) (optional).
 
-- **Succesful Response (`200 OK`)**: Returns an array of character objects, each including stats and customization fields:
+- **Succesful Response (`200 OK`)**: Returns an object with an array of all characters, including their stats and customization fields, and pagination metadata.:
 
 ```JSON
-[
-    {
-        "id": 1,
-        "name": "Shallan",
-        "body_type": "type_b",
-        "species": "human",
-        "class": "monk",
-        "stats": {
-            ...
+{
+    "data": [
+        {
+            "id": 1,
+            "name": "Shallan",
+            "body_type": "type_b",
+            "species": "human",
+            "class": "monk",
+            "stats": {
+                ...
+            },
+            "customization": {
+                ...
+            }
         },
-        "customization": {
-            ...
-        }
-    },
-    {
-        "id": 2,
-        "name": "Dalinar",
-        "body_type": "type_a",
-        "species": "human",
-        "class": "fighter",
-        "stats": {
-            ...
-        },
-        "customization": {
-            ...
-        }
+        ...
+    ],
+    "pagination": {
+        "page": 0,
+        "limit": 20,
+        "total_count": 150,
+        "has_next": true
     }
-]
+}
 ```
 
 #### Get a character
@@ -271,6 +393,53 @@ A RESTful API built in Go to create, manage and see a gallery of Role Playing Ga
 
 ### Item Pool Management
 
+#### Create an item
+
+- **Endpoint**: `POST /items`
+- **Description**: Create a new item inserted into pool.
+- **Successful Response(`200 ok`)**: returns an array that represents the current item pool.
+- **Request Body**: An item
+
+```JSON
+  {
+    "name": "Master Sword",
+    "type": "weapon",
+    "description": "A legendary sword with immense power.",
+    "equippable": true,
+    "rarity": 5,
+    
+    "damage": 34,
+    "defense": 23,
+    "heal_amount": 10,
+    "mana_cost":4,
+    "duration": 233,
+    "cooldown": 120,
+    "capacity": 3
+  }
+}
+```
+
+- **Successful Response(`200 ok`)**: returns the item with its corresponding id.
+
+```JSON
+  {
+    "id": 1
+    "name": "Master Sword",
+    "type": "weapon",
+    "description": "A legendary sword with immense power.",
+    "equippable": true,
+    "rarity": 5,
+    "damage": xx,
+    "defense": xx,
+    "heal_amount": xx,
+    "mana_cost": xx,
+    "duration": xx,
+    "cooldown": xx,
+    "capacity": xx
+  }
+}
+```
+
 #### Get the current Item Pool
 
 - **Endpoint**: `GET /items`
@@ -357,9 +526,10 @@ A RESTful API built in Go to create, manage and see a gallery of Role Playing Ga
 
 #### Get item from current Item Pool
 
-- **Endpoint**: `GET /items`
+- **Endpoint**: `GET /items/{id}`
 - **Description**: Gets an item from the current item pool.
 - **Path Parameters**:
+  - `id`: The id of the item to get
 - **Successful Response(`200 ok`)**: returns an object of the item from the item pool.
 
 ```JSON

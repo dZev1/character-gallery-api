@@ -10,6 +10,63 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 )
 
+func uint64Ptr(i uint64) *uint64 {
+	return &i
+}
+
+func TestSeedItems_Success(t *testing.T) {
+	gallery, mock := setupMockDB(t)
+
+	items := []inventory.Item{
+		{Name: "Sword", Type: inventory.Weapon, Description: "A sharp sword", Equippable: true, Rarity: 3, Damage: uint64Ptr(50)},
+		{Name: "Healing Potion", Type: inventory.Potion, Description: "Restores health", Equippable: false, Rarity: 1, HealAmount: uint64Ptr(60)},
+	}
+
+	mock.ExpectBegin()		
+	for _, item := range items {
+		mock.ExpectExec(`INSERT INTO items`).
+			WithArgs(item.ID, item.Name, item.Type, item.Description, item.Equippable, item.Rarity,
+				item.Damage, item.Defense, item.HealAmount, item.ManaCost, item.Duration,
+				item.Cooldown, item.Capacity).
+			WillReturnResult(sqlmock.NewResult(1, 1))
+	}
+	mock.ExpectExec(`SELECT setval`).WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit()
+
+	err := gallery.SeedItems(items)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("unfulfilled expectations: %v", err)
+	}
+}
+
+
+func TestSeedItems_TransactionError(t *testing.T) {
+
+	gallery, mock := setupMockDB(t)
+
+	items := []inventory.Item{
+		{Name: "Sword", Type: inventory.Weapon, Description: "A sharp sword", Equippable: true, Rarity: 3, Damage: uint64Ptr(50)},
+	}
+
+	mock.ExpectBegin().WillReturnError(errors.New("tx error"))
+
+	err := gallery.SeedItems(items)
+	if err == nil {
+		t.Error("expected error, got nil")
+	}
+	if !errors.Is(err, ErrFailedInitializeTransaction) {
+		t.Errorf("expected ErrFailedInitializeTransaction, got %v", err)
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("unfulfilled expectations: %v", err)
+	}
+}
+
 func TestDisplayPoolItems_Success(t *testing.T) {
 	gallery, mock := setupMockDB(t)
 
@@ -240,9 +297,13 @@ func TestAddItemToCharacter_Success(t *testing.T) {
 	mock.ExpectExec(`INSERT INTO inventory`).
 		WithArgs(charID, itemID, uint8(1)).
 		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectQuery(`SELECT`).
+		WithArgs(charID, itemID).
+		WillReturnRows(sqlmock.NewRows([]string{"item.id", "item.name", "item.type", "item.description", "item.equippable", "item.rarity", "item.damage", "item.defense", "item.heal_amount", "item.mana_cost", "item.duration", "quantity", "is_equipped"}).
+			AddRow(1, "Sword", "weapon", "A sharp sword", true, 3, 50, nil, nil, nil, nil, 1, false))
 	mock.ExpectCommit()
 
-	err := gallery.AddItemToCharacter(charID, itemID, 1)
+	_, err := gallery.AddItemToCharacter(charID, itemID, 1)
 
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -267,9 +328,13 @@ func TestAddItemToCharacter_UpdateExisting(t *testing.T) {
 	mock.ExpectExec(`UPDATE inventory`).
 		WithArgs(uint8(3), charID, itemID).
 		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectQuery(`SELECT`).
+		WithArgs(charID, itemID).
+		WillReturnRows(sqlmock.NewRows([]string{"item.id", "item.name", "item.type", "item.description", "item.equippable", "item.rarity", "item.damage", "item.defense", "item.heal_amount", "item.mana_cost", "item.duration", "quantity", "is_equipped"}).
+			AddRow(1, "Sword", "weapon", "A sharp sword", true, 3, 50, nil, nil, nil, nil, 3, false))
 	mock.ExpectCommit()
 
-	err := gallery.AddItemToCharacter(charID, itemID, 3)
+	_, err := gallery.AddItemToCharacter(charID, itemID, 3)
 
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -288,7 +353,7 @@ func TestAddItemToCharacter_TransactionError(t *testing.T) {
 
 	mock.ExpectBegin().WillReturnError(errors.New("tx error"))
 
-	err := gallery.AddItemToCharacter(charID, itemID, 1)
+	_, err := gallery.AddItemToCharacter(charID, itemID, 1)
 
 	if err == nil {
 		t.Error("expected error")
@@ -369,6 +434,37 @@ func TestRemoveItemFromCharacter_TransactionError(t *testing.T) {
 	}
 	if !errors.Is(err, ErrFailedInitializeTransaction) {
 		t.Errorf("expected ErrFailedInitializeTransaction, got %v", err)
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("unfulfilled expectations: %v", err)
+	}
+}
+
+func TestCreateItem_Success(t *testing.T) {
+	gallery, mock := setupMockDB(t)
+
+	item := &inventory.Item{
+		Name:        "Sword",
+		Type:        inventory.Weapon,
+		Description: "A sharp sword",
+		Equippable:  true,
+		Rarity:      3,
+		Damage:      uint64Ptr(50),
+	}
+
+	mock.ExpectBegin()
+	mock.ExpectPrepare(`INSERT INTO items`).
+		ExpectQuery().
+		WithArgs(item.Name, item.Type, item.Description, item.Equippable, item.Rarity,
+			item.Damage, item.Defense, item.HealAmount, item.ManaCost, item.Duration, item.Capacity).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1))
+	mock.ExpectCommit()
+
+	err := gallery.CreateItem(item)
+
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
 	}
 
 	if err := mock.ExpectationsWereMet(); err != nil {

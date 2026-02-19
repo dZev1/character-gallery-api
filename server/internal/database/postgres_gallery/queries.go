@@ -5,6 +5,7 @@ import (
 
 	"dZev1/character-gallery/models/characters"
 	"dZev1/character-gallery/models/inventory"
+
 	"github.com/jmoiron/sqlx"
 )
 
@@ -168,8 +169,8 @@ func (cg *PostgresCharacterGallery) updateStats(tx *sqlx.Tx, stats *characters.S
 
 func (cg *PostgresCharacterGallery) seedItemPool(tx *sqlx.Tx, item *inventory.Item) error {
 	query := `
-	INSERT INTO items (id, name, type, description, equippable, rarity, damage, defense, heal_amount, mana_cost, duration, cooldown)
-	VALUES (:id, :name, :type, :description, :equippable, :rarity, :damage, :defense, :heal_amount, :mana_cost, :duration, :cooldown)
+	INSERT INTO items (id, name, type, description, equippable, rarity, damage, defense, heal_amount, mana_cost, duration, cooldown, capacity)
+	VALUES (:id, :name, :type, :description, :equippable, :rarity, :damage, :defense, :heal_amount, :mana_cost, :duration, :cooldown, :capacity)
 	ON CONFLICT (id) DO UPDATE SET
 		name = EXCLUDED.name,
 		type = EXCLUDED.type,
@@ -196,8 +197,8 @@ func (cg *PostgresCharacterGallery) seedItemPool(tx *sqlx.Tx, item *inventory.It
 
 func (cg *PostgresCharacterGallery) insertIntoItemPool(tx *sqlx.Tx, item *inventory.Item) error {
 	query := `
-	INSERT INTO items (name, type, description, equippable, rarity, damage, defense, heal_amount, mana_cost, duration)
-	VALUES (:name, :type, :description, :equippable, :rarity, :damage, :defense, :heal_amount, :mana_cost, :duration)
+	INSERT INTO items (name, type, description, equippable, rarity, damage, defense, heal_amount, mana_cost, duration, capacity)
+	VALUES (:name, :type, :description, :equippable, :rarity, :damage, :defense, :heal_amount, :mana_cost, :duration, :capacity)
 	RETURNING id;
 	`
 
@@ -221,25 +222,26 @@ func insertIntoCharacterInventory(tx *sqlx.Tx, characterID characters.CharacterI
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
 
 	// If the item already exists for the character, update the quantity
 	if rows.Next() {
+		rows.Close()
 		updateQuery := `
 			UPDATE inventory
 			SET quantity = quantity + $1
 			WHERE character_id = $2 AND item_id = $3;
 		`
-		_, err := tx.Exec(updateQuery, quantity, characterID, itemID)
+		_, err = tx.Exec(updateQuery, quantity, characterID, itemID)
 		if err != nil {
 			return err
 		}
 		return nil
 	}
+	rows.Close()
 
 	query := `
 		INSERT INTO inventory (character_id, item_id, quantity, is_equipped)
-		VALUES ($1, $2, $3, FALSE)
+		VALUES ($1, $2, $3, FALSE);
 	`
 
 	_, err = tx.Exec(query, characterID, itemID, quantity)

@@ -9,4 +9,5 @@ var (
 	ErrFailedInitializeTransaction    = errors.New(`failed to initialize transaction`)
 	ErrFailedCommitTransaction        = errors.New(`failed to commit transaction`)
 	ErrFailedSelectCharacterInventory = errors.New(`failed to select character inventory`)
+	ErrCouldNotGetTotalCount          = errors.New("could not get total character count")
 )

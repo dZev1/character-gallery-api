@@ -9,6 +9,58 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 )
 
+func TestCreateCharacter_Success(t *testing.T) {
+	gallery, mock := setupMockDB(t)
+
+	char := createTestCharacter()
+
+	mock.ExpectBegin()
+	mock.ExpectPrepare(`INSERT INTO characters`).
+		ExpectQuery().
+		WithArgs(char.Name, char.BodyType, char.Species, char.Class).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1))
+	mock.ExpectExec(`INSERT INTO stats`).
+		WithArgs(1, char.Stats.Strength, char.Stats.Dexterity, char.Stats.Constitution,
+			char.Stats.Intelligence, char.Stats.Wisdom, char.Stats.Charisma).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec(`INSERT INTO customizations`).
+		WithArgs(1, char.Customization.Hair, char.Customization.Face,
+			char.Customization.Shirt, char.Customization.Pants, char.Customization.Shoes).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit()
+
+	err := gallery.Create(char)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("unfulfilled expectations: %v", err)
+	}
+}
+
+func TestCreateCharacter_InsertError(t *testing.T) {
+	gallery, mock := setupMockDB(t)
+
+	char := createTestCharacter()
+
+	mock.ExpectBegin()
+	mock.ExpectPrepare(`INSERT INTO characters`).
+		ExpectQuery().
+		WithArgs(char.Name, char.BodyType, char.Species, char.Class).
+		WillReturnError(errors.New("insert error"))
+	mock.ExpectRollback()
+
+	err := gallery.Create(char)
+	if err == nil {
+		t.Error("expected error, got nil")
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("unfulfilled expectations: %v", err)
+	}
+}
+
 func TestGet_Success(t *testing.T) {
 	gallery, mock := setupMockDB(t)
 
@@ -91,14 +143,19 @@ func TestGetAll_Success(t *testing.T) {
 		"customization.hair", "customization.face", "customization.shirt",
 		"customization.pants", "customization.shoes",
 	}).
-		AddRow(1, "Hero1", "type_a", "human", "fighter", 15, 12, 14, 10, 8, 11, 1, 2, 3, 4, 5).
-		AddRow(2, "Hero2", "type_b", "elf", "wizard", 8, 14, 10, 18, 12, 14, 2, 3, 4, 5, 6)
+		AddRow(1, "TestHero1", "type_a", "human", "fighter", 15, 12, 14, 10, 8, 11, 1, 2, 3, 4, 5).
+		AddRow(2, "TestHero2", "type_b", "elf", "mage", 10, 14, 12, 15, 9, 13, 2, 3, 4, 5, 6)
 
 	mock.ExpectQuery(`SELECT`).
-		WithArgs(0, 20).
+		WithArgs(0).
 		WillReturnRows(rows)
 
-	chars, err := gallery.GetAll(0, 20)
+	countRows := sqlmock.NewRows([]string{"COUNT(*)"}).
+		AddRow(2)
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM characters`).
+		WillReturnRows(countRows)
+
+	chars, total, err := gallery.GetAll(0)
 
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -106,11 +163,8 @@ func TestGetAll_Success(t *testing.T) {
 	if len(chars) != 2 {
 		t.Errorf("expected 2 characters, got %d", len(chars))
 	}
-	if chars[0].Name != "Hero1" {
-		t.Errorf("expected Hero1, got %s", chars[0].Name)
-	}
-	if chars[1].Name != "Hero2" {
-		t.Errorf("expected Hero2, got %s", chars[1].Name)
+	if total != 2 {
+		t.Errorf("expected total 2, got %d", total)
 	}
 
 	if err := mock.ExpectationsWereMet(); err != nil {
@@ -130,16 +184,82 @@ func TestGetAll_Empty(t *testing.T) {
 	})
 
 	mock.ExpectQuery(`SELECT`).
-		WithArgs(0, 20).
+		WithArgs(0).
 		WillReturnRows(rows)
 
-	chars, err := gallery.GetAll(0, 20)
+	countRows := sqlmock.NewRows([]string{"COUNT(*)"}).
+		AddRow(0)
+
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM characters`).
+		WillReturnRows(countRows)
+
+	chars, total, err := gallery.GetAll(0)
 
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
 	if len(chars) != 0 {
 		t.Errorf("expected 0 characters, got %d", len(chars))
+	}
+	if total != 0 {
+		t.Errorf("expected total 0, got %d", total)
+	}
+	if len(chars) != 0 {
+		t.Errorf("expected 0 characters, got %d", len(chars))
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("unfulfilled expectations: %v", err)
+	}
+}
+
+func TestUpdate_Success(t *testing.T) {
+	gallery, mock := setupMockDB(t)
+
+	char := createTestCharacter()
+
+	mock.ExpectBegin()
+	mock.ExpectExec(`UPDATE characters`).
+		WithArgs(char.Name, char.BodyType, char.Species, char.Class, char.ID).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec(`UPDATE customizations`).
+		WithArgs(char.Customization.Hair, char.Customization.Face,
+			char.Customization.Shirt, char.Customization.Pants, char.Customization.Shoes, char.Customization.ID).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec(`UPDATE stats`).
+		WithArgs(char.Stats.Strength, char.Stats.Dexterity, char.Stats.Constitution,
+			char.Stats.Intelligence, char.Stats.Wisdom, char.Stats.Charisma, char.Stats.ID).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit()
+
+	err := gallery.Edit(char)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("unfulfilled expectations: %v", err)
+	}
+}
+
+func TestUpdate_NotFound(t *testing.T) {
+	gallery, mock := setupMockDB(t)
+
+	char := createTestCharacter()
+	char.ID = 999
+
+	mock.ExpectBegin()
+	mock.ExpectExec(`UPDATE characters`).
+		WithArgs(char.Name, char.BodyType, char.Species, char.Class, char.ID).
+		WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectRollback()
+
+	err := gallery.Edit(char)
+	if err == nil {
+		t.Error("expected error for non-existent character")
+	}
+	if !errors.Is(err, ErrCouldNotFind) {
+		t.Errorf("expected ErrCouldNotFind, got %v", err)
 	}
 
 	if err := mock.ExpectationsWereMet(); err != nil {
