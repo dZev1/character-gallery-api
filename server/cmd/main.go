@@ -43,13 +43,13 @@ func main() {
 
 	itemFile, err := os.Open("./item_pool.json")
 	if err != nil {
-		log.Print(fmt.Errorf("could not open seed file: %w", err))
+		log.Println(fmt.Errorf("could not open seed file: %w", err))
 	}
 	defer itemFile.Close()
 
 	var items []inventory.Item
 	if err := json.NewDecoder(itemFile).Decode(&items); err != nil {
-		log.Print(fmt.Errorf("could not decode items json: %w", err))
+		log.Println(fmt.Errorf("could not decode items json: %w", err))
 	}
 
 	gallery.SeedItems(items)
