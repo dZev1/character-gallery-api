@@ -182,13 +182,13 @@ func (cg *PostgresCharacterGallery) seedItemPool(tx *sqlx.Tx, item *inventory.It
 		heal_amount = EXCLUDED.heal_amount,
 		mana_cost = EXCLUDED.mana_cost,
 		duration = EXCLUDED.duration,
-		cooldown = EXCLUDED.cooldown;
+		cooldown = EXCLUDED.cooldown,
+		capacity = EXCLUDED.capacity;
 	`
 
 	_, err := tx.NamedExec(query, item)
 
 	if err != nil {
-		fmt.Println("NO PUDE CARGAR NADA MACHO")
 		return fmt.Errorf("could not add item to database: %v", err)
 	}
 
@@ -215,39 +215,16 @@ func (cg *PostgresCharacterGallery) insertIntoItemPool(tx *sqlx.Tx, item *invent
 }
 
 func insertIntoCharacterInventory(tx *sqlx.Tx, characterID characters.CharacterID, itemID inventory.ItemID, quantity uint8) error {
-	selectQuery := `
-		SELECT * FROM inventory WHERE item_id = $1 AND character_id = $2;
-	`
-	rows, err := tx.Query(selectQuery, itemID, characterID)
-	if err != nil {
-		return err
-	}
-
-	// If the item already exists for the character, update the quantity
-	if rows.Next() {
-		rows.Close()
-		updateQuery := `
-			UPDATE inventory
-			SET quantity = quantity + $1
-			WHERE character_id = $2 AND item_id = $3;
-		`
-		_, err = tx.Exec(updateQuery, quantity, characterID, itemID)
-		if err != nil {
-			return err
-		}
-		return nil
-	}
-	rows.Close()
-
 	query := `
 		INSERT INTO inventory (character_id, item_id, quantity, is_equipped)
-		VALUES ($1, $2, $3, FALSE);
+		VALUES ($1, $2, $3, FALSE); ON CONFLICT (character_id, item_id) DO UPDATE SET quantity = inventory.quantity + EXCLUDED.quantity;
 	`
 
-	_, err = tx.Exec(query, characterID, itemID, quantity)
+	_, err := tx.Exec(query, characterID, itemID, quantity)
 	if err != nil {
 		return err
 	}
+
 	return nil
 }
 

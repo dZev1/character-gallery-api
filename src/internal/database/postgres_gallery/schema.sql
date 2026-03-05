@@ -30,14 +30,12 @@ CREATE TABLE IF NOT EXISTS "items" (
   "cooldown" integer,
   "capacity" integer
 );
-
 CREATE TABLE IF NOT EXISTS "inventory" (
-  "character_id" bigserial,
+  "character_id" bigint,
   "item_id" integer,
   "quantity" int NOT NULL,
   "is_equipped" boolean DEFAULT FALSE
 );
-
 CREATE TABLE IF NOT EXISTS "characters" (
   "id" BIGSERIAL PRIMARY KEY,
   "name" TEXT NOT NULL,
@@ -73,7 +71,6 @@ CREATE TABLE IF NOT EXISTS "characters" (
     )
   )
 );
-
 CREATE TABLE IF NOT EXISTS "stats" (
   "id" BIGSERIAL PRIMARY KEY,
   "strength" SMALLINT NOT NULL CHECK (
@@ -95,7 +92,6 @@ CREATE TABLE IF NOT EXISTS "stats" (
     charisma BETWEEN 1 AND 99
   )
 );
-
 CREATE TABLE IF NOT EXISTS "customizations" (
   "id" BIGSERIAL PRIMARY KEY,
   "hair" SMALLINT NOT NULL CHECK (
@@ -114,7 +110,6 @@ CREATE TABLE IF NOT EXISTS "customizations" (
     shoes BETWEEN 0 AND 30
   )
 );
-
 CREATE TABLE IF NOT EXISTS "api_keys" (
   "id" BIGSERIAL PRIMARY KEY,
   "key_hash" TEXT NOT NULL UNIQUE,
@@ -123,7 +118,6 @@ CREATE TABLE IF NOT EXISTS "api_keys" (
   "last_used_at" TIMESTAMP,
   "is_active" BOOLEAN NOT NULL DEFAULT TRUE
 );
-
 ALTER TABLE "inventory"
 ADD FOREIGN KEY ("item_id") REFERENCES "items" ("id") ON DELETE CASCADE;
 ALTER TABLE "stats"
@@ -132,13 +126,17 @@ ALTER TABLE "customizations"
 ADD FOREIGN KEY ("id") REFERENCES "characters" ("id") ON DELETE CASCADE;
 ALTER TABLE "inventory"
 ADD FOREIGN KEY ("character_id") REFERENCES "characters" ("id") ON DELETE CASCADE;
-
 DO $$ BEGIN IF NOT EXISTS (
   SELECT 1
   FROM pg_constraint
   WHERE conname = 'items_name_rarity_unique'
+  SELECT 1
+  FROM pg_constraint
+  WHERE conname = 'character_id_item_id_unique'
 ) THEN
 ALTER TABLE items
 ADD CONSTRAINT items_name_rarity_unique UNIQUE (name, rarity);
+ALTER TABLE inventory
+ADD CONSTRAINT character_id_item_id_unique UNIQUE (character_id, item_id);
 END IF;
 END $$;

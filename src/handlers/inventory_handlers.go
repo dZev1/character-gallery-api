@@ -151,7 +151,16 @@ func (h *CharacterHandler) RemoveItemFromCharacter(w http.ResponseWriter, r *htt
 		return
 	}
 
-	item, _ := h.Gallery.DisplayItem(inventory.ItemID(itemID))
+	item, err := h.Gallery.DisplayItem(inventory.ItemID(itemID))
+	if err != nil {
+		er := &Error{
+			Error: "Could not retrieve item from item pool",
+			Code:  "INTERNAL_SERVER_ERROR",
+		}
+		throwError(er, w, http.StatusInternalServerError)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(item)
@@ -214,7 +223,7 @@ func (h *CharacterHandler) ShowItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	item, err := h.Gallery.DisplayItem(inventory.ItemID(itemID) - 1)
+	item, err := h.Gallery.DisplayItem(inventory.ItemID(itemID))
 	if err != nil {
 		er := &Error{
 			Error: "Could not retrieve item from item pool",
@@ -241,9 +250,9 @@ func (h *CharacterHandler) CreateItem(w http.ResponseWriter, r *http.Request) {
 		throwError(er, w, http.StatusBadRequest)
 		return
 	}
-	if !validateItem(newItem, w) {
+	if valid, errStr := validateItem(newItem); !valid {
 		er := &Error{
-			Error: "Invalid item",
+			Error: errStr,
 			Code:  "BAD_REQUEST",
 		}
 		throwError(er, w, http.StatusBadRequest)
@@ -260,6 +269,6 @@ func (h *CharacterHandler) CreateItem(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(newItem)
 }

@@ -21,5 +21,6 @@ type CharacterGallery interface {
 	AddItemToCharacter(characterID characters.CharacterID, itemID inventory.ItemID, quantity uint8) (*inventory.InventoryItem, error)
 	RemoveItemFromCharacter(characterID characters.CharacterID, itemID inventory.ItemID, quantity uint8) error
 	GetCharacterInventory(characterID characters.CharacterID) ([]inventory.InventoryItem, error)
+	
 	GetAuthStore() auth.AuthStore
 }

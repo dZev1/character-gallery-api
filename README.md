@@ -22,8 +22,8 @@ A RESTful API built in Go to create, manage and see a gallery of Role Playing Ga
 1. Clone repository
 
     ```Bash
-    git clone https://github.com/dZev1/character-gallery.git
-    cd character-gallery/server
+    git clone https://github.com/dZev1/character-gallery-api.git
+    cd character-gallery-api/src
     ```
 
 2. Install dependencies
@@ -55,7 +55,7 @@ A RESTful API built in Go to create, manage and see a gallery of Role Playing Ga
         go build ./cmd/main
         ```
 
-    - Run `cmd.exe`.
+    - Run `./main`.
 
     - Server will be listening in `http://localhost:8080`.
 
@@ -178,7 +178,7 @@ Each item has its own unique type/category. This is a list of the supported ones
 
 #### Create a character
 
-- **Endpoint**: `POST /characters`
+- **Endpoint**: `POST /api/{version}/api/{version}/characters`
 - **Description**: Creates a new character with their stats and customization.
 - **Request Body**: A character
 
@@ -210,8 +210,8 @@ Each item has its own unique type/category. This is a list of the supported ones
 
 #### Get all characters
 
-- **Endpoint**: `GET /characters`
-- **Description**: Returns a JSON object with an array of all characters, including their stats and customization fields. It also supports pagination with `page` and `limit` query parameters (e.g., `GET /characters?page=1`).
+- **Endpoint**: `GET /api/{version}/characters`
+- **Description**: Returns a JSON object with an array of all characters, including their stats and customization fields. It also supports pagination with `page` and `limit` query parameters (e.g., `GET /api/{version}/characters?page=1`).
 - **Query Parameters**:
   - `page`: The page number (starting from 0) (optional).
 
@@ -246,7 +246,7 @@ Each item has its own unique type/category. This is a list of the supported ones
 
 #### Get a character
 
-- **Endpoint**: `GET /characters/{id}`
+- **Endpoint**: `GET /api/{version}/characters/{id}`
 - **Description**: Returns a single character by their `id`.
 - **Succesful Response (`200 OK`)**: Returns the object of the character with the specified `id`, including stats and customization fields:
 
@@ -268,7 +268,7 @@ Each item has its own unique type/category. This is a list of the supported ones
 
 #### Edit a character
 
-- **Endpoint**: `PUT /characters/{id}`
+- **Endpoint**: `PUT /api/{version}/characters/{id}`
 - **Description**: Updates an existing character by their `id`.
 - **Request Body**: A character object with the updated fields.
 
@@ -300,7 +300,7 @@ Each item has its own unique type/category. This is a list of the supported ones
 
 #### Delete a character
 
-- **Endpoint**: `DELETE /characters/{id}`
+- **Endpoint**: `DELETE /api/{version}/characters/{id}`
 - **Description**: Deletes an existing character by their `id`.
 - **Succesful Response (`200 OK`)**.
 
@@ -308,7 +308,7 @@ Each item has its own unique type/category. This is a list of the supported ones
 
 #### Add item to character inventory
 
-- **Endpoint**: `POST /characters/{character_id}/inventory/{item_id}`
+- **Endpoint**: `POST /api/{version}/characters/{character_id}/inventory/{item_id}`
 - **Description**: Adds a specific item to the character's inventory.
 - **Path Variables**:
   - `character_id`: The ID of the character.
@@ -331,13 +331,13 @@ Each item has its own unique type/category. This is a list of the supported ones
 
 #### Delete item from character's inventory
 
-- **Endpoint**: `DELETE /characters/{character_id}/inventory/{item_id}`
+- **Endpoint**: `DELETE /api/{version}/characters/{character_id}/inventory/{item_id}`
 - **Description**: Deletes a specific item.
 - **Path Variables**:
   - `character_id`: The ID of the character.
-  - `item_id`: The ID of the item to be added to the character's inventory.
+  - `item_id`: The ID of the item to be removed from the character's inventory.
 - **Query Parameters**:
-  - `quantity`: *(OPTIONAL)* The amount of items to add. If no value is specified, defaults to 1.
+  - `quantity`: *(OPTIONAL)* The amount of items to remove. If no value is specified, defaults to 1.
 - **Successful Response (`200 OK`)**: returns the object of the item added:
 
 ```JSON
@@ -354,7 +354,7 @@ Each item has its own unique type/category. This is a list of the supported ones
 
 #### Get a character's inventory
 
-- **Endpoint**: `GET /characters/{character_id}/inventory`
+- **Endpoint**: `GET /api/{version}/characters/{character_id}/inventory`
 - **Description**: Gets a character's inventory.
 - **Path Variables**:
   - `character_id`: The ID of the character.
@@ -395,27 +395,26 @@ Each item has its own unique type/category. This is a list of the supported ones
 
 #### Create an item
 
-- **Endpoint**: `POST /items`
+- **Endpoint**: `POST /api/{version}/items`
 - **Description**: Create a new item inserted into pool.
-- **Successful Response(`200 ok`)**: returns an array that represents the current item pool.
+- **Successful Response(`201 Created`)**: returns an array that represents the current item pool.
 - **Request Body**: An item
 
 ```JSON
-  {
-    "name": "Master Sword",
-    "type": "weapon",
-    "description": "A legendary sword with immense power.",
-    "equippable": true,
-    "rarity": 5,
-    
-    "damage": 34,
-    "defense": 23,
-    "heal_amount": 10,
-    "mana_cost":4,
-    "duration": 233,
-    "cooldown": 120,
-    "capacity": 3
-  }
+{
+  "name": "Master Sword",
+  "type": "weapon",
+  "description": "A legendary sword with immense power.",
+  "equippable": true,
+  "rarity": 5,
+ 
+  "damage": 34,
+  "defense": 23,
+  "heal_amount": 10,
+  "mana_cost":4,
+  "duration": 233,
+  "cooldown": 120,
+  "capacity": 3
 }
 ```
 
@@ -442,7 +441,7 @@ Each item has its own unique type/category. This is a list of the supported ones
 
 #### Get the current Item Pool
 
-- **Endpoint**: `GET /items`
+- **Endpoint**: `GET /api/{version}/items`
 - **Description**: Gets the whole item pool.
 - **Successful Response(`200 ok`)**: returns an array that represents the current item pool.
 
@@ -526,7 +525,7 @@ Each item has its own unique type/category. This is a list of the supported ones
 
 #### Get item from current Item Pool
 
-- **Endpoint**: `GET /items/{id}`
+- **Endpoint**: `GET /api/{version}/items/{id}`
 - **Description**: Gets an item from the current item pool.
 - **Path Parameters**:
   - `id`: The id of the item to get

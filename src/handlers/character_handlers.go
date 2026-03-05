@@ -14,8 +14,8 @@ type CharacterHandler struct {
 }
 
 type Pagination struct {
-	Page    uint8  `json:"page"`
-	Limit   uint8  `json:"limit"`
+	Page    uint64 `json:"page"`
+	Limit   uint64 `json:"limit"`
 	Total   uint64 `json:"total"`
 	HasNext bool   `json:"has_next"`
 }
@@ -33,7 +33,13 @@ func (h *CharacterHandler) CreateCharacter(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if valid := validateCharacter(newCharacter, w); !valid {
+	if valid, errStr := validateCharacter(newCharacter); !valid {
+		er := &Error{
+			Error:   "Invalid character",
+			Code:    "BAD_REQUEST",
+			Details: errStr,
+		}
+		throwError(er, w, http.StatusBadRequest)
 		return
 	}
 
@@ -82,7 +88,7 @@ func (h *CharacterHandler) GetAllCharacters(w http.ResponseWriter, r *http.Reque
 	}{
 		Data: chars,
 		Pagination: Pagination{
-			Page:    uint8(page / 20),
+			Page:    uint64(page / 20),
 			Limit:   20,
 			Total:   totalChars,
 			HasNext: len(chars) == 20,
@@ -169,10 +175,11 @@ func (h *CharacterHandler) EditCharacter(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if valid := validateCharacter(characterToEdit, w); !valid {
+	if valid, errStr := validateCharacter(characterToEdit); !valid {
 		er := &Error{
-			Error: "Invalid character",
-			Code:  "BAD_REQUEST",
+			Error:   "Invalid character",
+			Code:    "BAD_REQUEST",
+			Details: errStr,
 		}
 		throwError(er, w, http.StatusBadRequest)
 		return

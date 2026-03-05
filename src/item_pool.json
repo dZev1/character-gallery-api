@@ -49,6 +49,7 @@
         "name": "Dagger",
         "type": "weapon",
         "description": "This standard small dagger has only a modest attack but can be jabbed in rapid succession, and is effective in critical hits such as after a parry or when stabbing in the back.\nWith both slash and thrust attacks this dagger is useful in various situations.",
+        "equippable": true,
         "rarity": 1,
         "damage": 5
     },
@@ -57,6 +58,7 @@
         "name": "Greatclub",
         "type": "weapon",
         "description": "Giant tree branch that goes BONK!",
+        "equippable": true,
         "rarity": 3,
         "damage": 15
     },
@@ -65,6 +67,8 @@
         "name": "Shortbow",
         "type": "weapon",
         "description": "A stick and string that shoots arrow... I mean, that's what a bow is.",
+        "equippable": true,
+        "rarity": 2,
         "damage": 10
     },
     {
@@ -72,6 +76,7 @@
         "name": "Longsword",
         "type": "weapon",
         "description": "Widely-used standard straight sword, only matched in ubiquity by the shortsword.\nAn accessible sword which inflicts consistent regular damage and high slash damage, making it applicable to a variety of situations.",
+        "equippable": true,
         "rarity": 3,
         "damage": 10
     },
@@ -80,6 +85,7 @@
         "name": "Adventurer's Backpack",
         "type": "adventuring_gear",
         "description": "Leather container designed for adventurers, holding up to 10 items.",
+        "equippable": true,
         "rarity": 1,
         "capacity": 10
     },
@@ -88,6 +94,7 @@
         "name": "Magic Missile",
         "type": "scroll",
         "description": "You create three glowing darts of magical force. Each dart hits a creature of your choice that you can see within range.",
+        "equippable": false,
         "rarity": 3,
         "capacity": 5
     },
@@ -96,6 +103,7 @@
         "name": "Book of Dead Peaks",
         "type": "wondrous_item",
         "description": "A book containing the intricansies of the modern world",
+        "equippable": false,
         "rarity": 5
     }
 ]

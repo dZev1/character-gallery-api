@@ -60,20 +60,6 @@ func main() {
 
 	baseRoute := "/api/" + currentVersion
 
-	http.HandleFunc("POST "+baseRoute+"/characters", handler.CreateCharacter)
-	http.HandleFunc("GET "+baseRoute+"/characters", handler.GetAllCharacters)
-	http.HandleFunc("GET "+baseRoute+"/characters/{id}", handler.GetCharacter)
-	http.HandleFunc("PUT "+baseRoute+"/characters/{id}", handler.EditCharacter)
-	http.HandleFunc("DELETE "+baseRoute+"/characters/{id}", handler.DeleteCharacter)
-
-	http.HandleFunc("POST "+baseRoute+"/characters/{character_id}/inventory/{item_id}", handler.AddItemToCharacter)
-	http.HandleFunc("DELETE "+baseRoute+"/characters/{character_id}/inventory/{item_id}", handler.RemoveItemFromCharacter)
-	http.HandleFunc("GET "+baseRoute+"/characters/{character_id}/inventory", handler.GetCharacterInventory)
-
-	http.HandleFunc("GET "+baseRoute+"/items", handler.ShowPoolItems)
-	http.HandleFunc("POST "+baseRoute+"/items", handler.CreateItem)
-	http.HandleFunc("GET "+baseRoute+"/items/{item_id}", handler.ShowItem)
-
 	mux := http.NewServeMux()
 	
 	mux.HandleFunc("POST "+baseRoute+"/characters", handler.CreateCharacter)

@@ -2,7 +2,6 @@ package postgres_gallery
 
 import (
 	"fmt"
-	"log"
 
 	"dZev1/character-gallery/models/characters"
 	"dZev1/character-gallery/models/inventory"
@@ -18,7 +17,6 @@ func (cg *PostgresCharacterGallery) SeedItems(items []inventory.Item) error {
 	for _, item := range items {
 		err := cg.seedItemPool(tx, &item)
 		if err != nil {
-			fmt.Println("Error inserting item:", err)
 			return err
 		}
 	}
@@ -28,7 +26,7 @@ func (cg *PostgresCharacterGallery) SeedItems(items []inventory.Item) error {
     `
 	_, err = tx.Exec(resetSeqQuery)
 	if err != nil {
-		return fmt.Errorf("Error reseteando la secuencia de IDs: %w", err)
+		return fmt.Errorf("error resetting ID sequence: %w", err)
 	}
 
 	if err = tx.Commit(); err != nil {
@@ -47,7 +45,6 @@ func (cg *PostgresCharacterGallery) AddItemToCharacter(characterID characters.Ch
 	
 	err = insertIntoCharacterInventory(tx, characterID, itemID, quantity)
 	if err != nil {
-		log.Print("Error luego de insert")
 		return nil, err
 	}
 
@@ -138,7 +135,6 @@ func (cg *PostgresCharacterGallery) GetCharacterInventory(characterID characters
 	var characterInventory []inventory.InventoryItem
 	err := cg.db.Select(&characterInventory, query, characterID)
 	if err != nil {
-		fmt.Println("Error al seleccionar el inventario del personaje")
 		return nil, fmt.Errorf("%w: %w", ErrFailedSelectCharacterInventory, err)
 	}
 	return characterInventory, nil
