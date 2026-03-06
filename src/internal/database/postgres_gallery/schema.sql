@@ -130,12 +130,15 @@ DO $$ BEGIN IF NOT EXISTS (
   SELECT 1
   FROM pg_constraint
   WHERE conname = 'items_name_rarity_unique'
+) THEN
+ALTER TABLE items
+ADD CONSTRAINT items_name_rarity_unique UNIQUE (name, rarity);
+END IF;
+IF NOT EXISTS (
   SELECT 1
   FROM pg_constraint
   WHERE conname = 'character_id_item_id_unique'
 ) THEN
-ALTER TABLE items
-ADD CONSTRAINT items_name_rarity_unique UNIQUE (name, rarity);
 ALTER TABLE inventory
 ADD CONSTRAINT character_id_item_id_unique UNIQUE (character_id, item_id);
 END IF;
