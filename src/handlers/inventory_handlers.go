@@ -1,11 +1,11 @@
 package handlers
 
 import (
+	"dZev1/character-gallery/internal/characters"
 	"encoding/json"
 	"net/http"
 	"strconv"
 
-	"dZev1/character-gallery/models/characters"
 	"dZev1/character-gallery/models/inventory"
 )
 
@@ -21,7 +21,7 @@ func (h *CharacterHandler) AddItemToCharacter(w http.ResponseWriter, r *http.Req
 	characterID, err := strconv.Atoi(characterIDStr)
 	if err != nil {
 		er := &Error{
-			Error: "Invalid character id",
+			Error: "Invalid characters id",
 			Code:  "BAD_REQUEST",
 			Details: struct {
 				CharacterID string `json:"character_id"`
@@ -36,7 +36,7 @@ func (h *CharacterHandler) AddItemToCharacter(w http.ResponseWriter, r *http.Req
 	itemID, err := strconv.Atoi(itemIDStr)
 	if err != nil {
 		er := &Error{
-			Error: "Invalid item id",
+			Error: "Invalid items id",
 			Code:  "BAD_REQUEST",
 			Details: struct {
 				ItemID string `json:"item_id"`
@@ -51,7 +51,7 @@ func (h *CharacterHandler) AddItemToCharacter(w http.ResponseWriter, r *http.Req
 	quantity, err := strconv.Atoi(quantityStr)
 	if err != nil || quantity < 1 {
 		er := &Error{
-			Error: "Invalid item quantity",
+			Error: "Invalid items quantity",
 			Code:  "BAD_REQUEST",
 			Details: struct {
 				Quantity string `json:"quantity"`
@@ -66,7 +66,7 @@ func (h *CharacterHandler) AddItemToCharacter(w http.ResponseWriter, r *http.Req
 	item, err := h.Gallery.AddItemToCharacter(characters.CharacterID(characterID), inventory.ItemID(itemID), uint8(quantity))
 	if err != nil {
 		er := &Error{
-			Error: "Could not add item to character",
+			Error: "Could not add items to characters",
 			Code:  "INTERNAL_SERVER_ERROR",
 		}
 		throwError(er, w, http.StatusInternalServerError)
@@ -90,7 +90,7 @@ func (h *CharacterHandler) RemoveItemFromCharacter(w http.ResponseWriter, r *htt
 	characterID, err := strconv.Atoi(characterIDStr)
 	if err != nil {
 		er := &Error{
-			Error: "Invalid character ID",
+			Error: "Invalid characters ID",
 			Code:  "BAD_REQUEST",
 			Details: struct {
 				CharacterID string `json:"character_id"`
@@ -105,7 +105,7 @@ func (h *CharacterHandler) RemoveItemFromCharacter(w http.ResponseWriter, r *htt
 	itemID, err := strconv.Atoi(itemIDStr)
 	if err != nil {
 		er := &Error{
-			Error: "Invalid item ID",
+			Error: "Invalid items ID",
 			Code:  "BAD_REQUEST",
 			Details: struct {
 				ItemID string `json:"item_id"`
@@ -135,7 +135,7 @@ func (h *CharacterHandler) RemoveItemFromCharacter(w http.ResponseWriter, r *htt
 	err = h.Gallery.RemoveItemFromCharacter(characters.CharacterID(characterID), inventory.ItemID(itemID), uint8(quantity))
 	if err != nil {
 		er := &Error{
-			Error: "Could not remove item from character",
+			Error: "Could not remove items from characters",
 			Code:  "INTERNAL_SERVER_ERROR",
 			Details: struct {
 				CharacterID string `json:"character_id"`
@@ -154,7 +154,7 @@ func (h *CharacterHandler) RemoveItemFromCharacter(w http.ResponseWriter, r *htt
 	item, err := h.Gallery.DisplayItem(inventory.ItemID(itemID))
 	if err != nil {
 		er := &Error{
-			Error: "Could not retrieve item from item pool",
+			Error: "Could not retrieve items from items pool",
 			Code:  "INTERNAL_SERVER_ERROR",
 		}
 		throwError(er, w, http.StatusInternalServerError)
@@ -172,7 +172,7 @@ func (h *CharacterHandler) GetCharacterInventory(w http.ResponseWriter, r *http.
 	characterID, err := strconv.Atoi(characterIDStr)
 	if err != nil {
 		er := &Error{
-			Error: "Invalid character ID",
+			Error: "Invalid characters ID",
 			Code:  "BAD_REQUEST",
 			Details: struct {
 				CharacterID string `json:"character_id"`
@@ -219,14 +219,14 @@ func (h *CharacterHandler) ShowItem(w http.ResponseWriter, r *http.Request) {
 	itemIDStr := r.PathValue("item_id")
 	itemID, err := strconv.Atoi(itemIDStr)
 	if err != nil {
-		http.Error(w, "Invalid item ID", http.StatusBadRequest)
+		http.Error(w, "Invalid items ID", http.StatusBadRequest)
 		return
 	}
 
 	item, err := h.Gallery.DisplayItem(inventory.ItemID(itemID))
 	if err != nil {
 		er := &Error{
-			Error: "Could not retrieve item from item pool",
+			Error: "Could not retrieve items from items pool",
 			Code:  "INTERNAL_SERVER_ERROR",
 		}
 		throwError(er, w, http.StatusInternalServerError)
@@ -261,7 +261,7 @@ func (h *CharacterHandler) CreateItem(w http.ResponseWriter, r *http.Request) {
 	err = h.Gallery.CreateItem(newItem)
 	if err != nil {
 		er := &Error{
-			Error: "Could not create item",
+			Error: "Could not create items",
 			Code:  "INTERNAL_SERVER_ERROR",
 		}
 		throwError(er, w, http.StatusInternalServerError)

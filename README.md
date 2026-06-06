@@ -23,7 +23,7 @@ A RESTful API built in Go to create, manage and see a gallery of Role Playing Ga
 
     ```Bash
     git clone https://github.com/dZev1/character-gallery-api.git
-    cd character-gallery-api/src
+    cd characters-gallery-api/src
     ```
 
 2. Install dependencies

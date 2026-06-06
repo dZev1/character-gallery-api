@@ -1,16 +1,13 @@
 package handlers
 
 import (
+	"dZev1/character-gallery/internal/characters"
 	"encoding/json"
 	"net/http"
 	"strconv"
-
-	"dZev1/character-gallery/models"
-	"dZev1/character-gallery/models/characters"
 )
 
 type CharacterHandler struct {
-	Gallery models.CharacterGallery
 }
 
 type Pagination struct {
@@ -35,7 +32,7 @@ func (h *CharacterHandler) CreateCharacter(w http.ResponseWriter, r *http.Reques
 
 	if valid, errStr := validateCharacter(newCharacter); !valid {
 		er := &Error{
-			Error:   "Invalid character",
+			Error:   "Invalid characters",
 			Code:    "BAD_REQUEST",
 			Details: errStr,
 		}
@@ -46,7 +43,7 @@ func (h *CharacterHandler) CreateCharacter(w http.ResponseWriter, r *http.Reques
 	err = h.Gallery.Create(newCharacter)
 	if err != nil {
 		er := &Error{
-			Error: "Could not create character",
+			Error: "Could not create characters",
 			Code:  "INTERNAL_SERVER_ERROR",
 		}
 		throwError(er, w, http.StatusInternalServerError)
@@ -177,7 +174,7 @@ func (h *CharacterHandler) EditCharacter(w http.ResponseWriter, r *http.Request)
 
 	if valid, errStr := validateCharacter(characterToEdit); !valid {
 		er := &Error{
-			Error:   "Invalid character",
+			Error:   "Invalid characters",
 			Code:    "BAD_REQUEST",
 			Details: errStr,
 		}
@@ -192,7 +189,7 @@ func (h *CharacterHandler) EditCharacter(w http.ResponseWriter, r *http.Request)
 	err = h.Gallery.Edit(characterToEdit)
 	if err != nil {
 		er := &Error{
-			Error: "Could not edit character",
+			Error: "Could not edit characters",
 			Code:  "INTERNAL_SERVER_ERROR",
 		}
 		throwError(er, w, http.StatusInternalServerError)

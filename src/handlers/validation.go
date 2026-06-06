@@ -1,13 +1,13 @@
 package handlers
 
 import (
-	"dZev1/character-gallery/models/characters"
+	"dZev1/character-gallery/internal/characters"
 	"dZev1/character-gallery/models/inventory"
 )
 
 func validateCharacter(character *characters.Character) (bool, string) {
 	if len(character.Name) < 2 {
-		return false, "Character's name is too short" 
+		return false, "Character's name is too short"
 	}
 	if !character.BodyType.Validate() {
 		return false, "Character's body type not valid"
