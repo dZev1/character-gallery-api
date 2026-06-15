@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # If you prefer the allow list template instead of the deny list, see community template:
 # https://github.com/github/gitignore/blob/main/community/Golang/Go.AllowList.gitignore
 #
@@ -32,3 +33,8 @@ go.work.sum
 .vscode/
 
 PROJECT_STRUCTURE.md
+=======
+*.sh
+.idea
+.vscode
+>>>>>>> d5347f3 (ekide)

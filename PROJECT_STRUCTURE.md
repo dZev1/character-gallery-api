@@ -3,7 +3,7 @@
 A RESTful Go API for an RPG character gallery. Manages characters (stats, customization, class, species), inventory (items per character), and an item pool.
 
 - **Language:** Go 1.26
-- **Database:** PostgreSQL (pgx driver, sqlc codegen)
+- **Database:** PostgreSQL (pgx/v5 driver, sqlc v1.31.1 codegen)
 - **HTTP:** Go 1.22+ standard library mux
 - **Port:** `:8080`
 
@@ -15,9 +15,10 @@ A RESTful Go API for an RPG character gallery. Manages characters (stats, custom
 character-gallery-api/
 ├── Dockerfile              # Multi-stage build (golang:1.26-alpine → alpine)
 ├── README.md               # Full project docs, setup, API reference
+├── PROJECT_STRUCTURE.md    # This file
 ├── db-diagram.svg          # Entity-relationship diagram
-├── .gitignore              # Ignores .sh files
-├── .idea/                  # GoLand IDE config
+├── .gitignore              # Ignores *.sh files
+├── .idea/                  # GoLand IDE config (includes test DB data source ref)
 └── src/                    # All source code (see below)
 ```
 
@@ -27,75 +28,82 @@ character-gallery-api/
 
 ```
 src/
+├── .gitignore                # Ignores .exe, .test, .out, coverage, .env, .vscode/
+├── config.env                # DATABASE_TYPE="postgres"
+├── go.mod                    # Module: dZev1/character-gallery (Go 1.26.0)
+├── go.sum                    # Deps: pgx/v5, sqlx, godotenv, go-sqlmock
+├── item_pool.json            # Seed data: 12 RPG items
+├── sqlc.yaml                 # sqlc v2 config (engine: postgresql, gen: pgx/v5)
+│
 ├── cmd/
-│   ├── main.go                # Entry point — HTTP server, routing, graceful shutdown
+│   ├── main.go               # Entry point — STUB (only prints "Hello, world!")
 │   └── apikey_gen/
-│       └── main.go            # CLI tool: generates API keys, stores hash in DB
-├── config.env                 # DATABASE_TYPE="postgres"
-├── go.mod / go.sum            # Module: dZev1/character-gallery
-│                              #   pgx/v5, sqlx, godotenv, sqlmock
-├── item_pool.json             # Seed data: 11 RPG items (armor, weapons, etc.)
-├── sqlc.yaml                  # sqlc config (engine: postgresql)
+│       └── main.go           # CLI tool — STUB (prints hardcoded info, not functional)
 │
 ├── database/
 │   ├── schema/
-│   │   └── schema.sql         # Full DDL: items, characters, inventory, stats,
-│   │                          #   customizations, api_keys
+│   │   └── schema.sql        # Full DDL: 6 tables with CHECK constraints, FKs, cascades
 │   └── queries/
-│       ├── auth.sql           # Empty
-│       ├── characters.sql     # Named queries for character CRUD
-│       ├── inventory.sql      # Empty
-│       └── items.sql          # Named queries for item CRUD + seed
+│       ├── auth.sql          # 3 queries: ValidateAPIKey, UpdateLastUsed, CreateAPIKey
+│       ├── characters.sql    # 11 queries: full character + stats + customization CRUD
+│       ├── inventory.sql     # 3 queries: AddItemToCharacter (upsert), RemoveItem, GetInventory
+│       └── items.sql         # 4 queries: FindAllItems, FindItem, CreateItem, SeedItems
 │
 ├── handlers/
-│   ├── character_handlers.go  # Character CRUD: POST/GET/PUT/DELETE
-│   ├── inventory_handlers.go  # Inventory add/remove/list + item pool CRUD
-│   ├── errors.go              # Standard JSON error response helper
-│   └── validation.go          # Input validation (character fields, item fields)
+│   ├── character_handlers.go # Character CRUD: POST/GET/PUT/DELETE with pagination
+│   ├── inventory_handlers.go # Inventory add/remove/list + item pool CRUD
+│   ├── errors.go             # Standard JSON error response helper
+│   └── validation.go         # Input validation (character fields, item fields)
 │
 └── internal/
     ├── auth/
-    │   ├── api_key.go         # APIKey struct, generate/hash SHA-256
-    │   ├── repository.go      # Repository interface (ValidateAPIKey, etc.)
-    │   └── service.go         # Empty service stub
+    │   ├── api_key.go        # APIKey struct, SHA-256 key generation/hashing
+    │   ├── repository.go     # Repository interface (ValidateAPIKey, UpdateLastUsed, CreateAPIKey)
+    │   └── service.go        # Service struct — EMPTY (no methods)
     │
     ├── characters/
-    │   ├── character.go       # Character domain model
-    │   ├── id.go              # CharacterID (uint64)
-    │   ├── body_type.go       # Enum: type_a, type_b
-    │   ├── class.go           # Enum: 12 RPG classes
-    │   ├── species.go         # Enum: 10 RPG species
-    │   ├── stats.go           # Stats struct (6 attributes, 1-99)
-    │   ├── customization.go   # Appearance (hair, face, shirt, pants, shoes, 0-30)
-    │   ├── repository.go      # Repository interface (CRUD methods)
-    │   └── service.go         # Empty service stub
+    │   ├── character.go      # Character domain model (ID, Name, BodyType, Species, Class, Stats, Customization)
+    │   ├── id.go             # CharacterID (uint64)
+    │   ├── body_type.go      # Enum: type_a, type_b
+    │   ├── class.go          # Enum: 12 RPG classes
+    │   ├── species.go        # Enum: 10 RPG species
+    │   ├── stats.go          # Stats struct (6 attributes, 1-99)
+    │   ├── customization.go  # Appearance (hair, face, shirt, pants, shoes, 0-30)
+    │   ├── repository.go     # Repository interface (CRUD methods)
+    │   └── service.go        # Service struct — EMPTY (no methods)
     │
     ├── inventory/
-    │   ├── inventory_item.go  # InventoryItem model (item + quantity + equipped)
-    │   ├── repository.go      # Repository interface
-    │   └── service.go         # Empty service stub
+    │   ├── inventory_item.go # InventoryItem model (Item + Quantity + IsEquipped)
+    │   ├── repository.go     # Repository interface (Add/Remove/Get)
+    │   └── service.go        # Service struct — EMPTY (no methods)
     │
     ├── items/
-    │   ├── item.go            # Item domain model (name, type, stats, validation)
-    │   ├── id.go              # ItemID (uint64)
-    │   ├── type.go            # Enum: 14 item types (armor, weapon, scroll, etc.)
-    │   ├── repository.go      # Repository interface
-    │   └── service.go         # Empty service stub
+    │   ├── item.go           # Item domain model (name, type, description, optional stats, validation)
+    │   ├── id.go             # ItemID (uint64)
+    │   ├── type.go           # Enum: 14 item types (armor, weapon, scroll, etc.)
+    │   ├── repository.go     # Repository interface (FindAll, Find, Save, Seed)
+    │   └── service.go        # Service struct — EMPTY (no methods)
     │
     ├── middleware/
-    │   ├── api_key_auth.go       # X-API-Key header validation middleware
-    │   ├── api_key_auth_test.go  # 5 unit tests with MockAuthStore
-    │   └── enable_cors.go        # CORS middleware (Allow-Origin: *)
+    │   ├── api_key_auth.go    # X-API-Key auth middleware — ENTIRELY COMMENTED OUT (disabled)
+    │   └── enable_cors.go     # CORS middleware (Allow-Origin: *, handles OPTIONS preflight)
     │
     └── postgres/
-        ├── character_repo.go     # PostgreSQL character repo — all panic("implement me")
-        ├── character_repo_test.go# Empty test placeholder
-        ├── items_repo.go         # PostgreSQL item repo — partial, has recursive-call bug
-        └── db/
-            ├── db.go             # sqlc-generated: DBTX interface, New(), WithTx()
-            ├── models.go         # sqlc-generated: DB structs (Character, Item, etc.)
-            ├── items.sql.go      # sqlc-generated: FindAllItems, FindItem, SaveItem
-            └── copyfrom.go       # sqlc-generated: bulk SeedItems iterator
+        ├── postgres_test.go       # Test infrastructure: TestMain, newTxQueries, newTestTx, test helpers
+        ├── auth_repo_test.go      # 6 tests for API key CRUD + validation
+        ├── character_repo.go      # PostgreSQL character repo — ALL methods panic("implement me")
+        ├── character_repo_test.go # 13 tests for character CRUD + stats/customization/cascade
+        ├── items_repo.go          # PostgreSQL item repo — partial impl, BUG: recursive calls
+        ├── items_repo_test.go     # 7 tests for item CRUD + seed
+        ├── inventory_repo_test.go # 10 tests for inventory add/remove/list/cascade
+        └── db/                    # sqlc v1.31.1 GENERATED CODE (package: postgres)
+            ├── db.go             # DBTX interface, New(), WithTx()
+            ├── models.go         # DB structs (ApiKey, Character, Customization, Inventory, Item, Stat)
+            ├── auth.sql.go       # Generated: CreateAPIKey, UpdateLastUsed, ValidateAPIKey
+            ├── characters.sql.go # Generated: full character CRUD + stats + customizations
+            ├── items.sql.go      # Generated: FindAllItems, FindItem, CreateItem
+            ├── inventory.sql.go  # Generated: AddItemToCharacter, RemoveItemFromCharacter, GetCharacterInventory
+            └── copyfrom.go       # Generated: bulk SeedItems via COPY protocol
 ```
 
 ---
@@ -133,21 +141,67 @@ All under `/api/{version}/`:
 
 ---
 
-## 5. Test Files
+## 5. Test Database Connection
 
-| File | Description |
-|------|-------------|
-| `internal/middleware/api_key_auth_test.go` | 5 tests for auth middleware (missing header, invalid key, valid key, DB error, key hashing) |
-| `internal/postgres/character_repo_test.go` | Placeholder (empty test function) |
+All PostgreSQL integration tests live in `src/internal/postgres/`. They run against a **real PostgreSQL database** using per-test transactions for isolation.
+
+### Connection Setup (Env Var)
+
+Tests read the connection string from the environment variable:
+
+```
+POSTGRES_TEST_DATABASE_URL
+```
+
+Set it to a PostgreSQL DSN such as:
+
+```sh
+export POSTGRES_TEST_DATABASE_URL="postgres://user:password@host:5432/test_db?sslmode=disable"
+```
+
+### How Tests Use the Connection
+
+1. `TestMain` (`postgres_test.go:20`) checks `POSTGRES_TEST_DATABASE_URL` — if unset, all tests **skip silently** with exit code 0.
+2. `pgx.Connect(ctx, dsn)` creates a single connection for the test run.
+3. The full DDL from `database/schema/schema.sql` is applied on every test run.
+4. Each test function acquires a **fresh transaction** via `newTxQueries(t)` or `newTestTx(t)`.
+5. Transactions auto-rollback on test teardown via `t.Cleanup(func() { _ = tx.Rollback(ctx) })` — no cleanup fixtures needed.
+6. Tests use sqlc-generated `*db.Queries` directly (no service/repository layer abstraction).
+
+### Running Tests
+
+```sh
+cd src
+POSTGRES_TEST_DATABASE_URL="postgres://..." go test ./internal/postgres/ -v
+```
+
+### IDE Reference
+
+The `.idea/dataSources.xml` configuration references a local test database at `jdbc:postgresql://192.168.1.51:5432/test`.
 
 ---
 
-## 6. Known Issues
+## 6. Test Files
 
-1. **Broken imports** — Handlers reference old `dZev1/character-gallery/models` and `dZev1/character-gallery/internal/database` packages that no longer exist. Domain types were moved to `internal/` but imports not updated.
-2. **Character repo not implemented** — `internal/postgres/character_repo.go` is all `panic("implement me")`.
-3. **Recursive call bug** — `items_repo.go`'s `FindAllItems` and `FindItem` call themselves recursively (infinite loop at runtime).
-4. **Dockerfile path mismatch** — References `internal/database/postgres_gallery/schema.sql`; actual path is `database/schema/schema.sql`.
-5. **sqlc output mismatch** — `sqlc.yaml` specifies output `internal/db/db`; actual generated code is in `internal/postgres/db`.
-6. **Empty service layer** — All 4 service packages (auth, characters, inventory, items) have repo fields but zero methods.
-7. **Empty SQL query files** — `auth.sql` and `inventory.sql` are empty; no sqlc code generated for them.
+| File | Tests | Description |
+|------|-------|-------------|
+| `internal/postgres/postgres_test.go` | Infrastructure | `TestMain`, `newTxQueries`, `newTestTx`, `createTestCharacter`, `createTestCharacterFull`, `createTestItem` helpers |
+| `internal/postgres/auth_repo_test.go` | 6 | API key CRUD, duplicate hash, validation, inactive key, update last used |
+| `internal/postgres/character_repo_test.go` | 13 | Character CRUD, pagination, stats & customization, cascading delete |
+| `internal/postgres/items_repo_test.go` | 7 | Item CRUD, full fields, seed items, empty pool |
+| `internal/postgres/inventory_repo_test.go` | 10 | Add/remove/list inventory, upsert, over-removal, cascading delete |
+| `internal/middleware/api_key_auth_test.go` | 5 | Unit tests with `MockAuthStore` (no DB needed) |
+
+---
+
+## 7. Known Issues
+
+1. **Broken imports** — Handlers reference old `dZev1/character-gallery/models` and `dZev1/character-gallery/internal/database` packages that no longer exist.
+2. **Main entry point is a stub** — `cmd/main.go` only prints "Hello, world!". No HTTP server, no DB connection, no routing.
+3. **Character repo not implemented** — `internal/postgres/character_repo.go` is all `panic("implement me")`.
+4. **Recursive call bug** — `items_repo.go`'s `FindAllItems` and `FindItem` call themselves instead of the embedded `Queries` methods (infinite loop).
+5. **Dockerfile path mismatch** — References `internal/database/postgres_gallery/schema.sql`; actual path is `database/schema/schema.sql`.
+6. **sqlc output mismatch** — `sqlc.yaml` specifies output `internal/db/db`; actual generated code is in `internal/postgres/db`.
+7. **Empty service layer** — All 4 service packages (auth, characters, inventory, items) have repo fields but zero methods.
+8. **Auth middleware disabled** — Entire `api_key_auth.go` file is commented out.
+9. **No `DATABASE_URL` reader** — No code reads a `DATABASE_URL` env var or connects to a database at startup.
