@@ -66,7 +66,7 @@ func TestItemRepo_CreateItem_AllFields(t *testing.T) {
 func TestItemRepo_FindItem(t *testing.T) {
 	q := newTxQueries(t)
 	ctx := context.Background()
-	created := createTestItem(t, q)
+	created := createTestItem(t, q, IRON_SWORD)
 
 	got, err := q.FindItem(ctx, created.ID)
 	if err != nil {
@@ -91,8 +91,8 @@ func TestItemRepo_FindAllItems(t *testing.T) {
 	q := newTxQueries(t)
 	ctx := context.Background()
 
-	createTestItem(t, q)
-	createTestItem(t, q)
+	createTestItem(t, q, IRON_SWORD)
+	createTestItem(t, q, WOODEN_SWORD)
 
 	items, err := q.FindAllItems(ctx)
 	if err != nil {

@@ -13,7 +13,7 @@ func TestInventoryRepo_AddItemToCharacter(t *testing.T) {
 	q := newTxQueries(t)
 	ctx := context.Background()
 	char := createTestCharacter(t, q)
-	item := createTestItem(t, q)
+	item := createTestItem(t, q, IRON_SWORD)
 
 	inv, err := q.AddItemToCharacter(ctx, db.AddItemToCharacterParams{
 		CharacterID: char.ID,
@@ -36,7 +36,7 @@ func TestInventoryRepo_AddItemToCharacter_Upsert(t *testing.T) {
 	q := newTxQueries(t)
 	ctx := context.Background()
 	char := createTestCharacter(t, q)
-	item := createTestItem(t, q)
+	item := createTestItem(t, q, IRON_SWORD)
 
 	_, err := q.AddItemToCharacter(ctx, db.AddItemToCharacterParams{
 		CharacterID: char.ID,
@@ -79,7 +79,7 @@ func TestInventoryRepo_GetCharacterInventory(t *testing.T) {
 	q := newTxQueries(t)
 	ctx := context.Background()
 	char := createTestCharacter(t, q)
-	item1 := createTestItem(t, q)
+	item1 := createTestItem(t, q, IRON_SWORD)
 
 	item2, err := q.CreateItem(ctx, db.CreateItemParams{
 		Name:        "Leather Armor",
@@ -138,7 +138,7 @@ func TestInventoryRepo_GetCharacterInventory_OtherCharacter(t *testing.T) {
 	ctx := context.Background()
 	char1 := createTestCharacter(t, q)
 	char2 := createTestCharacter(t, q)
-	item := createTestItem(t, q)
+	item := createTestItem(t, q, IRON_SWORD)
 
 	_, err := q.AddItemToCharacter(ctx, db.AddItemToCharacterParams{
 		CharacterID: char1.ID,
@@ -162,7 +162,7 @@ func TestInventoryRepo_RemoveItemFromCharacter_Partial(t *testing.T) {
 	q := newTxQueries(t)
 	ctx := context.Background()
 	char := createTestCharacter(t, q)
-	item := createTestItem(t, q)
+	item := createTestItem(t, q, IRON_SWORD)
 
 	_, err := q.AddItemToCharacter(ctx, db.AddItemToCharacterParams{
 		CharacterID: char.ID,
@@ -198,7 +198,7 @@ func TestInventoryRepo_RemoveItemFromCharacter_Full(t *testing.T) {
 	q := newTxQueries(t)
 	ctx := context.Background()
 	char := createTestCharacter(t, q)
-	item := createTestItem(t, q)
+	item := createTestItem(t, q, IRON_SWORD)
 
 	_, err := q.AddItemToCharacter(ctx, db.AddItemToCharacterParams{
 		CharacterID: char.ID,
@@ -231,7 +231,7 @@ func TestInventoryRepo_RemoveMoreThanOwned(t *testing.T) {
 	q := newTxQueries(t)
 	ctx := context.Background()
 	char := createTestCharacter(t, q)
-	item := createTestItem(t, q)
+	item := createTestItem(t, q, IRON_SWORD)
 
 	_, err := q.AddItemToCharacter(ctx, db.AddItemToCharacterParams{
 		CharacterID: char.ID,
@@ -264,7 +264,7 @@ func TestInventoryRepo_DeleteCharacter_CascadesToInventory(t *testing.T) {
 	q := newTxQueries(t)
 	ctx := context.Background()
 	char := createTestCharacter(t, q)
-	item := createTestItem(t, q)
+	item := createTestItem(t, q, IRON_SWORD)
 
 	_, err := q.AddItemToCharacter(ctx, db.AddItemToCharacterParams{
 		CharacterID: char.ID,

@@ -1,10 +1,13 @@
 package items
 
-import "context"
+import (
+	"context"
+	"dZev1/character-gallery/internal/postgres/db"
+)
 
 type Repository interface {
-	FindAllItems(ctx context.Context) ([]Item, error)
-	FindItem(ctx context.Context, itemID ItemID) (*Item, error)
-	SaveItem(ctx context.Context, item *Item) *Item
-	SeedItems(ctx context.Context, items []Item) error
+	FindAllItems(ctx context.Context, exec db.DBTX) ([]Item, error)
+	FindItem(ctx context.Context, exec db.DBTX, itemID ItemID) (*Item, error)
+	SaveItem(ctx context.Context, exec db.DBTX, item *Item) (*Item, error)
+	SeedItems(ctx context.Context, exec db.DBTX, items []Item) error
 }

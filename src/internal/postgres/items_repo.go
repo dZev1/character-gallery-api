@@ -12,23 +12,62 @@ type itemRepo struct {
 	db.Queries
 }
 
-func (i *itemRepo) FindAllItems(ctx context.Context) ([]items.Item, error) {
-	allItems, err := i.FindAllItems(ctx)
+func (i *itemRepo) FindAllItems(ctx context.Context, exec db.DBTX) ([]items.Item, error) {
+	q := db.New(exec)
+	allItems, err := q.FindAllItems(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return allItems, nil
+
+	result := make([]items.Item, len(allItems))
+	for idx, it := range allItems {
+		result[idx] = items.Item{
+			ID:          items.ItemID(it.ID),
+			Name:        it.Name,
+			Type:        items.Type(it.Type),
+			Description: it.Description,
+			Equippable:  it.Equippable,
+			Rarity:      uint8(it.Rarity),
+			Damage:      toU64ptr(it.Damage),
+			Defense:     toU64ptr(it.Defense),
+			HealAmount:  toU64ptr(it.HealAmount),
+			ManaCost:    toU64ptr(it.ManaCost),
+			Duration:    toU64ptr(it.Duration),
+			Cooldown:    toU64ptr(it.Cooldown),
+			Capacity:    toU64ptr(it.Capacity),
+		}
+	}
+
+	return result, nil
 }
 
-func (i *itemRepo) FindItem(ctx context.Context, itemID items.ItemID) (*items.Item, error) {
-	itm, err := i.FindItem(ctx, itemID)
+func (i *itemRepo) FindItem(ctx context.Context, exec db.DBTX, itemID items.ItemID) (*items.Item, error) {
+	q := db.New(exec)
+	itm, err := q.FindItem(ctx, int64(itemID))
 	if err != nil {
 		return nil, err
 	}
-	return itm, nil
+
+	return &items.Item{
+		ID:          items.ItemID(itm.ID),
+		Name:        itm.Name,
+		Type:        items.Type(itm.Type),
+		Description: itm.Description,
+		Equippable:  itm.Equippable,
+		Rarity:      uint8(itm.Rarity),
+		Damage:      toU64ptr(itm.Damage),
+		Defense:     toU64ptr(itm.Defense),
+		HealAmount:  toU64ptr(itm.HealAmount),
+		ManaCost:    toU64ptr(itm.ManaCost),
+		Duration:    toU64ptr(itm.Duration),
+		Cooldown:    toU64ptr(itm.Cooldown),
+		Capacity:    toU64ptr(itm.Capacity),
+	}, nil
 }
 
-func (i *itemRepo) SaveItem(ctx context.Context, item *items.Item) (*items.Item, error) {
+func (i *itemRepo) SaveItem(ctx context.Context, exec db.DBTX, item *items.Item) (*items.Item, error) {
+	q := db.New(exec)
+
 	saveItemParams := db.CreateItemParams{
 		Name:        item.Name,
 		Type:        string(item.Type),
@@ -44,29 +83,19 @@ func (i *itemRepo) SaveItem(ctx context.Context, item *items.Item) (*items.Item,
 		Capacity:    pgtype.Int4{Int32: int32(*item.Capacity), Valid: item.Capacity != nil},
 	}
 
-	saveItem, err := i.Queries.CreateItem(ctx, saveItemParams)
+	saveItem, err := q.CreateItem(ctx, saveItemParams)
 	if err != nil {
 		return nil, err
 	}
 
-	return &items.Item{
-		ID:          items.ItemID(saveItem.ID),
-		Name:        saveItem.Name,
-		Type:        items.Type(saveItem.Type),
-		Description: saveItem.Description,
-		Equippable:  saveItem.Equippable,
-		Rarity:      uint8(saveItem.Rarity),
-		Damage:      toU64ptr(saveItem.Damage),
-		Defense:     toU64ptr(saveItem.Defense),
-		HealAmount:  toU64ptr(saveItem.HealAmount),
-		ManaCost:    toU64ptr(saveItem.ManaCost),
-		Duration:    toU64ptr(saveItem.Duration),
-		Cooldown:    toU64ptr(saveItem.Cooldown),
-		Capacity:    toU64ptr(saveItem.Capacity),
-	}, nil
+	item.ID = items.ItemID(saveItem.ID)
+
+	return item, nil
 }
 
-func (i *itemRepo) SeedItems(ctx context.Context, items []items.Item) error {
+func (i *itemRepo) SeedItems(ctx context.Context, exec db.DBTX, items []items.Item) error {
+	q := db.New(exec)
+
 	seedItemParams := make([]db.SeedItemsParams, len(items))
 	for idx, item := range items {
 		seedItemParams[idx] = db.SeedItemsParams{
@@ -84,8 +113,8 @@ func (i *itemRepo) SeedItems(ctx context.Context, items []items.Item) error {
 			Capacity:    pgtype.Int4{Int32: int32(*item.Capacity), Valid: item.Capacity != nil},
 		}
 	}
-	_, err := i.Queries.SeedItems(ctx, seedItemParams)
 
+	_, err := q.SeedItems(ctx, seedItemParams)
 	if err != nil {
 		return err
 	}

@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"dZev1/character-gallery/internal/items"
 	"fmt"
 	"os"
 	"testing"
@@ -9,6 +10,11 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"dZev1/character-gallery/internal/postgres/db"
+)
+
+const (
+	IRON_SWORD   string = "IRON_SWORD"
+	WOODEN_SWORD string = "WOODEN_SWORD"
 )
 
 type testDB struct {
@@ -123,18 +129,43 @@ func createTestCharacterFull(t *testing.T, q *db.Queries) *db.Character {
 	return char
 }
 
-func createTestItem(t *testing.T, q *db.Queries) *db.Item {
+func createTestItem(t *testing.T, q *db.Queries, it string) *db.Item {
 	t.Helper()
 	ctx := context.Background()
-	item, err := q.CreateItem(ctx, db.CreateItemParams{
-		Name:        "Iron Sword",
-		Type:        "weapon",
-		Description: "A sturdy iron sword",
-		Equippable:  true,
-		Rarity:      2,
-	})
+
+	var params db.CreateItemParams
+
+	switch it {
+	case IRON_SWORD:
+		params = db.CreateItemParams{
+			Name:        "Iron Sword",
+			Type:        "weapon",
+			Description: "A sturdy iron sword",
+			Equippable:  true,
+			Rarity:      2,
+		}
+	case WOODEN_SWORD:
+		params = db.CreateItemParams{
+			Name:        "Wooden Sword",
+			Type:        "weapon",
+			Description: "A stuffy wood sword", // Nota: copiaste la descripción de la iron sword
+			Equippable:  true,
+			Rarity:      3,
+		}
+	default:
+		params = db.CreateItemParams{
+			Name:        "Spell of Wisdom",
+			Type:        string(items.Scroll),
+			Description: "A magical scroll",
+			Equippable:  true,
+			Rarity:      3,
+		}
+	}
+
+	item, err := q.CreateItem(ctx, params)
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	return item
 }
