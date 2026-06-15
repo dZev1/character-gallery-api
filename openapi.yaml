@@ -1,0 +1,668 @@
+openapi: "3.0.3"
+info:
+  title: Character Gallery API
+  description: |
+    A RESTful API built in Go to create, manage and see a gallery of Role
+    Playing Game characters. Supports full CRUD operations, including base
+    stats and character appearance customization.
+  version: "1.0.0"
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Local development server (version v1)
+
+paths:
+  /characters:
+    post:
+      operationId: createCharacter
+      summary: Create a character
+      description: Creates a new character with stats and customization.
+      tags: [Characters]
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCharacterRequest"
+      responses:
+        "201":
+          description: Character created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Character"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    get:
+      operationId: getAllCharacters
+      summary: Get all characters
+      description: |
+        Returns a paginated list of all characters, including their stats and
+        customization fields.
+      tags: [Characters]
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: page
+          in: query
+          description: Page number (0-indexed)
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: limit
+          in: query
+          description: Items per page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: Paginated list of characters
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, pagination]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Character"
+                  pagination:
+                    $ref: "#/components/schemas/Pagination"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /characters/{characterId}:
+    get:
+      operationId: getCharacter
+      summary: Get a character by ID
+      description: Returns a single character by their ID.
+      tags: [Characters]
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: characterId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: Character object
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Character"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    put:
+      operationId: updateCharacter
+      summary: Update a character
+      description: Updates an existing character by their ID.
+      tags: [Characters]
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: characterId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCharacterRequest"
+      responses:
+        "200":
+          description: Character updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Character"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    delete:
+      operationId: deleteCharacter
+      summary: Delete a character
+      description: Deletes an existing character by their ID.
+      tags: [Characters]
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: characterId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: Character deleted successfully
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /characters/{characterId}/inventory:
+    get:
+      operationId: getCharacterInventory
+      summary: Get a character's inventory
+      description: Returns all items in a character's inventory.
+      tags: [Inventory]
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: characterId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: Array of inventory items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/InventoryItem"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /characters/{characterId}/inventory/{itemId}:
+    post:
+      operationId: addItemToCharacter
+      summary: Add item to character inventory
+      description: Adds a specific item to the character's inventory.
+      tags: [Inventory]
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: characterId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: quantity
+          in: query
+          description: Amount of items to add (defaults to 1)
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+      responses:
+        "200":
+          description: Item added to inventory
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Item"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    delete:
+      operationId: removeItemFromCharacter
+      summary: Remove item from character inventory
+      description: Removes a specific item from the character's inventory.
+      tags: [Inventory]
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: characterId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: quantity
+          in: query
+          description: Amount of items to remove (defaults to 1)
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+      responses:
+        "200":
+          description: Item removed from inventory
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Item"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /items:
+    post:
+      operationId: createItem
+      summary: Create an item
+      description: Creates a new item and adds it to the item pool.
+      tags: [Items]
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateItemRequest"
+      responses:
+        "201":
+          description: Item created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Item"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    get:
+      operationId: getItemPool
+      summary: Get the item pool
+      description: Returns all items in the item pool.
+      tags: [Items]
+      security:
+        - ApiKeyAuth: []
+      responses:
+        "200":
+          description: Array of all items in the pool
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Item"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /items/{itemId}:
+    get:
+      operationId: getItem
+      summary: Get an item by ID
+      description: Returns a single item from the item pool.
+      tags: [Items]
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: Item object
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Item"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API key authentication. Generate one via the `apikey_gen` CLI tool.
+
+  schemas:
+    Stats:
+      type: object
+      description: Character base statistics (each 1-99).
+      required: [strength, dexterity, constitution, intelligence, wisdom, charisma]
+      properties:
+        strength:
+          type: integer
+          minimum: 1
+          maximum: 99
+          example: 10
+        dexterity:
+          type: integer
+          minimum: 1
+          maximum: 99
+          example: 5
+        constitution:
+          type: integer
+          minimum: 1
+          maximum: 99
+          example: 10
+        intelligence:
+          type: integer
+          minimum: 1
+          maximum: 99
+          example: 5
+        wisdom:
+          type: integer
+          minimum: 1
+          maximum: 99
+          example: 7
+        charisma:
+          type: integer
+          minimum: 1
+          maximum: 99
+          example: 3
+
+    Customization:
+      type: object
+      description: Character appearance customization fields (each 0-30).
+      required: [hair, face, shirt, pants, shoes]
+      properties:
+        hair:
+          type: integer
+          minimum: 0
+          maximum: 30
+          example: 0
+        face:
+          type: integer
+          minimum: 0
+          maximum: 30
+          example: 3
+        shirt:
+          type: integer
+          minimum: 0
+          maximum: 30
+          example: 4
+        pants:
+          type: integer
+          minimum: 0
+          maximum: 30
+          example: 2
+        shoes:
+          type: integer
+          minimum: 0
+          maximum: 30
+          example: 1
+
+    Character:
+      type: object
+      description: A full character object with stats and customization.
+      required: [id, name, body_type, species, class, stats, customization]
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          minLength: 1
+          example: "Arwen"
+        body_type:
+          type: string
+          enum: [type_a, type_b]
+          example: "type_b"
+        species:
+          type: string
+          enum: [aasimar, dragonborn, dwarf, elf, gnome, goliath, halfling, human, orc, tiefling]
+          example: "elf"
+        class:
+          type: string
+          enum: [barbarian, bard, cleric, druid, fighter, monk, paladin, ranger, rogue, sorcerer, warlock, wizard]
+          example: "wizard"
+        stats:
+          $ref: "#/components/schemas/Stats"
+        customization:
+          $ref: "#/components/schemas/Customization"
+
+    CreateCharacterRequest:
+      type: object
+      description: Payload for creating or updating a character (no id).
+      required: [name, body_type, species, class, stats, customization]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          example: "Arwen"
+        body_type:
+          type: string
+          enum: [type_a, type_b]
+          example: "type_b"
+        species:
+          type: string
+          enum: [aasimar, dragonborn, dwarf, elf, gnome, goliath, halfling, human, orc, tiefling]
+          example: "elf"
+        class:
+          type: string
+          enum: [barbarian, bard, cleric, druid, fighter, monk, paladin, ranger, rogue, sorcerer, warlock, wizard]
+          example: "wizard"
+        stats:
+          $ref: "#/components/schemas/Stats"
+        customization:
+          $ref: "#/components/schemas/Customization"
+
+    Item:
+      type: object
+      description: An item from the item pool.
+      required: [id, name, type, description, equippable, rarity]
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          minLength: 3
+          maxLength: 50
+          example: "Master Sword"
+        type:
+          type: string
+          enum:
+            [armor, ring, weapon, shield, tool, adventuring_gear, rod, staff,
+             wand, scroll, potion, ammo, consumable, wondrous_item]
+          example: "weapon"
+        description:
+          type: string
+          minLength: 3
+          maxLength: 300
+          example: "A legendary sword with immense power."
+        equippable:
+          type: boolean
+          example: true
+        rarity:
+          type: integer
+          minimum: 1
+          maximum: 5
+          example: 5
+        damage:
+          type: integer
+          minimum: 0
+          example: 34
+        defense:
+          type: integer
+          minimum: 0
+          example: 23
+        heal_amount:
+          type: integer
+          minimum: 0
+          example: 10
+        mana_cost:
+          type: integer
+          minimum: 0
+          example: 4
+        duration:
+          type: integer
+          minimum: 0
+          example: 233
+        cooldown:
+          type: integer
+          minimum: 0
+          example: 120
+        capacity:
+          type: integer
+          minimum: 0
+          example: 3
+
+    CreateItemRequest:
+      type: object
+      description: Payload for creating an item (no id).
+      required: [name, type, description, equippable, rarity]
+      properties:
+        name:
+          type: string
+          minLength: 3
+          maxLength: 50
+          example: "Master Sword"
+        type:
+          type: string
+          enum:
+            [armor, ring, weapon, shield, tool, adventuring_gear, rod, staff,
+             wand, scroll, potion, ammo, consumable, wondrous_item]
+          example: "weapon"
+        description:
+          type: string
+          minLength: 3
+          maxLength: 300
+          example: "A legendary sword with immense power."
+        equippable:
+          type: boolean
+          example: true
+        rarity:
+          type: integer
+          minimum: 1
+          maximum: 5
+          example: 5
+        damage:
+          type: integer
+          minimum: 0
+          example: 34
+        defense:
+          type: integer
+          minimum: 0
+          example: 23
+        heal_amount:
+          type: integer
+          minimum: 0
+          example: 10
+        mana_cost:
+          type: integer
+          minimum: 0
+          example: 4
+        duration:
+          type: integer
+          minimum: 0
+          example: 233
+        cooldown:
+          type: integer
+          minimum: 0
+          example: 120
+        capacity:
+          type: integer
+          minimum: 0
+          example: 3
+
+    InventoryItem:
+      type: object
+      description: An item entry in a character's inventory.
+      required: [item, quantity, is_equipped]
+      properties:
+        item:
+          $ref: "#/components/schemas/Item"
+        quantity:
+          type: integer
+          minimum: 1
+          example: 3
+        is_equipped:
+          type: boolean
+          example: false
+
+    Pagination:
+      type: object
+      description: Pagination metadata.
+      required: [page, limit, total, has_next]
+      properties:
+        page:
+          type: integer
+          minimum: 0
+          example: 0
+        limit:
+          type: integer
+          example: 20
+        total:
+          type: integer
+          example: 150
+        has_next:
+          type: boolean
+          example: true
+
+    ApiError:
+      type: object
+      required: [error, code]
+      properties:
+        error:
+          type: string
+          example: "Invalid ID"
+        code:
+          type: string
+          example: "BAD_REQUEST"
+        details:
+          type: object
+          description: Additional error context (may vary per error)
+          example: { "id": "abc" }
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
