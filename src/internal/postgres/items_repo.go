@@ -6,14 +6,24 @@ import (
 	"dZev1/character-gallery/internal/postgres/db"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type itemRepo struct {
-	db.Queries
+	pool *pgxpool.Pool
+}
+
+func NewItemRepo(pool *pgxpool.Pool) *itemRepo {
+	return &itemRepo{pool: pool}
+}
+
+func (i *itemRepo) q(exec db.DBTX) *db.Queries {
+	return db.New(exec)
 }
 
 func (i *itemRepo) FindAllItems(ctx context.Context, exec db.DBTX) ([]items.Item, error) {
-	q := db.New(exec)
+	q := i.q(exec)
+
 	allItems, err := q.FindAllItems(ctx)
 	if err != nil {
 		return nil, err
@@ -42,7 +52,8 @@ func (i *itemRepo) FindAllItems(ctx context.Context, exec db.DBTX) ([]items.Item
 }
 
 func (i *itemRepo) FindItem(ctx context.Context, exec db.DBTX, itemID items.ItemID) (*items.Item, error) {
-	q := db.New(exec)
+	q := i.q(exec)
+
 	itm, err := q.FindItem(ctx, int64(itemID))
 	if err != nil {
 		return nil, err
@@ -66,7 +77,7 @@ func (i *itemRepo) FindItem(ctx context.Context, exec db.DBTX, itemID items.Item
 }
 
 func (i *itemRepo) SaveItem(ctx context.Context, exec db.DBTX, item *items.Item) (*items.Item, error) {
-	q := db.New(exec)
+	q := i.q(exec)
 
 	saveItemParams := db.CreateItemParams{
 		Name:        item.Name,
@@ -94,7 +105,7 @@ func (i *itemRepo) SaveItem(ctx context.Context, exec db.DBTX, item *items.Item)
 }
 
 func (i *itemRepo) SeedItems(ctx context.Context, exec db.DBTX, items []items.Item) error {
-	q := db.New(exec)
+	q := i.q(exec)
 
 	seedItemParams := make([]db.SeedItemsParams, len(items))
 	for idx, item := range items {

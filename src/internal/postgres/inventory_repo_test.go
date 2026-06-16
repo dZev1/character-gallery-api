@@ -173,7 +173,7 @@ func TestInventoryRepo_RemoveItemFromCharacter_Partial(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = q.RemoveItemFromCharacter(ctx, db.RemoveItemFromCharacterParams{
+	_, err = q.RemoveItemFromCharacter(ctx, db.RemoveItemFromCharacterParams{
 		CharacterID: char.ID,
 		ItemID:      item.ID,
 		Quantity:    3,
@@ -209,7 +209,7 @@ func TestInventoryRepo_RemoveItemFromCharacter_Full(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = q.RemoveItemFromCharacter(ctx, db.RemoveItemFromCharacterParams{
+	_, err = q.RemoveItemFromCharacter(ctx, db.RemoveItemFromCharacterParams{
 		CharacterID: char.ID,
 		ItemID:      item.ID,
 		Quantity:    2,
@@ -242,21 +242,24 @@ func TestInventoryRepo_RemoveMoreThanOwned(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = q.RemoveItemFromCharacter(ctx, db.RemoveItemFromCharacterParams{
+	_, err = q.RemoveItemFromCharacter(ctx, db.RemoveItemFromCharacterParams{
 		CharacterID: char.ID,
 		ItemID:      item.ID,
 		Quantity:    5,
 	})
-	if err != nil {
-		t.Fatal(err)
+	if err == nil {
+		t.Fatal("expected error when removing more than owned, got nil")
 	}
 
 	items, err := q.GetCharacterInventory(ctx, char.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(items) != 0 {
-		t.Errorf("expected 0 items when removing more than owned, got %d", len(items))
+	if len(items) != 1 {
+		t.Fatalf("expected 1 item (unchanged), got %d", len(items))
+	}
+	if items[0].Quantity != 2 {
+		t.Errorf("expected quantity 2, got %d", items[0].Quantity)
 	}
 }
 

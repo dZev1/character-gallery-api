@@ -5,16 +5,21 @@ ON CONFLICT (character_id, item_id)
 DO UPDATE SET quantity = inventory.quantity + EXCLUDED.quantity
 RETURNING *;
 
--- name: RemoveItemFromCharacter :exec
+-- name: RemoveItemFromCharacter :one
 WITH updated AS (
     UPDATE inventory
     SET quantity = inventory.quantity - $3
     WHERE inventory.character_id = $1 AND inventory.item_id = $2 AND inventory.quantity > $3
-    RETURNING character_id
+    RETURNING *
+), deleted AS (
+    DELETE FROM inventory
+    WHERE inventory.character_id = $1 AND inventory.item_id = $2
+      AND inventory.quantity = $3
+    RETURNING *
 )
-DELETE FROM inventory
-WHERE inventory.character_id = $1 AND inventory.item_id = $2
-  AND NOT EXISTS (SELECT 1 FROM updated);
+SELECT * FROM updated
+UNION ALL
+SELECT * FROM deleted;
 
 -- name: GetCharacterInventory :many
 SELECT i.id             AS item_id,

@@ -5,7 +5,7 @@ sql:
     schema: "database/schema"
     gen:
       go:
-        package: "postgres"
+        package: "db"
         out: "internal/postgres/db"
         sql_package: "pgx/v5"
         emit_result_struct_pointers: true

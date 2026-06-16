@@ -112,16 +112,21 @@ func (q *Queries) GetCharacterInventory(ctx context.Context, characterID int64) 
 	return items, nil
 }
 
-const removeItemFromCharacter = `-- name: RemoveItemFromCharacter :exec
+const removeItemFromCharacter = `-- name: RemoveItemFromCharacter :one
 WITH updated AS (
     UPDATE inventory
     SET quantity = inventory.quantity - $3
     WHERE inventory.character_id = $1 AND inventory.item_id = $2 AND inventory.quantity > $3
-    RETURNING character_id
+    RETURNING character_id, item_id, quantity, is_equipped
+), deleted AS (
+    DELETE FROM inventory
+    WHERE inventory.character_id = $1 AND inventory.item_id = $2
+      AND inventory.quantity = $3
+    RETURNING character_id, item_id, quantity, is_equipped
 )
-DELETE FROM inventory
-WHERE inventory.character_id = $1 AND inventory.item_id = $2
-  AND NOT EXISTS (SELECT 1 FROM updated)
+SELECT character_id, item_id, quantity, is_equipped FROM updated
+UNION ALL
+SELECT character_id, item_id, quantity, is_equipped FROM deleted
 `
 
 type RemoveItemFromCharacterParams struct {
@@ -130,7 +135,21 @@ type RemoveItemFromCharacterParams struct {
 	Quantity    int32
 }
 
-func (q *Queries) RemoveItemFromCharacter(ctx context.Context, arg RemoveItemFromCharacterParams) error {
-	_, err := q.db.Exec(ctx, removeItemFromCharacter, arg.CharacterID, arg.ItemID, arg.Quantity)
-	return err
+type RemoveItemFromCharacterRow struct {
+	CharacterID int64
+	ItemID      int64
+	Quantity    int32
+	IsEquipped  bool
+}
+
+func (q *Queries) RemoveItemFromCharacter(ctx context.Context, arg RemoveItemFromCharacterParams) (*RemoveItemFromCharacterRow, error) {
+	row := q.db.QueryRow(ctx, removeItemFromCharacter, arg.CharacterID, arg.ItemID, arg.Quantity)
+	var i RemoveItemFromCharacterRow
+	err := row.Scan(
+		&i.CharacterID,
+		&i.ItemID,
+		&i.Quantity,
+		&i.IsEquipped,
+	)
+	return &i, err
 }
