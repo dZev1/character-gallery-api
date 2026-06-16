@@ -8,6 +8,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+var _ characters.Repository = (*characterRepo)(nil)
+
 type characterRepo struct {
 	pool *pgxpool.Pool
 }

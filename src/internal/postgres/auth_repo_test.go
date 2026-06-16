@@ -8,57 +8,54 @@ import (
 )
 
 func TestAuthRepo_CreateAPIKey(t *testing.T) {
-	q := newTxQueries(t)
+	tt := newTestTx(t)
+	repo := newAuthRepo(t)
 	ctx := context.Background()
 
-	key, err := q.CreateAPIKey(ctx, db.CreateAPIKeyParams{
-		KeyHash: "a1b2c3d4e5f6",
-		Name:    "test-key",
-	})
+	hash, err := repo.CreateAPIKey(ctx, tt.Tx, "a1b2c3d4e5f6", "test-key")
 	if err != nil {
 		t.Fatal(err)
 	}
+	if hash != "a1b2c3d4e5f6" {
+		t.Errorf("got hash %q, want %q", hash, "a1b2c3d4e5f6")
+	}
 
-	if key.ID == 0 {
-		t.Fatal("expected non-zero ID")
+	var name string
+	var isActive bool
+	err = tt.Tx.QueryRow(ctx, "SELECT name, is_active FROM api_keys WHERE key_hash = $1", hash).Scan(&name, &isActive)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if key.KeyHash != "a1b2c3d4e5f6" {
-		t.Errorf("got hash %q, want %q", key.KeyHash, "a1b2c3d4e5f6")
+	if name != "test-key" {
+		t.Errorf("got name %q, want %q", name, "test-key")
 	}
-	if key.Name != "test-key" {
-		t.Errorf("got name %q, want %q", key.Name, "test-key")
-	}
-	if !key.IsActive {
+	if !isActive {
 		t.Error("expected new key to be active")
 	}
 }
 
 func TestAuthRepo_CreateAPIKey_DuplicateHash(t *testing.T) {
-	q := newTxQueries(t)
+	tt := newTestTx(t)
+	repo := newAuthRepo(t)
 	ctx := context.Background()
 
-	_, err := q.CreateAPIKey(ctx, db.CreateAPIKeyParams{
-		KeyHash: "duplicate-hash",
-		Name:    "key-1",
-	})
+	_, err := repo.CreateAPIKey(ctx, tt.Tx, "duplicate-hash", "key-1")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = q.CreateAPIKey(ctx, db.CreateAPIKeyParams{
-		KeyHash: "duplicate-hash",
-		Name:    "key-2",
-	})
+	_, err = repo.CreateAPIKey(ctx, tt.Tx, "duplicate-hash", "key-2")
 	if err == nil {
 		t.Fatal("expected error for duplicate key_hash")
 	}
 }
 
 func TestAuthRepo_ValidateAPIKey_Valid(t *testing.T) {
-	q := newTxQueries(t)
+	tt := newTestTx(t)
+	repo := newAuthRepo(t)
 	ctx := context.Background()
 
-	_, err := q.CreateAPIKey(ctx, db.CreateAPIKeyParams{
+	_, err := tt.Q.CreateAPIKey(ctx, db.CreateAPIKeyParams{
 		KeyHash: "valid-key-hash",
 		Name:    "valid-key",
 	})
@@ -66,7 +63,7 @@ func TestAuthRepo_ValidateAPIKey_Valid(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	exists, err := q.ValidateAPIKey(ctx, "valid-key-hash")
+	exists, err := repo.ValidateAPIKey(ctx, tt.Tx, "valid-key-hash")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,10 +73,11 @@ func TestAuthRepo_ValidateAPIKey_Valid(t *testing.T) {
 }
 
 func TestAuthRepo_ValidateAPIKey_NotFound(t *testing.T) {
-	q := newTxQueries(t)
+	tt := newTestTx(t)
+	repo := newAuthRepo(t)
 	ctx := context.Background()
 
-	exists, err := q.ValidateAPIKey(ctx, "non-existent-hash")
+	exists, err := repo.ValidateAPIKey(ctx, tt.Tx, "non-existent-hash")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,6 +88,7 @@ func TestAuthRepo_ValidateAPIKey_NotFound(t *testing.T) {
 
 func TestAuthRepo_ValidateAPIKey_Inactive(t *testing.T) {
 	tt := newTestTx(t)
+	repo := newAuthRepo(t)
 	ctx := context.Background()
 
 	_, err := tt.Q.CreateAPIKey(ctx, db.CreateAPIKeyParams{
@@ -105,7 +104,7 @@ func TestAuthRepo_ValidateAPIKey_Inactive(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	exists, err := tt.Q.ValidateAPIKey(ctx, "inactive-key-hash")
+	exists, err := repo.ValidateAPIKey(ctx, tt.Tx, "inactive-key-hash")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,9 +115,10 @@ func TestAuthRepo_ValidateAPIKey_Inactive(t *testing.T) {
 
 func TestAuthRepo_UpdateLastUsed(t *testing.T) {
 	tt := newTestTx(t)
+	repo := newAuthRepo(t)
 	ctx := context.Background()
 
-	key, err := tt.Q.CreateAPIKey(ctx, db.CreateAPIKeyParams{
+	_, err := tt.Q.CreateAPIKey(ctx, db.CreateAPIKeyParams{
 		KeyHash: "update-last-used-hash",
 		Name:    "update-test",
 	})
@@ -126,17 +126,13 @@ func TestAuthRepo_UpdateLastUsed(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if key.LastUsedAt.Valid {
-		t.Log("new key has last_used_at set (expected to be null)")
-	}
-
-	err = tt.Q.UpdateLastUsed(ctx, "update-last-used-hash")
+	err = repo.UpdateLastUsed(ctx, tt.Tx, "update-last-used-hash")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	var lastUsed interface{}
-	err = tt.Tx.QueryRow(ctx, "SELECT last_used_at FROM api_keys WHERE id = $1", key.ID).Scan(&lastUsed)
+	err = tt.Tx.QueryRow(ctx, "SELECT last_used_at FROM api_keys WHERE key_hash = $1", "update-last-used-hash").Scan(&lastUsed)
 	if err != nil {
 		t.Fatal(err)
 	}

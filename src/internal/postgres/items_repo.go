@@ -9,6 +9,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+var _ items.Repository = (*itemRepo)(nil)
+
 type itemRepo struct {
 	pool *pgxpool.Pool
 }
@@ -85,13 +87,13 @@ func (i *itemRepo) SaveItem(ctx context.Context, exec db.DBTX, item *items.Item)
 		Description: item.Description,
 		Equippable:  item.Equippable,
 		Rarity:      int32(item.Rarity),
-		Damage:      pgtype.Int4{Int32: int32(*item.Damage), Valid: item.Damage != nil},
-		Defense:     pgtype.Int4{Int32: int32(*item.Defense), Valid: item.Defense != nil},
-		HealAmount:  pgtype.Int4{Int32: int32(*item.HealAmount), Valid: item.HealAmount != nil},
-		ManaCost:    pgtype.Int4{Int32: int32(*item.ManaCost), Valid: item.ManaCost != nil},
-		Duration:    pgtype.Int4{Int32: int32(*item.Duration), Valid: item.Duration != nil},
-		Cooldown:    pgtype.Int4{Int32: int32(*item.Cooldown), Valid: item.Cooldown != nil},
-		Capacity:    pgtype.Int4{Int32: int32(*item.Capacity), Valid: item.Capacity != nil},
+		Damage:      toInt4(item.Damage),
+		Defense:     toInt4(item.Defense),
+		HealAmount:  toInt4(item.HealAmount),
+		ManaCost:    toInt4(item.ManaCost),
+		Duration:    toInt4(item.Duration),
+		Cooldown:    toInt4(item.Cooldown),
+		Capacity:    toInt4(item.Capacity),
 	}
 
 	saveItem, err := q.CreateItem(ctx, saveItemParams)
@@ -115,13 +117,13 @@ func (i *itemRepo) SeedItems(ctx context.Context, exec db.DBTX, items []items.It
 			Description: item.Description,
 			Equippable:  item.Equippable,
 			Rarity:      int32(item.Rarity),
-			Damage:      pgtype.Int4{Int32: int32(*item.Damage), Valid: item.Damage != nil},
-			Defense:     pgtype.Int4{Int32: int32(*item.Defense), Valid: item.Defense != nil},
-			HealAmount:  pgtype.Int4{Int32: int32(*item.HealAmount), Valid: item.HealAmount != nil},
-			ManaCost:    pgtype.Int4{Int32: int32(*item.ManaCost), Valid: item.ManaCost != nil},
-			Duration:    pgtype.Int4{Int32: int32(*item.Duration), Valid: item.Duration != nil},
-			Cooldown:    pgtype.Int4{Int32: int32(*item.Cooldown), Valid: item.Cooldown != nil},
-			Capacity:    pgtype.Int4{Int32: int32(*item.Capacity), Valid: item.Capacity != nil},
+			Damage:      toInt4(item.Damage),
+			Defense:     toInt4(item.Defense),
+			HealAmount:  toInt4(item.HealAmount),
+			ManaCost:    toInt4(item.ManaCost),
+			Duration:    toInt4(item.Duration),
+			Cooldown:    toInt4(item.Cooldown),
+			Capacity:    toInt4(item.Capacity),
 		}
 	}
 
@@ -131,6 +133,13 @@ func (i *itemRepo) SeedItems(ctx context.Context, exec db.DBTX, items []items.It
 	}
 
 	return nil
+}
+
+func toInt4(ptr *uint64) pgtype.Int4 {
+	if ptr != nil {
+		return pgtype.Int4{Int32: int32(*ptr), Valid: true}
+	}
+	return pgtype.Int4{}
 }
 
 func toU64ptr(field pgtype.Int4) *uint64 {

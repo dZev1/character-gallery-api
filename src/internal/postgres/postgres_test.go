@@ -2,12 +2,15 @@ package postgres
 
 import (
 	"context"
+	"dZev1/character-gallery/internal/characters"
+	"dZev1/character-gallery/internal/inventory"
 	"dZev1/character-gallery/internal/items"
 	"fmt"
 	"os"
 	"testing"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"dZev1/character-gallery/internal/postgres/db"
 )
@@ -18,7 +21,7 @@ const (
 )
 
 type testDB struct {
-	conn *pgx.Conn
+	pool *pgxpool.Pool
 }
 
 var globalDB *testDB
@@ -31,7 +34,7 @@ func TestMain(m *testing.M) {
 	}
 
 	ctx := context.Background()
-	conn, err := pgx.Connect(ctx, dsn)
+	pool, err := pgxpool.New(ctx, dsn)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to connect: %v\n", err)
 		os.Exit(1)
@@ -42,16 +45,16 @@ func TestMain(m *testing.M) {
 		fmt.Fprintf(os.Stderr, "failed to read schema: %v\n", err)
 		os.Exit(1)
 	}
-	if _, err := conn.Exec(ctx, string(schema)); err != nil {
+	if _, err := pool.Exec(ctx, string(schema)); err != nil {
 		fmt.Fprintf(os.Stderr, "failed to run schema: %v\n", err)
 		os.Exit(1)
 	}
 
-	globalDB = &testDB{conn: conn}
+	globalDB = &testDB{pool: pool}
 
 	code := m.Run()
 
-	conn.Close(ctx)
+	pool.Close()
 	os.Exit(code)
 }
 
@@ -68,7 +71,7 @@ func newTxQueries(t *testing.T) *db.Queries {
 func newTestTx(t *testing.T) *testTx {
 	t.Helper()
 	ctx := context.Background()
-	tx, err := globalDB.conn.Begin(ctx)
+	tx, err := globalDB.pool.Begin(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -168,4 +171,77 @@ func createTestItem(t *testing.T, q *db.Queries, it string) *db.Item {
 	}
 
 	return item
+}
+
+func newAuthRepo(t *testing.T) *authRepo {
+	t.Helper()
+	return NewAuthRepo(globalDB.pool)
+}
+
+func newCharacterRepo(t *testing.T) *characterRepo {
+	t.Helper()
+	return NewCharacterRepo(globalDB.pool)
+}
+
+func newItemRepo(t *testing.T) *itemRepo {
+	t.Helper()
+	return NewItemRepo(globalDB.pool)
+}
+
+func newInventoryRepo(t *testing.T) *inventoryRepo {
+	t.Helper()
+	return NewInventoryRepo(globalDB.pool)
+}
+
+func domainCharacter(char *db.Character, stats *db.Stat, cust *db.Customization) *characters.Character {
+	return &characters.Character{
+		ID:       characters.CharacterID(char.ID),
+		Name:     char.Name,
+		BodyType: characters.BodyType(char.BodyType),
+		Species:  characters.Species(char.Species),
+		Class:    characters.Class(char.Class),
+		Stats: &characters.Stats{
+			ID:           characters.CharacterID(stats.CharacterID),
+			Strength:     uint8(stats.Strength),
+			Dexterity:    uint8(stats.Dexterity),
+			Constitution: uint8(stats.Constitution),
+			Intelligence: uint8(stats.Intelligence),
+			Wisdom:       uint8(stats.Wisdom),
+			Charisma:     uint8(stats.Charisma),
+		},
+		Customization: &characters.Customization{
+			ID:    characters.CharacterID(cust.CharacterID),
+			Hair:  uint8(cust.Hair),
+			Face:  uint8(cust.Face),
+			Shirt: uint8(cust.Shirt),
+			Pants: uint8(cust.Pants),
+			Shoes: uint8(cust.Shoes),
+		},
+	}
+}
+
+func domainItem(it *db.Item) *items.Item {
+	return &items.Item{
+		ID:          items.ItemID(it.ID),
+		Name:        it.Name,
+		Type:        items.Type(it.Type),
+		Description: it.Description,
+		Equippable:  it.Equippable,
+		Rarity:      uint8(it.Rarity),
+		Damage:      toU64ptr(it.Damage),
+		Defense:     toU64ptr(it.Defense),
+		HealAmount:  toU64ptr(it.HealAmount),
+		ManaCost:    toU64ptr(it.ManaCost),
+		Duration:    toU64ptr(it.Duration),
+		Cooldown:    toU64ptr(it.Cooldown),
+		Capacity:    toU64ptr(it.Capacity),
+	}
+}
+
+func domainInventoryParam(charID int64, itemID int64, quantity int32) inventory.RepositoryParam {
+	return inventory.RepositoryParam{
+		CharacterID: characters.CharacterID(charID),
+		ItemID:      items.ItemID(itemID),
+		Quantity:    uint8(quantity),
+	}
 }

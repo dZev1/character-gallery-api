@@ -4,112 +4,160 @@ import (
 	"context"
 	"testing"
 
-	"dZev1/character-gallery/internal/postgres/db"
+	"dZev1/character-gallery/internal/characters"
 )
 
-func TestCharacterRepo_CreateCharacter(t *testing.T) {
-	q := newTxQueries(t)
+func TestCharacterRepo_SaveAndFindCharacter(t *testing.T) {
+	tt := newTestTx(t)
+	repo := newCharacterRepo(t)
 	ctx := context.Background()
 
-	char, err := q.CreateCharacter(ctx, db.CreateCharacterParams{
+	char := &characters.Character{
 		Name:     "Aragorn",
 		BodyType: "type_a",
 		Species:  "human",
 		Class:    "ranger",
-	})
+		Stats: &characters.Stats{
+			Strength:     15,
+			Dexterity:    14,
+			Constitution: 13,
+			Intelligence: 12,
+			Wisdom:       11,
+			Charisma:     10,
+		},
+		Customization: &characters.Customization{
+			Hair:  5,
+			Face:  3,
+			Shirt: 12,
+			Pants: 8,
+			Shoes: 2,
+		},
+	}
+
+	saved, err := repo.SaveCharacter(ctx, tt.Tx, char)
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	if char.ID == 0 {
+	if saved.ID == 0 {
 		t.Fatal("expected non-zero ID")
 	}
-	if char.Name != "Aragorn" {
-		t.Errorf("got name %q, want %q", char.Name, "Aragorn")
+	if saved.Stats.ID != saved.ID {
+		t.Errorf("stats ID %d does not match character ID %d", saved.Stats.ID, saved.ID)
 	}
-	if char.Species != "human" {
-		t.Errorf("got species %q, want %q", char.Species, "human")
+	if saved.Customization.ID != saved.ID {
+		t.Errorf("customization ID %d does not match character ID %d", saved.Customization.ID, saved.ID)
 	}
-	if char.Class != "ranger" {
-		t.Errorf("got class %q, want %q", char.Class, "ranger")
-	}
-	if char.BodyType != "type_a" {
-		t.Errorf("got body_type %q, want %q", char.BodyType, "type_a")
-	}
-}
 
-func TestCharacterRepo_SelectCharacter(t *testing.T) {
-	q := newTxQueries(t)
-	ctx := context.Background()
-	char := createTestCharacter(t, q)
-
-	got, err := q.SelectCharacter(ctx, char.ID)
+	got, err := repo.FindCharacter(ctx, tt.Tx, saved.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.Name != char.Name {
-		t.Errorf("got name %q, want %q", got.Name, char.Name)
+	if got.Name != "Aragorn" {
+		t.Errorf("got name %q, want %q", got.Name, "Aragorn")
+	}
+	if got.Stats.Strength != 15 {
+		t.Errorf("got strength %d, want 15", got.Stats.Strength)
+	}
+	if got.Customization.Hair != 5 {
+		t.Errorf("got hair %d, want 5", got.Customization.Hair)
 	}
 }
 
-func TestCharacterRepo_SelectCharacter_NotFound(t *testing.T) {
-	q := newTxQueries(t)
+func TestCharacterRepo_FindCharacter_NotFound(t *testing.T) {
+	tt := newTestTx(t)
+	repo := newCharacterRepo(t)
 	ctx := context.Background()
 
-	_, err := q.SelectCharacter(ctx, 99999)
+	_, err := repo.FindCharacter(ctx, tt.Tx, 99999)
 	if err == nil {
 		t.Fatal("expected error for non-existent character")
 	}
 }
 
-func TestCharacterRepo_SelectAllCharacters(t *testing.T) {
-	q := newTxQueries(t)
+func TestCharacterRepo_FindAllCharacters(t *testing.T) {
+	tt := newTestTx(t)
+	repo := newCharacterRepo(t)
 	ctx := context.Background()
 
-	createTestCharacter(t, q)
-	createTestCharacter(t, q)
+	base := &characters.Character{
+		BodyType: "type_a",
+		Species:  "human",
+		Class:    "fighter",
+		Stats:    &characters.Stats{Strength: 10, Dexterity: 10, Constitution: 10, Intelligence: 10, Wisdom: 10, Charisma: 10},
+		Customization: &characters.Customization{Hair: 1, Face: 1, Shirt: 1, Pants: 1, Shoes: 1},
+	}
+	base.Name = "Hero One"
+	if _, err := repo.SaveCharacter(ctx, tt.Tx, base); err != nil {
+		t.Fatal(err)
+	}
+	base.Name = "Hero Two"
+	if _, err := repo.SaveCharacter(ctx, tt.Tx, base); err != nil {
+		t.Fatal(err)
+	}
 
-	chars, err := q.SelectAllCharacters(ctx, db.SelectAllCharactersParams{Limit: 10, Offset: 0})
+	chars, count, err := repo.FindAllCharacters(ctx, tt.Tx, 1)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if count != 2 {
+		t.Errorf("got count %d, want 2", count)
 	}
 	if len(chars) != 2 {
 		t.Errorf("got %d characters, want 2", len(chars))
 	}
 }
 
-func TestCharacterRepo_SelectAllCharacters_Pagination(t *testing.T) {
-	q := newTxQueries(t)
+func TestCharacterRepo_FindAllCharacters_Pagination(t *testing.T) {
+	tt := newTestTx(t)
+	repo := newCharacterRepo(t)
 	ctx := context.Background()
 
+	base := &characters.Character{
+		BodyType: "type_a",
+		Species:  "human",
+		Class:    "fighter",
+		Stats:    &characters.Stats{Strength: 10, Dexterity: 10, Constitution: 10, Intelligence: 10, Wisdom: 10, Charisma: 10},
+		Customization: &characters.Customization{Hair: 1, Face: 1, Shirt: 1, Pants: 1, Shoes: 1},
+	}
+
 	for i := 0; i < 5; i++ {
-		createTestCharacter(t, q)
+		base.Name = "Hero"
+		if _, err := repo.SaveCharacter(ctx, tt.Tx, base); err != nil {
+			t.Fatal(err)
+		}
 	}
 
-	page1, err := q.SelectAllCharacters(ctx, db.SelectAllCharactersParams{Limit: 2, Offset: 0})
+	page1, count, err := repo.FindAllCharacters(ctx, tt.Tx, 1)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(page1) != 2 {
-		t.Errorf("page 1: got %d characters, want 2", len(page1))
+	if count != 5 {
+		t.Errorf("got count %d, want 5", count)
+	}
+	if len(page1) != 5 {
+		t.Errorf("page 1: got %d characters, want 5", len(page1))
 	}
 
-	page2, err := q.SelectAllCharacters(ctx, db.SelectAllCharactersParams{Limit: 2, Offset: 2})
+	page2, _, err := repo.FindAllCharacters(ctx, tt.Tx, 2)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(page2) != 2 {
-		t.Errorf("page 2: got %d characters, want 2", len(page2))
+	if len(page2) != 0 {
+		t.Errorf("page 2: got %d characters, want 0", len(page2))
 	}
 }
 
-func TestCharacterRepo_SelectAllCharacters_Empty(t *testing.T) {
-	q := newTxQueries(t)
+func TestCharacterRepo_FindAllCharacters_Empty(t *testing.T) {
+	tt := newTestTx(t)
+	repo := newCharacterRepo(t)
 	ctx := context.Background()
 
-	chars, err := q.SelectAllCharacters(ctx, db.SelectAllCharactersParams{Limit: 10, Offset: 0})
+	chars, count, err := repo.FindAllCharacters(ctx, tt.Tx, 1)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if count != 0 {
+		t.Errorf("expected count 0, got %d", count)
 	}
 	if len(chars) != 0 {
 		t.Errorf("expected no characters, got %d", len(chars))
@@ -117,214 +165,101 @@ func TestCharacterRepo_SelectAllCharacters_Empty(t *testing.T) {
 }
 
 func TestCharacterRepo_UpdateCharacter(t *testing.T) {
-	q := newTxQueries(t)
+	tt := newTestTx(t)
+	repo := newCharacterRepo(t)
 	ctx := context.Background()
-	char := createTestCharacter(t, q)
 
-	updated, err := q.UpdateCharacter(ctx, db.UpdateCharacterParams{
-		ID:       char.ID,
-		Name:     "Aragorn II",
-		BodyType: "type_b",
-		Species:  "elf",
-		Class:    "warlock",
-	})
+	char := &characters.Character{
+		Name:     "Aragorn",
+		BodyType: "type_a",
+		Species:  "human",
+		Class:    "ranger",
+		Stats:    &characters.Stats{Strength: 15, Dexterity: 14, Constitution: 13, Intelligence: 12, Wisdom: 11, Charisma: 10},
+		Customization: &characters.Customization{Hair: 5, Face: 3, Shirt: 12, Pants: 8, Shoes: 2},
+	}
+	saved, err := repo.SaveCharacter(ctx, tt.Tx, char)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if updated.Name != "Aragorn II" {
-		t.Errorf("got name %q, want %q", updated.Name, "Aragorn II")
-	}
-	if updated.Class != "warlock" {
-		t.Errorf("got class %q, want %q", updated.Class, "warlock")
+
+	saved.Name = "Aragorn II"
+	saved.Species = "elf"
+	saved.Stats.Strength = 18
+
+	err = repo.UpdateCharacter(ctx, tt.Tx, saved)
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	got, err := q.SelectCharacter(ctx, char.ID)
+	got, err := repo.FindCharacter(ctx, tt.Tx, saved.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if got.Name != "Aragorn II" {
-		t.Errorf("select after update: got name %q, want %q", got.Name, "Aragorn II")
+		t.Errorf("got name %q, want %q", got.Name, "Aragorn II")
+	}
+	if got.Stats.Strength != 18 {
+		t.Errorf("got strength %d, want 18", got.Stats.Strength)
 	}
 }
 
 func TestCharacterRepo_DeleteCharacter(t *testing.T) {
-	q := newTxQueries(t)
+	tt := newTestTx(t)
+	repo := newCharacterRepo(t)
 	ctx := context.Background()
-	char := createTestCharacter(t, q)
 
-	err := q.DeleteCharacter(ctx, char.ID)
+	char := &characters.Character{
+		Name:     "ToDelete",
+		BodyType: "type_a",
+		Species:  "human",
+		Class:    "fighter",
+		Stats:    &characters.Stats{Strength: 10, Dexterity: 10, Constitution: 10, Intelligence: 10, Wisdom: 10, Charisma: 10},
+		Customization: &characters.Customization{Hair: 1, Face: 1, Shirt: 1, Pants: 1, Shoes: 1},
+	}
+	saved, err := repo.SaveCharacter(ctx, tt.Tx, char)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = q.SelectCharacter(ctx, char.ID)
+	err = repo.DeleteCharacter(ctx, tt.Tx, saved.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = repo.FindCharacter(ctx, tt.Tx, saved.ID)
 	if err == nil {
 		t.Fatal("expected error after delete")
 	}
 }
 
-func TestCharacterRepo_CountAllCharacters(t *testing.T) {
-	q := newTxQueries(t)
-	ctx := context.Background()
-
-	count, err := q.CountAllCharacters(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if count != 0 {
-		t.Fatalf("expected 0, got %d", count)
-	}
-
-	createTestCharacter(t, q)
-	createTestCharacter(t, q)
-
-	count, err = q.CountAllCharacters(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if count != 2 {
-		t.Errorf("expected 2, got %d", count)
-	}
-}
-
-func TestCharacterRepo_CreateAndSelectStats(t *testing.T) {
-	q := newTxQueries(t)
-	ctx := context.Background()
-	char := createTestCharacter(t, q)
-
-	stats, err := q.CreateStats(ctx, db.CreateStatsParams{
-		CharacterID:  char.ID,
-		Strength:     18,
-		Dexterity:    12,
-		Constitution: 14,
-		Intelligence: 10,
-		Wisdom:       8,
-		Charisma:     15,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if stats.CharacterID != char.ID {
-		t.Errorf("got character_id %d, want %d", stats.CharacterID, char.ID)
-	}
-	if stats.Strength != 18 {
-		t.Errorf("got strength %d, want 18", stats.Strength)
-	}
-
-	got, err := q.SelectCharacterStats(ctx, char.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got.Strength != 18 {
-		t.Errorf("select: got strength %d, want 18", got.Strength)
-	}
-}
-
-func TestCharacterRepo_CreateAndSelectCustomization(t *testing.T) {
-	q := newTxQueries(t)
-	ctx := context.Background()
-	char := createTestCharacter(t, q)
-
-	cust, err := q.CreateCustomization(ctx, db.CreateCustomizationParams{
-		CharacterID: char.ID,
-		Hair:        10,
-		Face:        5,
-		Shirt:       20,
-		Pants:       15,
-		Shoes:       3,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if cust.CharacterID != char.ID {
-		t.Errorf("got character_id %d, want %d", cust.CharacterID, char.ID)
-	}
-
-	got, err := q.SelectCharacterCustomization(ctx, char.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got.Hair != 10 || got.Shoes != 3 {
-		t.Errorf(" customization mismatch: %+v", got)
-	}
-}
-
-func TestCharacterRepo_UpdateStats(t *testing.T) {
-	q := newTxQueries(t)
-	ctx := context.Background()
-	char := createTestCharacterFull(t, q)
-
-	updated, err := q.UpdateStats(ctx, db.UpdateStatsParams{
-		CharacterID:  char.ID,
-		Strength:     1,
-		Dexterity:    1,
-		Constitution: 1,
-		Intelligence: 1,
-		Wisdom:       1,
-		Charisma:     1,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if updated.Strength != 1 {
-		t.Errorf("got strength %d, want 1", updated.Strength)
-	}
-
-	got, err := q.SelectCharacterStats(ctx, char.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got.Dexterity != 1 {
-		t.Errorf("select after update: got dexterity %d, want 1", got.Dexterity)
-	}
-}
-
-func TestCharacterRepo_UpdateCustomization(t *testing.T) {
-	q := newTxQueries(t)
-	ctx := context.Background()
-	char := createTestCharacterFull(t, q)
-
-	updated, err := q.UpdateCustomization(ctx, db.UpdateCustomizationParams{
-		CharacterID: char.ID,
-		Hair:        0,
-		Face:        0,
-		Shirt:       0,
-		Pants:       0,
-		Shoes:       0,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if updated.Hair != 0 {
-		t.Errorf("got hair %d, want 0", updated.Hair)
-	}
-
-	got, err := q.SelectCharacterCustomization(ctx, char.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got.Shirt != 0 {
-		t.Errorf("select after update: got shirt %d, want 0", got.Shirt)
-	}
-}
-
 func TestCharacterRepo_DeleteCharacter_Cascades(t *testing.T) {
-	q := newTxQueries(t)
+	tt := newTestTx(t)
+	repo := newCharacterRepo(t)
 	ctx := context.Background()
-	char := createTestCharacterFull(t, q)
 
-	err := q.DeleteCharacter(ctx, char.ID)
+	char := &characters.Character{
+		Name:     "CascadeTest",
+		BodyType: "type_a",
+		Species:  "human",
+		Class:    "fighter",
+		Stats:    &characters.Stats{Strength: 10, Dexterity: 10, Constitution: 10, Intelligence: 10, Wisdom: 10, Charisma: 10},
+		Customization: &characters.Customization{Hair: 1, Face: 1, Shirt: 1, Pants: 1, Shoes: 1},
+	}
+	saved, err := repo.SaveCharacter(ctx, tt.Tx, char)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = q.SelectCharacterStats(ctx, char.ID)
-	if err == nil {
+	err = repo.DeleteCharacter(ctx, tt.Tx, saved.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	q := tt.Q
+	if _, err := q.SelectCharacterStats(ctx, int64(saved.ID)); err == nil {
 		t.Error("expected error when selecting stats for deleted character")
 	}
-
-	_, err = q.SelectCharacterCustomization(ctx, char.ID)
-	if err == nil {
+	if _, err := q.SelectCharacterCustomization(ctx, int64(saved.ID)); err == nil {
 		t.Error("expected error when selecting customization for deleted character")
 	}
 }
