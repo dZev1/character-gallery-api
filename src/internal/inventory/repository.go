@@ -7,8 +7,14 @@ import (
 	"dZev1/character-gallery/internal/postgres/db"
 )
 
+type RepositoryParam struct {
+	CharacterID characters.CharacterID
+	ItemID      items.ItemID
+	Quantity    uint8
+}
+
 type Repository interface {
-	AddItemToCharacter(ctx context.Context, exec db.DBTX, characterID characters.CharacterID, itemID items.ItemID, quantity uint8) (*InventoryItem, error)
-	RemoveItemFromCharacter(ctx context.Context, exec db.DBTX, characterID characters.CharacterID, itemID items.ItemID, quantity uint8) (*InventoryItem, error)
+	AddItemToCharacter(ctx context.Context, exec db.DBTX, params RepositoryParam) (*InventoryItem, error)
+	RemoveItemFromCharacter(ctx context.Context, exec db.DBTX, param RepositoryParam) (*InventoryItem, error)
 	GetCharacterInventory(ctx context.Context, exec db.DBTX, characterID characters.CharacterID) ([]InventoryItem, error)
 }
