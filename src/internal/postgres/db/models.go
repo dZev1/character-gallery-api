@@ -8,15 +8,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type ApiKey struct {
-	ID         int64
-	KeyHash    string
-	Name       string
-	CreatedAt  pgtype.Timestamptz
-	LastUsedAt pgtype.Timestamptz
-	IsActive   bool
-}
-
 type Character struct {
 	ID       int64
 	Name     string

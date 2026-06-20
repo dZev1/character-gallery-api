@@ -41,10 +41,13 @@ A RESTful API built in Go to create, manage and see a gallery of Role Playing Ga
 4. Configure environment variables
 
     - Create a `.env` file in the root of the project.
-    - Add the following variable with the connection URL to your database:
+    - Add the following variables:
 
         ```.env
         DATABASE_URL="postgres://user:password@localhost:XXXX/database_name?sslmode=disable"
+        REDIS_HOST="localhost"
+        REDIS_PORT="6379"
+        REDIS_PASSWORD="your_redis_password"
         ```
 
 5. Run the application:
@@ -58,27 +61,6 @@ A RESTful API built in Go to create, manage and see a gallery of Role Playing Ga
     - Run `./main`.
 
     - Server will be listening in `http://localhost:8080`.
-
-6. Generate API Keys:
-
-    - Run the following command:
-
-      ```Bash
-        ./apikey_gen -name "a string"
-      ```
-
-    - An api key will be generated and returned to the user:
-
-      ```Bash
-       API Key Generated Successfully!
-       ID:   X
-       Name: a string
-       Key:  dz_chars_{KEY_NUMBER}
-
-       WARNING: This key will NOT be shown again. Save it securely!
-      ```
-
-    - Remember to save the api key, as the warning says!
 
 ---
 

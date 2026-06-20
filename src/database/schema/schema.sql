@@ -70,11 +70,3 @@ CREATE TABLE IF NOT EXISTS customizations (
     shoes SMALLINT NOT NULL CHECK (shoes BETWEEN 0 AND 30)
 );
 
-CREATE TABLE IF NOT EXISTS api_keys (
-    id BIGSERIAL PRIMARY KEY,
-    key_hash TEXT NOT NULL UNIQUE,
-    name TEXT NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    last_used_at TIMESTAMPTZ,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE
-);

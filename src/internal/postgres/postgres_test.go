@@ -173,11 +173,6 @@ func createTestItem(t *testing.T, q *db.Queries, it string) *db.Item {
 	return item
 }
 
-func newAuthRepo(t *testing.T) *authRepo {
-	t.Helper()
-	return NewAuthRepo(globalDB.pool)
-}
-
 func newCharacterRepo(t *testing.T) *characterRepo {
 	t.Helper()
 	return NewCharacterRepo(globalDB.pool)

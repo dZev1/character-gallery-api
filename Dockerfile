@@ -20,5 +20,8 @@ COPY src/internal/database/postgres_gallery/schema.sql /root/internal/database/p
 
 COPY src/item_pool.json .
 
+ENV REDIS_URL=localhost:6379
+ENV REDIS_PASSWORD=""
+
 EXPOSE 8080
 CMD ["./main"]
