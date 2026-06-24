@@ -1,4 +1,4 @@
-FROM golang:1.26.0-alpine AS builder
+FROM golang:1.26.4-alpine AS builder
 WORKDIR /app
 
 COPY src/go.mod src/go.sum ./
@@ -12,11 +12,9 @@ FROM alpine:latest
 RUN apk --no-cache add ca-certificates
 WORKDIR /root/
 
-RUN mkdir -p /root/internal/database/postgres_gallery/
-
 COPY --from=builder /app/main .
 
-COPY src/internal/database/postgres_gallery/schema.sql /root/internal/database/postgres_gallery/schema.sql
+COPY src/database/schema/schema.sql /root/database/schema/schema.sql
 
 COPY src/item_pool.json .
 

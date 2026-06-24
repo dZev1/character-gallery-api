@@ -152,7 +152,7 @@ func (c *characterRepo) FindAllCharacters(ctx context.Context, exec db.DBTX, pag
 	return result, uint64(count), nil
 }
 
-func (c *characterRepo) UpdateCharacter(ctx context.Context, exec db.DBTX, character *characters.Character) error {
+func (c *characterRepo) UpdateCharacter(ctx context.Context, exec db.DBTX, character *characters.Character) (*characters.Character, error) {
 	q := c.q(exec)
 
 	_, err := q.UpdateCharacter(ctx, db.UpdateCharacterParams{
@@ -163,7 +163,7 @@ func (c *characterRepo) UpdateCharacter(ctx context.Context, exec db.DBTX, chara
 		Class:    string(character.Class),
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	_, err = q.UpdateStats(ctx, db.UpdateStatsParams{
@@ -176,7 +176,7 @@ func (c *characterRepo) UpdateCharacter(ctx context.Context, exec db.DBTX, chara
 		Charisma:     int16(character.Stats.Charisma),
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	_, err = q.UpdateCustomization(ctx, db.UpdateCustomizationParams{
@@ -188,10 +188,10 @@ func (c *characterRepo) UpdateCharacter(ctx context.Context, exec db.DBTX, chara
 		Shoes:       int16(character.Customization.Shoes),
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return c.FindCharacter(ctx, exec, character.ID)
 }
 
 func (c *characterRepo) DeleteCharacter(ctx context.Context, exec db.DBTX, id characters.CharacterID) error {

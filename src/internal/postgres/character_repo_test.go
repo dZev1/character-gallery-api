@@ -186,12 +186,7 @@ func TestCharacterRepo_UpdateCharacter(t *testing.T) {
 	saved.Species = "elf"
 	saved.Stats.Strength = 18
 
-	err = repo.UpdateCharacter(ctx, tt.Tx, saved)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	got, err := repo.FindCharacter(ctx, tt.Tx, saved.ID)
+	got, err := repo.UpdateCharacter(ctx, tt.Tx, saved)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -9,6 +9,6 @@ type Repository interface {
 	SaveCharacter(ctx context.Context, exec db.DBTX, character *Character) (*Character, error)
 	FindCharacter(ctx context.Context, exec db.DBTX, id CharacterID) (*Character, error)
 	FindAllCharacters(ctx context.Context, exec db.DBTX, page int) ([]Character, uint64, error)
-	UpdateCharacter(ctx context.Context, exec db.DBTX, character *Character) error
+	UpdateCharacter(ctx context.Context, exec db.DBTX, character *Character) (*Character, error)
 	DeleteCharacter(ctx context.Context, exec db.DBTX, id CharacterID) error
 }

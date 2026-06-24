@@ -2,7 +2,12 @@ package cache
 
 import (
 	"context"
+	"errors"
 	"time"
+)
+
+var (
+	ErrMiss = errors.New("cache miss")
 )
 
 type Cache interface {

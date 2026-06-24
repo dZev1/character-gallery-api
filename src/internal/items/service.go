@@ -9,10 +9,10 @@ import (
 type Service struct {
 	repo  Repository
 	pool  *pgxpool.Pool
-	cache *cache.Cache
+	cache cache.Cache
 }
 
-func NewService(repo Repository, pool *pgxpool.Pool, cache *cache.Cache) *Service {
+func NewService(repo Repository, pool *pgxpool.Pool, cache cache.Cache) *Service {
 	return &Service{
 		repo:  repo,
 		pool:  pool,
