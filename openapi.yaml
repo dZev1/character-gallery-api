@@ -8,8 +8,8 @@ info:
   version: "1.0.0"
 
 servers:
-  - url: http://localhost:8080/api/v1
-    description: Local development server (version v1)
+  - url: /api/v1
+    description: Current server (adapts automatically to localhost or Cloudflare)
 
 paths:
   /characters:
