@@ -24,3 +24,14 @@ func (char *Character) String() string {
 		char.Customization,
 	)
 }
+
+func (char *Character) Validate() bool {
+	if char.Stats == nil || char.Customization == nil {
+		return false
+	}
+	return char.BodyType.Validate() &&
+		char.Species.Validate() &&
+		char.Class.Validate() &&
+		char.Stats.Validate() &&
+		char.Customization.Validate()
+}

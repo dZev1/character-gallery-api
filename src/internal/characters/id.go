@@ -1,6 +1,11 @@
 package characters
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
+
+var ErrNotFound = errors.New("character not found")
 
 type CharacterID uint64
 

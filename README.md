@@ -1,170 +1,185 @@
-# Character Gallery
+# Character Gallery API
+
+A RESTful API built in Go to create, manage and see a gallery of Role Playing Game characters. Full CRUD operations with base stats, character customization, an item pool, and per-character inventory management.
 
 ## Table of Contents
 
-1. [**Description**](#description)
-2. [**Getting Started**](#getting-started)
-3. **About...**
-    - [**Characters**](#about-characters)
-    - [**Items**](#about-items)
-    - [**Entity Diagram**](#entity-diagram)
-4. [**API References**](#api-references)
-    - [**Character Management**](#character-management)
-    - [**Character Inventory Management**](#character-inventory-management)
-    - [**Item Pool Management**](#item-pool-management)
+1. [Getting Started](#getting-started)
+2. [Architecture](#architecture)
+3. [Characters](#characters)
+   - [Classes](#classes)
+   - [Species](#species)
+   - [Stats & Customization](#stats--customization)
+4. [Items](#items)
+   - [Item Types](#item-types)
+5. [API Reference](#api-reference)
+   - [Characters](#characters-endpoints)
+   - [Items](#items-endpoints)
+   - [Inventory](#inventory-endpoints)
+6. [Entity Diagram](#entity-diagram)
 
-## Description
-
-A RESTful API built in Go to create, manage and see a gallery of Role Playing Game characters. The API allows CRUD complete operations, including management of base stats and character appearance customization.
+---
 
 ## Getting Started
 
-1. Clone repository
+1. Clone the repo and enter the source directory:
+   ```bash
+   git clone https://github.com/dZev1/character-gallery-api.git
+   cd character-gallery-api/src
+   ```
 
-    ```Bash
-    git clone https://github.com/dZev1/character-gallery-api.git
-    cd characters-gallery-api/src
-    ```
+2. Install dependencies:
+   ```bash
+   go mod tidy
+   ```
 
-2. Install dependencies
+3. Set up a PostgreSQL database and a Redis instance, then configure:
+   ```bash
+   export DATABASE_URL="postgres://user:password@host:5432/dbname"
+   export REDIS_URL="redis://:password@host:6379/0"
+   ```
 
-    ```Bash
-    go mod tidy
-    ```
+4. Run the application:
+   ```bash
+   go run ./cmd
+   ```
+   Server listens on `http://localhost:8080`.
 
-3. Configure the database
+5. Open the API docs:
+   ```
+   http://localhost:8080/docs
+   ```
 
-    - Create a database for the project.
-    - Select one of the supported database engines (currently only PostgreSQL), de-comment it in `config.env` file.
-    - The database schema will be created automatically when the application starts.
+### Docker
 
-4. Configure environment variables
-
-    - Create a `.env` file in the root of the project.
-    - Add the following variables:
-
-        ```.env
-        DATABASE_URL="postgres://user:password@localhost:XXXX/database_name?sslmode=disable"
-        REDIS_HOST="localhost"
-        REDIS_PORT="6379"
-        REDIS_PASSWORD="your_redis_password"
-        ```
-
-5. Run the application:
-
-    - Build the application:
-
-        ```bash
-        go build ./cmd/main
-        ```
-
-    - Run `./main`.
-
-    - Server will be listening in `http://localhost:8080`.
+```bash
+docker build -t character-gallery-api .
+docker run -p 8080:8080 \
+  -e DATABASE_URL="postgres://..." \
+  -e REDIS_URL="redis://:..." \
+  character-gallery-api
+```
 
 ---
 
-## About Characters
+## Architecture
 
-### Classes supported
+```
+Handler (net/http) → Service (business logic + cache) → Repository (PostgreSQL via sqlc)
+                                ↕
+                           Redis Cache
+```
 
-This is a list of the supported character classes.
+- **Go 1.26** with `net/http` (Go 1.22+ routing with path params)
+- **PostgreSQL** via `pgx/v5` + sqlc-generated queries
+- **Redis** via `go-redis/v9` — cache-aside pattern + fixed-window rate limiting
+- **CORS** middleware enabled for all origins
+- Concurrent by design — every request runs in its own goroutine, all layers are goroutine-safe
 
-|   Class   |    JSON Tag     |
-|-----------|-----------------|
-| Barbarian | "barbarian"     |
-| Bard      | "bard"          |
-| Cleric    | "cleric"        |
-| Druid     | "druid"         |
-| Fighter   | "fighter"       |
-| Monk      | "monk"          |
-| Paladin   | "paladin"       |
-| Ranger    | "ranger"        |
-| Rogue     | "rogue"         |
-| Sorcerer  | "sorcerer"      |
-| Warlock   | "warlock"       |
-| Wizard    | "wizard"        |
+---
 
-### Species supported
+## Characters
 
-This is a list of the supported character species.
+### Classes
 
-|   Species   |    JSON Tag     |
-|-------------|-----------------|
-| Aasimar     | "aasimar"       |
-| Dragonborn  | "dragonborn"    |
-| Dwarf       | "dwarf"         |
-| Elf         | "elf"           |
-| Gnome       | "gnome"         |
-| Goliath     | "goliath"       |
-| Halfling    | "halfling"      |
-| Human       | "human"         |
-| Orc         | "orc"           |
-| Tiefling    | "tiefling"      |
+| Class      | JSON Tag     |
+|------------|--------------|
+| Barbarian  | `barbarian`  |
+| Bard       | `bard`       |
+| Cleric     | `cleric`     |
+| Druid      | `druid`      |
+| Fighter    | `fighter`    |
+| Monk       | `monk`       |
+| Paladin    | `paladin`    |
+| Ranger     | `ranger`     |
+| Rogue      | `rogue`      |
+| Sorcerer   | `sorcerer`   |
+| Warlock    | `warlock`    |
+| Wizard     | `wizard`     |
 
-### Statistics and Customization
+### Species
 
-Each character has their statistics:
+| Species    | JSON Tag     |
+|------------|--------------|
+| Aasimar    | `aasimar`    |
+| Dragonborn | `dragonborn` |
+| Dwarf      | `dwarf`      |
+| Elf        | `elf`        |
+| Gnome      | `gnome`      |
+| Goliath    | `goliath`    |
+| Halfling   | `halfling`   |
+| Human      | `human`      |
+| Orc        | `orc`        |
+| Tiefling   | `tiefling`   |
 
-|    Stat      |    JSON Tag     |
+### Body Types
+
+| Type    | JSON Tag   |
+|---------|------------|
+| Type A  | `type_a`   |
+| Type B  | `type_b`   |
+
+### Stats & Customization
+
+Each character has six stats (1–99) and five customization fields (0–30).
+
+| Stat         | JSON Tag        |
 |--------------|-----------------|
-| Strength     | "strength"      |
-| Dexterity    | "dexterity"     |
-| Constitution | "constitution"  |
-| Intelligence | "intelligence"  |
-| Wisdom       | "wisdom"        |
-| Charisma     | "charisma"      |
+| Strength     | `strength`      |
+| Dexterity    | `dexterity`     |
+| Constitution | `constitution`  |
+| Intelligence | `intelligence`  |
+| Wisdom       | `wisdom`        |
+| Charisma     | `charisma`      |
 
-Each characters also has their own customization fields:
-
-| Field  |   JSON Tag   |
-|--------|--------------|
-| Hair   | "hair"       |
-| Face   | "face"       |
-| Shirt  | "shirt"      |
-| Pants  | "pants"      |
-| Shoes  | "shoes"      |
+| Customization | JSON Tag |
+|---------------|----------|
+| Hair          | `hair`   |
+| Face          | `face`   |
+| Shirt         | `shirt`  |
+| Pants         | `pants`  |
+| Shoes         | `shoes`  |
 
 ---
 
-## About items
+## Items
 
-### Item types
+### Item Types
 
-Each item has its own unique type/category. This is a list of the supported ones:
-
-|       Type       |      JSON Tag       |
+| Type             | JSON Tag            |
 |------------------|---------------------|
-| Armor            | "armor"             |
-| Ring             | "ring"              |
-| Weapon           | "weapon"            |
-| Shield           | "shield"            |
-| Tool             | "tool"              |
-| Adventuring Gear | "adventuring_gear"  |
-| Rod              | "rod"               |
-| Staff            | "staff"             |
-| Wand             | "wand"              |
-| Scroll           | "scroll"            |
-| Potion           | "potion"            |
-| Ammo             | "ammo"              |
-| Consumable       | "consumable"        |
-| Wondrous Item    | "wondrous_item"     |
+| Armor            | `armor`             |
+| Ring             | `ring`              |
+| Weapon           | `weapon`            |
+| Shield           | `shield`            |
+| Tool             | `tool`              |
+| Adventuring Gear | `adventuring_gear`  |
+| Rod              | `rod`               |
+| Staff            | `staff`             |
+| Wand             | `wand`              |
+| Scroll           | `scroll`            |
+| Potion           | `potion`            |
+| Ammo             | `ammo`              |
+| Consumable       | `consumable`        |
+| Wondrous Item    | `wondrous_item`     |
 
-### Entity Diagram
+---
 
-![Entity Diagram](./db-diagram.svg)
+## API Reference
 
-## API References
+Base path: `/api/v1`
 
-### Character Management
+---
+
+### Characters Endpoints
 
 #### Create a character
 
-- **Endpoint**: `POST /api/{version}/api/{version}/characters`
-- **Description**: Creates a new character with their stats and customization.
-- **Request Body**: A character
+```
+POST /api/v1/characters
+```
 
-```JSON
+```json
 {
     "name": "Arwen",
     "body_type": "type_b",
@@ -188,18 +203,23 @@ Each item has its own unique type/category. This is a list of the supported ones
 }
 ```
 
-- **Succesful Response (`201 Created`)**: Returns the object of the created character, including their new `id`.
+`201 Created` — Returns the created character with its new `id`.
+
+---
 
 #### Get all characters
 
-- **Endpoint**: `GET /api/{version}/characters`
-- **Description**: Returns a JSON object with an array of all characters, including their stats and customization fields. It also supports pagination with `page` and `limit` query parameters (e.g., `GET /api/{version}/characters?page=1`).
-- **Query Parameters**:
-  - `page`: The page number (starting from 0) (optional).
+```
+GET /api/v1/characters?page=1
+```
 
-- **Succesful Response (`200 OK`)**: Returns an object with an array of all characters, including their stats and customization fields, and pagination metadata.:
+| Parameter | Type   | Default | Description                  |
+|-----------|--------|---------|------------------------------|
+| `page`    | int    | 1       | Page number (1-indexed)      |
 
-```JSON
+`200 OK`
+
+```json
 {
     "data": [
         {
@@ -208,320 +228,166 @@ Each item has its own unique type/category. This is a list of the supported ones
             "body_type": "type_b",
             "species": "human",
             "class": "monk",
-            "stats": {
-                ...
-            },
-            "customization": {
-                ...
-            }
-        },
-        ...
+            "stats": { ... },
+            "customization": { ... }
+        }
     ],
     "pagination": {
-        "page": 0,
+        "page": 1,
         "limit": 20,
-        "total_count": 150,
+        "total": 150,
         "has_next": true
     }
 }
 ```
 
+---
+
 #### Get a character
 
-- **Endpoint**: `GET /api/{version}/characters/{id}`
-- **Description**: Returns a single character by their `id`.
-- **Succesful Response (`200 OK`)**: Returns the object of the character with the specified `id`, including stats and customization fields:
-
-```JSON
-{
-    "id": 1,
-    "name": "Shallan",
-    "body_type": "type_b",
-    "species": "human",
-    "class": "monk",
-    "stats": {
-        ...
-    },
-    "customization": {
-        ...
-    }
-}
+```
+GET /api/v1/characters/{id}
 ```
 
-#### Edit a character
+`200 OK` — Returns the character object.
 
-- **Endpoint**: `PUT /api/{version}/characters/{id}`
-- **Description**: Updates an existing character by their `id`.
-- **Request Body**: A character object with the updated fields.
+```
+404 Not Found` — Character doesn't exist.
 
-```JSON
-{
-    "name": "Shallan",
-    "body_type": "type_b",
-    "species": "human",
-    "class": "monk",
-    "stats": {
-        "strength": 8,
-        "dexterity": 7,
-        "constitution": 9,
-        "intelligence": 6,
-        "wisdom": 8,
-        "charisma": 5
-    },
-    "customization": {
-        "hair": 1,
-        "face": 2,
-        "shirt": 3,
-        "pants": 4,
-        "shoes": 0
-    }
-}
+---
+
+#### Update a character
+
+```
+PUT /api/v1/characters/{id}
 ```
 
-- **Succesful Response (`200 OK`)**: Returns the object of the updated character, including their `id`.
+Body is the same as create (excluding `id`).
+
+`200 OK` — Returns the updated character.
+
+---
 
 #### Delete a character
 
-- **Endpoint**: `DELETE /api/{version}/characters/{id}`
-- **Description**: Deletes an existing character by their `id`.
-- **Succesful Response (`200 OK`)**.
-
-### Character Inventory Management
-
-#### Add item to character inventory
-
-- **Endpoint**: `POST /api/{version}/characters/{character_id}/inventory/{item_id}`
-- **Description**: Adds a specific item to the character's inventory.
-- **Path Variables**:
-  - `character_id`: The ID of the character.
-  - `item_id`: The ID of the item to be added to the character's inventory.
-- **Query Parameters**:
-  - `quantity`: *(OPTIONAL)* The amount of items to add. If no value is specified, defaults to 1.
-- **Successful Response (`200 OK`)**: returns the object of the item added:
-
-```JSON
-{
-  "id": 3,
-  "name": "Healing Potion",
-  "type": "potion",
-  "description": "A potion that restores health.",
-  "equippable": false,
-  "rarity": 1,
-  "heal_amount": 60
-}
+```
+DELETE /api/v1/characters/{id}
 ```
 
-#### Delete item from character's inventory
+`200 OK`
 
-- **Endpoint**: `DELETE /api/{version}/characters/{character_id}/inventory/{item_id}`
-- **Description**: Deletes a specific item.
-- **Path Variables**:
-  - `character_id`: The ID of the character.
-  - `item_id`: The ID of the item to be removed from the character's inventory.
-- **Query Parameters**:
-  - `quantity`: *(OPTIONAL)* The amount of items to remove. If no value is specified, defaults to 1.
-- **Successful Response (`200 OK`)**: returns the object of the item added:
-
-```JSON
-{
-  "id": 3,
-  "name": "Healing Potion",
-  "type": "potion",
-  "description": "A potion that restores health.",
-  "equippable": false,
-  "rarity": 1,
-  "heal_amount": 60
-}
+```json
+{ "result": "success" }
 ```
 
-#### Get a character's inventory
+---
 
-- **Endpoint**: `GET /api/{version}/characters/{character_id}/inventory`
-- **Description**: Gets a character's inventory.
-- **Path Variables**:
-  - `character_id`: The ID of the character.
-- **Successful Response(`200 ok`)**: returns an array of the items belonging to the character.
-
-```JSON
-[
-  {
-    "item": {
-      "id": 2,
-      "name": "Carl's Doomsday Scenario",
-      "type": "explosive",
-      "description": "Created  by  a  man  who  murders  babies  and  steals  rare collectibles from his elders, this device is powerful enough to level an entire city and all the suburbs around it. It is created by combining  a  massively  overloaded  soul crystal and  a  Sheol Glass Reaper Case.",
-      "equippable": false,
-      "rarity": 5,
-      "damage": 1000
-    },
-    "quantity": 4,
-    "is_equipped": false
-  },
-  {
-    "item": {
-      "id": 3,
-      "name": "Healing Potion",
-      "type": "potion",
-      "description": "A potion that restores health.",
-      "equippable": false,
-      "rarity": 1,
-      "heal_amount": 60
-    },
-    "quantity": 3,
-    "is_equipped": false
-  }
-]
-```
-
-### Item Pool Management
+### Items Endpoints
 
 #### Create an item
 
-- **Endpoint**: `POST /api/{version}/items`
-- **Description**: Create a new item inserted into pool.
-- **Successful Response(`201 Created`)**: returns an array that represents the current item pool.
-- **Request Body**: An item
+```
+POST /api/v1/items
+```
 
-```JSON
+```json
 {
-  "name": "Master Sword",
-  "type": "weapon",
-  "description": "A legendary sword with immense power.",
-  "equippable": true,
-  "rarity": 5,
- 
-  "damage": 34,
-  "defense": 23,
-  "heal_amount": 10,
-  "mana_cost":4,
-  "duration": 233,
-  "cooldown": 120,
-  "capacity": 3
-}
-```
-
-- **Successful Response(`200 ok`)**: returns the item with its corresponding id.
-
-```JSON
-  {
-    "id": 1
     "name": "Master Sword",
     "type": "weapon",
     "description": "A legendary sword with immense power.",
     "equippable": true,
     "rarity": 5,
-    "damage": xx,
-    "defense": xx,
-    "heal_amount": xx,
-    "mana_cost": xx,
-    "duration": xx,
-    "cooldown": xx,
-    "capacity": xx
-  }
+    "damage": 34,
+    "defense": 23
 }
 ```
 
-#### Get the current Item Pool
+`201 Created` — Returns the item with its new `id`.
 
-- **Endpoint**: `GET /api/{version}/items`
-- **Description**: Gets the whole item pool.
-- **Successful Response(`200 ok`)**: returns an array that represents the current item pool.
+---
 
-```JSON
+#### Get all items
+
+```
+GET /api/v1/items
+```
+
+`200 OK` — Returns the full item pool array.
+
+---
+
+#### Get an item
+
+```
+GET /api/v1/items/{id}
+```
+
+`200 OK` — Returns the item object.
+
+---
+
+### Inventory Endpoints
+
+#### Get a character's inventory
+
+```
+GET /api/v1/characters/{characterId}/inventory
+```
+
+`200 OK`
+
+```json
 [
-  {
-    "id": 1,
-    "name": "Master Sword",
-    "type": "weapon",
-    "description": "A legendary sword with immense power.",
-    "equippable": true,
-    "rarity": 5,
-    "damage": 100
-  },
-  {
-    "id": 2,
-    "name": "Carl's Doomsday Scenario",
-    "type": "explosive",
-    "description": "Created  by  a  man  who  murders  babies  and  steals  rare collectibles from his elders, this device is powerful enough to level an entire city and all the suburbs around it. It is created by combining  a  massively  overloaded  soul crystal and  a  Sheol Glass Reaper Case.",
-    "equippable": false,
-    "rarity": 5,
-    "damage": 1000
-  },
-  {
-    "id": 3,
-    "name": "Healing Potion",
-    "type": "potion",
-    "description": "A potion that restores health.",
-    "equippable": false,
-    "rarity": 1,
-    "heal_amount": 60
-  },
-  {
-    "id": 4,
-    "name": "Steel Armor",
-    "type": "armor",
-    "description": "Sturdy armor made of steel.",
-    "equippable": true,
-    "rarity": 3,
-    "defense": 40
-  },
-  {
-    "id": 5,
-    "name": "Magic Missile",
-    "type": "spell",
-    "description": "A spell that launches a magic missile at the target.",
-    "equippable": false,
-    "rarity": 2,
-    "mana_cost": 30
-  },
-  {
-    "id": 6,
-    "name": "Invisibility Cloak",
-    "type": "misc",
-    "description": "A cloak that grants invisibility to the wearer.",
-    "equippable": true,
-    "rarity": 4,
-    "duration": "5 minutes"
-  },
-  {
-    "id": 7,
-    "name": "Paris's Bow",
-    "type": "weapon",
-    "description": "A finely crafted bow used by the legendary archer Paris.",
-    "equippable": true,
-    "rarity": 4,
-    "damage": 80
-  },
-  {
-    "id": 8,
-    "name": "Favor and Protection Ring",
-    "type": "accessory",
-    "description": "A ring symbolizing the favor and protection of the goddess Fina, known in legend to possess 'fateful beauty'. This ring boosts its wearer's HP, stamina, and max equipment load, but breaks if ever removed.",
-    "equippable": true,
-    "rarity": 5,
-    "defense": 10,
-    "mana_cost": 20
-  }
+    {
+        "item": {
+            "id": 3,
+            "name": "Healing Potion",
+            "type": "potion",
+            "description": "A potion that restores health.",
+            "equippable": false,
+            "rarity": 1,
+            "heal_amount": 60
+        },
+        "quantity": 3,
+        "is_equipped": false
+    }
 ]
 ```
 
-#### Get item from current Item Pool
+---
 
-- **Endpoint**: `GET /api/{version}/items/{id}`
-- **Description**: Gets an item from the current item pool.
-- **Path Parameters**:
-  - `id`: The id of the item to get
-- **Successful Response(`200 ok`)**: returns an object of the item from the item pool.
+#### Add item to character
 
-```JSON
-  {
-    "id": 8,
-    "name": "Favor and Protection Ring",
-    "type": "accessory",
-    "description": "A ring symbolizing the favor and protection of the goddess Fina, known in legend to possess 'fateful beauty'. This ring boosts its wearer's HP, stamina, and max equipment load, but breaks if ever removed.",
-    "equippable": true,
-    "rarity": 5,
-    "defense": 10,
-    "mana_cost": 20
-  }
 ```
+POST /api/v1/characters/{characterId}/inventory/{itemId}?quantity=1
+```
+
+| Parameter  | Type | Default | Description            |
+|------------|------|---------|------------------------|
+| `quantity` | int  | 1       | Amount to add (min 1)  |
+
+`200 OK` — Returns the inventory entry for the added item.
+
+---
+
+#### Remove item from character
+
+```
+DELETE /api/v1/characters/{characterId}/inventory/{itemId}?quantity=1
+```
+
+| Parameter  | Type | Default | Description               |
+|------------|------|---------|---------------------------|
+| `quantity` | int  | 1       | Amount to remove (min 1)  |
+
+`200 OK`
+
+```json
+{ "result": "success" }
+```
+
+---
+
+## Entity Diagram
+
+![Entity Diagram](./db-diagram.svg)

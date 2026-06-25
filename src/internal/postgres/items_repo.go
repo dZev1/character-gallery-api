@@ -4,6 +4,7 @@ import (
 	"context"
 	"dZev1/character-gallery/internal/items"
 	"dZev1/character-gallery/internal/postgres/db"
+	"fmt"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -23,12 +24,12 @@ func (i *itemRepo) q(exec db.DBTX) *db.Queries {
 	return db.New(exec)
 }
 
-func (i *itemRepo) FindAllItems(ctx context.Context, exec db.DBTX) ([]items.Item, error) {
+func (i *itemRepo) FindAllItems(ctx context.Context, exec db.DBTX) ([]items.Item, uint64, error) {
 	q := i.q(exec)
 
 	allItems, err := q.FindAllItems(ctx)
 	if err != nil {
-		return nil, err
+		return nil, 0, fmt.Errorf("list items: %w", err)
 	}
 
 	result := make([]items.Item, len(allItems))
@@ -50,7 +51,7 @@ func (i *itemRepo) FindAllItems(ctx context.Context, exec db.DBTX) ([]items.Item
 		}
 	}
 
-	return result, nil
+	return result, uint64(len(result)), nil
 }
 
 func (i *itemRepo) FindItem(ctx context.Context, exec db.DBTX, itemID items.ItemID) (*items.Item, error) {
@@ -58,7 +59,7 @@ func (i *itemRepo) FindItem(ctx context.Context, exec db.DBTX, itemID items.Item
 
 	itm, err := q.FindItem(ctx, int64(itemID))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("item %d: %w", itemID, items.ErrNotFound)
 	}
 
 	return &items.Item{
@@ -98,7 +99,7 @@ func (i *itemRepo) SaveItem(ctx context.Context, exec db.DBTX, item *items.Item)
 
 	saveItem, err := q.CreateItem(ctx, saveItemParams)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create item: %w", err)
 	}
 
 	item.ID = items.ItemID(saveItem.ID)
@@ -129,7 +130,7 @@ func (i *itemRepo) SeedItems(ctx context.Context, exec db.DBTX, items []items.It
 
 	_, err := q.SeedItems(ctx, seedItemParams)
 	if err != nil {
-		return err
+		return fmt.Errorf("seed items: %w", err)
 	}
 
 	return nil

@@ -14,12 +14,10 @@ WORKDIR /root/
 
 COPY --from=builder /app/main .
 
-COPY src/database/schema/schema.sql /root/database/schema/schema.sql
+COPY openapi.yaml /openapi.yaml
 
-COPY src/item_pool.json .
-
-ENV REDIS_URL=localhost:6379
-ENV REDIS_PASSWORD=""
+ENV DATABASE_URL=""
+ENV REDIS_URL="redis://localhost:6379/0"
 
 EXPOSE 8080
 CMD ["./main"]

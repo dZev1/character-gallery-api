@@ -104,9 +104,12 @@ func TestItemRepo_FindAllItems(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	all, err := repo.FindAllItems(ctx, tt.Tx)
+	all, count, err := repo.FindAllItems(ctx, tt.Tx)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if count != 2 {
+		t.Errorf("got count %d, want 2", count)
 	}
 	if len(all) != 2 {
 		t.Errorf("got %d items, want 2", len(all))
@@ -118,9 +121,12 @@ func TestItemRepo_FindAllItems_Empty(t *testing.T) {
 	repo := newItemRepo(t)
 	ctx := context.Background()
 
-	all, err := repo.FindAllItems(ctx, tt.Tx)
+	all, count, err := repo.FindAllItems(ctx, tt.Tx)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if count != 0 {
+		t.Errorf("got count %d, want 0", count)
 	}
 	if len(all) != 0 {
 		t.Errorf("expected no items, got %d", len(all))
@@ -147,9 +153,12 @@ func TestItemRepo_SeedItems(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	all, err := repo.FindAllItems(ctx, tt.Tx)
+	all, count, err := repo.FindAllItems(ctx, tt.Tx)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if count != 2 {
+		t.Errorf("got count %d, want 2", count)
 	}
 	if len(all) != 2 {
 		t.Errorf("expected 2 items after seed, got %d", len(all))

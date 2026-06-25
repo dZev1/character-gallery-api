@@ -2,6 +2,10 @@ package handlers
 
 import "net/http"
 
+func OpenAPIHandler(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, "../openapi.yaml")
+}
+
 func DocsHandler(w http.ResponseWriter, r *http.Request) {
 	html := `<!DOCTYPE html>
 <html lang="en">

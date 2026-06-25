@@ -7,6 +7,7 @@ import (
 	"dZev1/character-gallery/internal/items"
 	"dZev1/character-gallery/internal/postgres/db"
 	"errors"
+	"fmt"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -29,6 +30,13 @@ func (i *inventoryRepo) AddItemToCharacter(ctx context.Context, exec db.DBTX, pa
 	q := i.q(exec)
 
 	item, err := checkItem(ctx, q, param.ItemID)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := checkCharacter(ctx, q, param.CharacterID); err != nil {
+		return nil, err
+	}
 
 	params := db.AddItemToCharacterParams{
 		CharacterID: int64(param.CharacterID),
@@ -38,7 +46,7 @@ func (i *inventoryRepo) AddItemToCharacter(ctx context.Context, exec db.DBTX, pa
 
 	row, err := q.AddItemToCharacter(ctx, params)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("add item %d to character %d: %w", param.ItemID, param.CharacterID, err)
 	}
 
 	return &inventory.InventoryItem{
@@ -57,6 +65,10 @@ func (i *inventoryRepo) RemoveItemFromCharacter(ctx context.Context, exec db.DBT
 		return nil, err
 	}
 
+	if err := checkCharacter(ctx, q, param.CharacterID); err != nil {
+		return nil, err
+	}
+
 	params := db.RemoveItemFromCharacterParams{
 		CharacterID: int64(param.CharacterID),
 		ItemID:      int64(param.ItemID),
@@ -65,7 +77,7 @@ func (i *inventoryRepo) RemoveItemFromCharacter(ctx context.Context, exec db.DBT
 
 	row, err := q.RemoveItemFromCharacter(ctx, params)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("remove item %d from character %d: %w", param.ItemID, param.CharacterID, err)
 	}
 	if row == nil {
 		return nil, errors.New("cannot remove more items than you have")
@@ -84,7 +96,7 @@ func (i *inventoryRepo) GetCharacterInventory(ctx context.Context, exec db.DBTX,
 
 	rows, err := q.GetCharacterInventory(ctx, int64(characterID))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get inventory for character %d: %w", characterID, err)
 	}
 	for _, row := range rows {
 		item := &items.Item{
@@ -112,10 +124,18 @@ func (i *inventoryRepo) GetCharacterInventory(ctx context.Context, exec db.DBTX,
 	return itemSlice, nil
 }
 
+func checkCharacter(ctx context.Context, q *db.Queries, charID characters.CharacterID) error {
+	_, err := q.SelectCharacter(ctx, int64(charID))
+	if err != nil {
+		return fmt.Errorf("character %d: %w", charID, characters.ErrNotFound)
+	}
+	return nil
+}
+
 func checkItem(ctx context.Context, q *db.Queries, itemID items.ItemID) (*items.Item, error) {
 	itemRow, err := q.FindItem(ctx, int64(itemID))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("item %d: %w", itemID, items.ErrNotFound)
 	}
 	item := &items.Item{
 		ID:          itemID,

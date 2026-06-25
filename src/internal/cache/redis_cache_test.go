@@ -29,7 +29,7 @@ func TestMain(m *testing.M) {
 	client := redis.NewClient(opts)
 
 	ctx := context.Background()
-	if err := client.Ping(ctx).Err(); err != nil {
+	if err = client.Ping(ctx).Err(); err != nil {
 		fmt.Fprintf(os.Stderr, "failed to connect to Redis: %v\n", err)
 		os.Exit(1)
 	}

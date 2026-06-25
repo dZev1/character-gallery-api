@@ -1,6 +1,11 @@
 package items
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
+
+var ErrNotFound = errors.New("item not found")
 
 type ItemID uint64
 

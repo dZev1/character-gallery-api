@@ -46,11 +46,11 @@ paths:
       parameters:
         - name: page
           in: query
-          description: Page number (0-indexed)
+          description: Page number (1-indexed)
           schema:
             type: integer
-            minimum: 0
-            default: 0
+            minimum: 1
+            default: 1
         - name: limit
           in: query
           description: Items per page
@@ -591,8 +591,8 @@ components:
       properties:
         page:
           type: integer
-          minimum: 0
-          example: 0
+          minimum: 1
+          example: 1
         limit:
           type: integer
           example: 20

@@ -4,6 +4,7 @@ import (
 	"context"
 	"dZev1/character-gallery/internal/characters"
 	"dZev1/character-gallery/internal/postgres/db"
+	"fmt"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -34,7 +35,7 @@ func (c *characterRepo) SaveCharacter(ctx context.Context, exec db.DBTX, charact
 
 	char, err := q.CreateCharacter(ctx, createCharacterParams)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create character: %w", err)
 	}
 
 	character.ID = characters.CharacterID(char.ID)
@@ -50,7 +51,7 @@ func (c *characterRepo) SaveCharacter(ctx context.Context, exec db.DBTX, charact
 
 	_, err = q.CreateCustomization(ctx, createCustomizationParams)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create customization: %w", err)
 	}
 
 	character.Customization.ID = character.ID
@@ -67,7 +68,7 @@ func (c *characterRepo) SaveCharacter(ctx context.Context, exec db.DBTX, charact
 
 	_, err = q.CreateStats(ctx, createStatParams)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create stats: %w", err)
 	}
 
 	character.Stats.ID = character.ID
@@ -80,17 +81,17 @@ func (c *characterRepo) FindCharacter(ctx context.Context, exec db.DBTX, id char
 
 	dbChar, err := q.SelectCharacter(ctx, int64(id))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("character %d: %w", id, characters.ErrNotFound)
 	}
 
 	dbStats, err := q.SelectCharacterStats(ctx, dbChar.ID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("stats for character %d: %w", id, err)
 	}
 
 	dbCust, err := q.SelectCharacterCustomization(ctx, dbChar.ID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("customization for character %d: %w", id, err)
 	}
 
 	return &characters.Character{
@@ -130,12 +131,12 @@ func (c *characterRepo) FindAllCharacters(ctx context.Context, exec db.DBTX, pag
 		Offset: offset,
 	})
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("list characters: %w", err)
 	}
 
 	count, err := q.CountAllCharacters(ctx)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("count characters: %w", err)
 	}
 
 	result := make([]characters.Character, len(dbChars))
@@ -163,7 +164,7 @@ func (c *characterRepo) UpdateCharacter(ctx context.Context, exec db.DBTX, chara
 		Class:    string(character.Class),
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("update character %d: %w", character.ID, err)
 	}
 
 	_, err = q.UpdateStats(ctx, db.UpdateStatsParams{
@@ -176,7 +177,7 @@ func (c *characterRepo) UpdateCharacter(ctx context.Context, exec db.DBTX, chara
 		Charisma:     int16(character.Stats.Charisma),
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("update stats for character %d: %w", character.ID, err)
 	}
 
 	_, err = q.UpdateCustomization(ctx, db.UpdateCustomizationParams{
@@ -188,7 +189,7 @@ func (c *characterRepo) UpdateCharacter(ctx context.Context, exec db.DBTX, chara
 		Shoes:       int16(character.Customization.Shoes),
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("update customization for character %d: %w", character.ID, err)
 	}
 
 	return c.FindCharacter(ctx, exec, character.ID)
@@ -196,5 +197,9 @@ func (c *characterRepo) UpdateCharacter(ctx context.Context, exec db.DBTX, chara
 
 func (c *characterRepo) DeleteCharacter(ctx context.Context, exec db.DBTX, id characters.CharacterID) error {
 	q := c.q(exec)
-	return q.DeleteCharacter(ctx, int64(id))
+	err := q.DeleteCharacter(ctx, int64(id))
+	if err != nil {
+		return fmt.Errorf("delete character %d: %w", id, err)
+	}
+	return nil
 }
