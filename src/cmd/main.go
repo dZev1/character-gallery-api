@@ -2,104 +2,88 @@ package main
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
+	"dZev1/character-gallery/internal/cache"
+	"dZev1/character-gallery/internal/characters"
+	"dZev1/character-gallery/internal/inventory"
+	"dZev1/character-gallery/internal/items"
+	"dZev1/character-gallery/internal/middleware"
+	"dZev1/character-gallery/internal/postgres"
+	redislib "dZev1/character-gallery/internal/redis"
 	"log"
 	"net/http"
 	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"dZev1/character-gallery/handlers"
-	"dZev1/character-gallery/internal/database"
-	"dZev1/character-gallery/internal/middleware"
-	"dZev1/character-gallery/models/inventory"
 
-	"github.com/joho/godotenv"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 )
 
 func main() {
-	err := godotenv.Load()
+	pgConnStr := os.Getenv("DATABASE_URL")
+	redisURL := os.Getenv("REDIS_URL")
+
+	if pgConnStr == "" || redisURL == "" {
+		log.Fatal("DATABASE_URL or REDIS_URL environment variables not set")
+	}
+
+	pool, err := pgxpool.New(context.Background(), pgConnStr)
 	if err != nil {
-		log.Println("Warning: Could not load .env file, relying on environment variables")
+		log.Fatal(err)
 	}
+	defer pool.Close()
 
-	connectionString := os.Getenv("DATABASE_URL")
-	currentVersion := os.Getenv("API_VERSION")
-
-	err = godotenv.Overload("./config.env")
+	redisOpts, err := redis.ParseURL(redisURL)
 	if err != nil {
-		log.Println("Warning: Could not load config.env file, relying on environment variables")
+		log.Fatal(err)
 	}
-
-	dbType := os.Getenv("DATABASE_TYPE")
-
-	gallery, err := database.NewCharacterGallery(dbType, connectionString)
+	rdb, err := redislib.NewRedisClient(redisOpts)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
-	defer gallery.Close()
+	defer rdb.Close()
 
-	itemFile, err := os.Open("./item_pool.json")
-	if err != nil {
-		log.Println(fmt.Errorf("could not open seed file: %w", err))
-	}
-	defer itemFile.Close()
+	charCache := cache.NewRedisCache(rdb, 5*time.Minute, "character")
+	itemCache := cache.NewRedisCache(rdb, 5*time.Minute, "item")
+	invCache := cache.NewRedisCache(rdb, 5*time.Minute, "inventory")
 
-	var items []inventory.Item
-	if err := json.NewDecoder(itemFile).Decode(&items); err != nil {
-		log.Println(fmt.Errorf("could not decode items json: %w", err))
-	}
+	charRepo := postgres.NewCharacterRepo(pool)
+	itemRepo := postgres.NewItemRepo(pool)
+	invRepo := postgres.NewInventoryRepo(pool)
 
-	gallery.SeedItems(items)
+	charService := characters.NewService(charRepo, pool, charCache)
+	itemService := items.NewService(itemRepo, pool, itemCache)
+	invService := inventory.NewService(invRepo, pool, invCache)
 
-	handler := &handlers.CharacterHandler{
-		Gallery: gallery,
-	}
+	gallery := handlers.NewGallery(charService, itemService, invService)
 
-	baseRoute := "/api/" + currentVersion
+	rl := middleware.NewRateLimiter(rdb, 1*time.Minute)
+	rl.SetLimit("POST", "/api/v1/characters", 10)
+	rl.SetLimit("DELETE", "/api/v1/characters/{characterId}", 30)
+	rl.SetLimit("POST", "/api/v1/items", 10)
 
 	mux := http.NewServeMux()
-	
-	mux.HandleFunc("POST "+baseRoute+"/characters", handler.CreateCharacter)
-	mux.HandleFunc("GET "+baseRoute+"/characters", handler.GetAllCharacters)
-	mux.HandleFunc("GET "+baseRoute+"/characters/{id}", handler.GetCharacter)
-	mux.HandleFunc("PUT "+baseRoute+"/characters/{id}", handler.EditCharacter)
-	mux.HandleFunc("DELETE "+baseRoute+"/characters/{id}", handler.DeleteCharacter)
+	mux.HandleFunc("GET /openapi.yaml", handlers.OpenAPIHandler)
+	mux.HandleFunc("GET /docs", handlers.DocsHandler)
 
-	mux.HandleFunc("POST "+baseRoute+"/characters/{character_id}/inventory/{item_id}", handler.AddItemToCharacter)
-	mux.HandleFunc("DELETE "+baseRoute+"/characters/{character_id}/inventory/{item_id}", handler.RemoveItemFromCharacter)
-	mux.HandleFunc("GET "+baseRoute+"/characters/{character_id}/inventory", handler.GetCharacterInventory)
+	mux.HandleFunc("POST /api/v1/characters", gallery.HandleCreateCharacter)
+	mux.HandleFunc("GET /api/v1/characters", gallery.HandleGetAllCharacters)
+	mux.HandleFunc("GET /api/v1/characters/{characterId}", gallery.HandleGetCharacter)
+	mux.HandleFunc("PUT /api/v1/characters/{characterId}", gallery.HandleUpdateCharacter)
+	mux.HandleFunc("DELETE /api/v1/characters/{characterId}", gallery.HandleDeleteCharacter)
 
-	mux.HandleFunc("GET "+baseRoute+"/items", handler.ShowPoolItems)
-	mux.HandleFunc("POST "+baseRoute+"/items", handler.CreateItem)
-	mux.HandleFunc("GET "+baseRoute+"/items/{item_id}", handler.ShowItem)
+	mux.HandleFunc("POST /api/v1/items", gallery.HandleCreateItem)
+	mux.HandleFunc("GET /api/v1/items", gallery.HandleGetAllItems)
+	mux.HandleFunc("GET /api/v1/items/{itemId}", gallery.HandleGetItem)
 
-	handler_with_middlewares := middleware.EnableCors(middleware.RequireAPIKey(gallery.GetAuthStore())(mux))
+	mux.HandleFunc("GET /api/v1/characters/{characterId}/inventory", gallery.HandleGetCharacterInventory)
+	mux.HandleFunc("POST /api/v1/characters/{characterId}/inventory/{itemId}", gallery.HandleAddItemToCharacter)
+	mux.HandleFunc("DELETE /api/v1/characters/{characterId}/inventory/{itemId}", gallery.HandleRemoveItemFromCharacter)
 
-	server := &http.Server{
-		Addr:         ":8080",
-		Handler:      handler_with_middlewares,
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 15 * time.Second,
-		IdleTimeout:  60 * time.Second,
-	}
+	handler := rl.Limit(mux)
+	handler = middleware.EnableCors(handler)
 
-	log.Println("Server listening on http://localhost:8080" + baseRoute)
-
-	go func() {
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("Could not start server: %v", err)
-		}
-	}()
-
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-	server.Shutdown(ctx)
-
+	log.Println("Server listening on :8080")
+	log.Fatal(http.ListenAndServe(":8080", handler))
 }
