@@ -27,6 +27,7 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 	opts.Protocol = 2
+	opts.DB = 1
 
 	client := redis.NewClient(opts)
 	ctx := context.Background()
