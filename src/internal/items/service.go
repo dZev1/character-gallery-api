@@ -2,13 +2,18 @@ package items
 
 import (
 	"context"
-	"dZev1/character-gallery/internal/cache"
+	_ "embed"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 
+	"dZev1/character-gallery/internal/cache"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+//go:embed item_pool.json
+var itemPoolData []byte
 
 type Service struct {
 	repo  Repository
@@ -22,6 +27,37 @@ func NewService(repo Repository, pool *pgxpool.Pool, cache cache.Cache) *Service
 		pool:  pool,
 		cache: cache,
 	}
+}
+
+func (s *Service) SeedItems(ctx context.Context) error {
+	var items []Item
+	if err := json.Unmarshal(itemPoolData, &items); err != nil {
+		return fmt.Errorf("unmarshal item pool: %w", err)
+	}
+
+	for i := range items {
+		items[i].ID = 0
+		if !items[i].Validate() {
+			return fmt.Errorf("invalid item in pool: %s", items[i].Name)
+		}
+	}
+
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	if err := s.repo.SeedItems(ctx, tx, items); err != nil {
+		return fmt.Errorf("seed items: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit tx: %w", err)
+	}
+
+	log.Printf("seeded %d items from pool", len(items))
+	return nil
 }
 
 func (s *Service) GetAll(ctx context.Context) ([]Item, uint64, error) {
@@ -72,5 +108,4 @@ func (s *Service) CreateItem(ctx context.Context, item *Item) (*Item, error) {
 		log.Printf("cache set item %d: %v", item.ID, err)
 	}
 	return item, nil
-
 }

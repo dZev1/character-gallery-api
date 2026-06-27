@@ -56,6 +56,10 @@ func main() {
 	itemService := items.NewService(itemRepo, pool, itemCache)
 	invService := inventory.NewService(invRepo, pool, invCache)
 
+	if err = itemService.SeedItems(context.Background()); err != nil {
+		log.Fatal(err)
+	}
+
 	gallery := handlers.NewGallery(charService, itemService, invService)
 
 	rl := middleware.NewRateLimiter(rdb, 1*time.Minute)
