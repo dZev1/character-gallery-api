@@ -57,7 +57,7 @@ func main() {
 	invService := inventory.NewService(invRepo, pool, invCache)
 
 	if err = itemService.SeedItems(context.Background()); err != nil {
-		log.Fatal(err)
+		log.Print(err)
 	}
 
 	gallery := handlers.NewGallery(charService, itemService, invService)
