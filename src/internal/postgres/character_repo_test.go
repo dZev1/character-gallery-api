@@ -95,7 +95,7 @@ func TestCharacterRepo_FindAllCharacters(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	chars, count, err := repo.FindAllCharacters(ctx, tt.Tx, 1, 20)
+	chars, count, err := repo.FindAllCharacters(ctx, tt.Tx, 20, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -127,7 +127,7 @@ func TestCharacterRepo_FindAllCharacters_Pagination(t *testing.T) {
 		}
 	}
 
-	page1, count, err := repo.FindAllCharacters(ctx, tt.Tx, 1, 20)
+	page1, count, err := repo.FindAllCharacters(ctx, tt.Tx, 20, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -138,7 +138,7 @@ func TestCharacterRepo_FindAllCharacters_Pagination(t *testing.T) {
 		t.Errorf("page 1: got %d characters, want 5", len(page1))
 	}
 
-	page2, _, err := repo.FindAllCharacters(ctx, tt.Tx, 2, 20)
+	page2, _, err := repo.FindAllCharacters(ctx, tt.Tx, 20, 20)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -152,7 +152,7 @@ func TestCharacterRepo_FindAllCharacters_Empty(t *testing.T) {
 	repo := newCharacterRepo(t)
 	ctx := context.Background()
 
-	chars, count, err := repo.FindAllCharacters(ctx, tt.Tx, 1, 20)
+	chars, count, err := repo.FindAllCharacters(ctx, tt.Tx, 20, 0)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -104,7 +104,7 @@ func TestItemRepo_FindAllItems(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	all, count, err := repo.FindAllItems(ctx, tt.Tx, 0, 1<<31 - 1)
+	all, count, err := repo.FindAllItems(ctx, tt.Tx, 1<<31-1, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -121,7 +121,7 @@ func TestItemRepo_FindAllItems_Empty(t *testing.T) {
 	repo := newItemRepo(t)
 	ctx := context.Background()
 
-	all, count, err := repo.FindAllItems(ctx, tt.Tx, 0, 1<<31-1)
+	all, count, err := repo.FindAllItems(ctx, tt.Tx, 1<<31-1, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -153,7 +153,7 @@ func TestItemRepo_SeedItems(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	all, count, err := repo.FindAllItems(ctx, tt.Tx, 0, 1<<31-1)
+	all, count, err := repo.FindAllItems(ctx, tt.Tx, 1<<31-1, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
