@@ -33,6 +33,8 @@ paths:
                 $ref: "#/components/schemas/Character"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -56,7 +58,7 @@ paths:
           description: Items per page
           schema:
             type: integer
-            minimum: 1
+            minimum: 20
             maximum: 100
             default: 20
       responses:
@@ -133,6 +135,8 @@ paths:
                 $ref: "#/components/schemas/Character"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -151,10 +155,16 @@ paths:
       responses:
         "200":
           description: Character deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResponse"
         "400":
           $ref: "#/components/responses/BadRequest"
         "404":
           $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -182,6 +192,8 @@ paths:
                   $ref: "#/components/schemas/InventoryItem"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -217,9 +229,11 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Item"
+                $ref: "#/components/schemas/InventoryItem"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -254,9 +268,11 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Item"
+                $ref: "#/components/schemas/DeleteResponse"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -281,23 +297,46 @@ paths:
                 $ref: "#/components/schemas/Item"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
         "500":
           $ref: "#/components/responses/InternalError"
 
     get:
       operationId: getItemPool
       summary: Get the item pool
-      description: Returns all items in the item pool.
+      description: Returns a paginated list of all items in the item pool.
       tags: [Items]
+      parameters:
+        - name: page
+          in: query
+          description: Page number (1-indexed)
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          description: Items per page (minimum 20)
+          schema:
+            type: integer
+            minimum: 20
+            default: 20
       responses:
         "200":
-          description: Array of all items in the pool
+          description: Paginated list of items
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Item"
+                type: object
+                required: [data, pagination]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Item"
+                  pagination:
+                    $ref: "#/components/schemas/Pagination"
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -323,8 +362,26 @@ paths:
                 $ref: "#/components/schemas/Item"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalError"
+  
+  /metrics:
+    servers:
+      - url: /
+    get:
+      operationId: getMetrics
+      summary: Prometheus metrics
+      description: Exposes Prometheus metrics for monitoring
+      tags: [System]
+      responses:
+        "200":
+          description: Prometheus metrics in text format
+          content:
+            text/plain:
+              schema:
+                type: string
 
 components:
   schemas:
@@ -572,9 +629,9 @@ components:
     InventoryItem:
       type: object
       description: An item entry in a character's inventory.
-      required: [item, quantity, is_equipped]
+      required: [items, quantity, is_equipped]
       properties:
-        item:
+        items:
           $ref: "#/components/schemas/Item"
         quantity:
           type: integer
@@ -583,6 +640,15 @@ components:
         is_equipped:
           type: boolean
           example: false
+
+    DeleteResponse:
+      type: object
+      description: Generic success response for deletion.
+      required: [result]
+      properties:
+        result:
+          type: string
+          example: "success"
 
     Pagination:
       type: object
@@ -631,6 +697,13 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/ApiError"
+    TooManyRequests:
+      description: Rate limit exceeded
+      content:
+        text/plain:
+          schema:
+            type: string
+            example: "429 too many requests"
     InternalError:
       description: Internal server error
       content:

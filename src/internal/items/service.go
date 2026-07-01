@@ -60,8 +60,9 @@ func (s *Service) SeedItems(ctx context.Context) error {
 	return nil
 }
 
-func (s *Service) GetAll(ctx context.Context) ([]Item, uint64, error) {
-	return s.repo.FindAllItems(ctx, s.pool)
+func (s *Service) GetAll(ctx context.Context, page, limit int) ([]Item, uint64, error) {
+	offset := (page - 1) * limit
+	return s.repo.FindAllItems(ctx, s.pool, limit, offset)
 }
 
 func (s *Service) GetByID(ctx context.Context, id ItemID) (*Item, error) {

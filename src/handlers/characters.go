@@ -34,18 +34,15 @@ func (g *Gallery) HandleCreateCharacter(w http.ResponseWriter, r *http.Request) 
 func (g *Gallery) HandleGetAllCharacters(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	page := parseQueryInt(r, "page", 1)
-	if page < 1 {
-		page = 1
-	}
+	page := max(parseQueryInt(r, "page", 1), 1)
+	limit := max(parseQueryInt(r, "limit", 20), 20)
 
-	chars, total, err := g.characterService.GetAll(ctx, page)
+	chars, total, err := g.characterService.GetAll(ctx, page, limit)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Error getting all characters")
 		return
 	}
 
-	limit := 20
 	data := paginatedResponse{
 		Data: chars,
 		Pagination: pagination{

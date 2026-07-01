@@ -6,9 +6,11 @@ import (
 	"dZev1/character-gallery/internal/characters"
 	"dZev1/character-gallery/internal/inventory"
 	"dZev1/character-gallery/internal/items"
+	"dZev1/character-gallery/internal/metrics"
 	"dZev1/character-gallery/internal/middleware"
 	"dZev1/character-gallery/internal/postgres"
 	redislib "dZev1/character-gallery/internal/redis"
+
 	"log"
 	"net/http"
 	"os"
@@ -85,7 +87,9 @@ func main() {
 	mux.HandleFunc("POST /api/v1/characters/{characterId}/inventory/{itemId}", gallery.HandleAddItemToCharacter)
 	mux.HandleFunc("DELETE /api/v1/characters/{characterId}/inventory/{itemId}", gallery.HandleRemoveItemFromCharacter)
 
-	handler := rl.Limit(mux)
+	mux.Handle("GET /metrics", metrics.Handler())
+
+	handler := metrics.Middleware(rl.Limit(mux))
 	handler = middleware.EnableCors(handler)
 
 	log.Println("Server listening on :8080")

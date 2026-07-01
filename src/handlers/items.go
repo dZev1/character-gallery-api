@@ -33,13 +33,23 @@ func (g *Gallery) HandleCreateItem(w http.ResponseWriter, r *http.Request) {
 func (g *Gallery) HandleGetAllItems(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	itms, _, err := g.itemsService.GetAll(ctx)
+	page := max(parseQueryInt(r, "page", 1), 1)
+	limit := max(parseQueryInt(r, "limit", 20), 20)
+
+	itms, total, err := g.itemsService.GetAll(ctx, page, limit)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Error getting all items")
 		return
 	}
 
-	writeJSON(w, http.StatusOK, itms)
+	writeJSON(w, http.StatusOK, paginatedResponse{
+		Data: itms,
+		Pagination: pagination{
+			Page:    page,
+			Limit:   limit,
+			Total:   total,
+			HasNext: total > uint64(page*limit),
+		}})
 }
 
 func (g *Gallery) HandleGetItem(w http.ResponseWriter, r *http.Request) {

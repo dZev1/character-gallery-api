@@ -24,10 +24,20 @@ func (i *itemRepo) q(exec db.DBTX) *db.Queries {
 	return db.New(exec)
 }
 
-func (i *itemRepo) FindAllItems(ctx context.Context, exec db.DBTX) ([]items.Item, uint64, error) {
+func (i *itemRepo) FindAllItems(ctx context.Context, exec db.DBTX, limit, offset int) ([]items.Item, uint64, error) {
 	q := i.q(exec)
 
-	allItems, err := q.FindAllItems(ctx)
+	findAllParams := db.FindAllItemsParams {
+		Limit:  int32(limit),
+		Offset: int32(offset),
+	}
+
+	allItems, err := q.FindAllItems(ctx, findAllParams)
+	if err != nil {
+		return nil, 0, fmt.Errorf("list items: %w", err)
+	}
+
+	total, err := q.CountAllItems(ctx)
 	if err != nil {
 		return nil, 0, fmt.Errorf("list items: %w", err)
 	}
@@ -51,7 +61,7 @@ func (i *itemRepo) FindAllItems(ctx context.Context, exec db.DBTX) ([]items.Item
 		}
 	}
 
-	return result, uint64(len(result)), nil
+	return result, uint64(total), nil
 }
 
 func (i *itemRepo) FindItem(ctx context.Context, exec db.DBTX, itemID items.ItemID) (*items.Item, error) {
