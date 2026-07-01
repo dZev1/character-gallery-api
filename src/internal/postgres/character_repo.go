@@ -141,12 +141,39 @@ func (c *characterRepo) FindAllCharacters(ctx context.Context, exec db.DBTX, pag
 
 	result := make([]characters.Character, len(dbChars))
 	for i, dbChar := range dbChars {
+		dbStats, err := q.SelectCharacterStats(ctx, dbChar.ID)
+		if err != nil {
+			return nil, 0, fmt.Errorf("stats for character %d: %w", dbChar.ID, err)
+		}
+
+		dbCust, err := q.SelectCharacterCustomization(ctx, dbChar.ID)
+		if err != nil {
+			return nil, 0, fmt.Errorf("customization for character %d: %w", dbChar.ID, err)
+		}
+
 		result[i] = characters.Character{
 			ID:       characters.CharacterID(dbChar.ID),
 			Name:     dbChar.Name,
 			BodyType: characters.BodyType(dbChar.BodyType),
 			Species:  characters.Species(dbChar.Species),
 			Class:    characters.Class(dbChar.Class),
+			Stats: &characters.Stats{
+				ID:           characters.CharacterID(dbStats.CharacterID),
+				Strength:     uint8(dbStats.Strength),
+				Dexterity:    uint8(dbStats.Dexterity),
+				Constitution: uint8(dbStats.Constitution),
+				Intelligence: uint8(dbStats.Intelligence),
+				Wisdom:       uint8(dbStats.Wisdom),
+				Charisma:     uint8(dbStats.Charisma),
+			},
+			Customization: &characters.Customization{
+				ID:    characters.CharacterID(dbCust.CharacterID),
+				Hair:  uint8(dbCust.Hair),
+				Face:  uint8(dbCust.Face),
+				Shirt: uint8(dbCust.Shirt),
+				Pants: uint8(dbCust.Pants),
+				Shoes: uint8(dbCust.Shoes),
+			},
 		}
 	}
 
