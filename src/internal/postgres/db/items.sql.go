@@ -11,6 +11,17 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countAllItems = `-- name: CountAllItems :one
+SELECT COUNT(*) FROM items
+`
+
+func (q *Queries) CountAllItems(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countAllItems)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createItem = `-- name: CreateItem :one
 INSERT INTO items (
     name, type, description, equippable, rarity,
@@ -76,10 +87,16 @@ func (q *Queries) CreateItem(ctx context.Context, arg CreateItemParams) (*Item, 
 const findAllItems = `-- name: FindAllItems :many
 SELECT id, name, type, description, equippable, rarity, damage, defense, heal_amount, mana_cost, duration, cooldown, capacity FROM items
 ORDER BY id
+LIMIT $1 OFFSET $2
 `
 
-func (q *Queries) FindAllItems(ctx context.Context) ([]*Item, error) {
-	rows, err := q.db.Query(ctx, findAllItems)
+type FindAllItemsParams struct {
+	Limit  int32
+	Offset int32
+}
+
+func (q *Queries) FindAllItems(ctx context.Context, arg FindAllItemsParams) ([]*Item, error) {
+	rows, err := q.db.Query(ctx, findAllItems, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}

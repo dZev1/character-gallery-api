@@ -1,10 +1,14 @@
 -- name: FindAllItems :many
 SELECT * FROM items
-ORDER BY id;
+ORDER BY id
+LIMIT $1 OFFSET $2;
 
 -- name: FindItem :one
 SELECT * FROM items
 WHERE id = $1;
+
+-- name: CountAllItems :one
+SELECT COUNT(*) FROM items;
 
 -- name: CreateItem :one
 INSERT INTO items (

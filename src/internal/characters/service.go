@@ -68,8 +68,9 @@ func (s *Service) GetByID(ctx context.Context, id CharacterID) (*Character, erro
 	return character, nil
 }
 
-func (s *Service) GetAll(ctx context.Context, page int) ([]Character, uint64, error) {
-	return s.repo.FindAllCharacters(ctx, s.pool, page)
+func (s *Service) GetAll(ctx context.Context, page, limit int) ([]Character, uint64, error) {
+	offset := (page - 1) * limit
+	return s.repo.FindAllCharacters(ctx, s.pool, limit, offset)
 }
 
 func (s *Service) Update(ctx context.Context, character *Character) (*Character, error) {

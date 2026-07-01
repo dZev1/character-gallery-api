@@ -120,15 +120,12 @@ func (c *characterRepo) FindCharacter(ctx context.Context, exec db.DBTX, id char
 	}, nil
 }
 
-func (c *characterRepo) FindAllCharacters(ctx context.Context, exec db.DBTX, page int) ([]characters.Character, uint64, error) {
+func (c *characterRepo) FindAllCharacters(ctx context.Context, exec db.DBTX, limit, offset int) ([]characters.Character, uint64, error) {
 	q := c.q(exec)
 
-	limit := int32(20)
-	offset := int32((page - 1) * int(limit))
-
 	dbChars, err := q.SelectAllCharacters(ctx, db.SelectAllCharactersParams{
-		Limit:  limit,
-		Offset: offset,
+		Limit:  int32(limit),
+		Offset: int32(offset),
 	})
 	if err != nil {
 		return nil, 0, fmt.Errorf("list characters: %w", err)
