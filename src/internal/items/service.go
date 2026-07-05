@@ -9,6 +9,7 @@ import (
 	"log"
 
 	"dZev1/character-gallery/internal/cache"
+
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -44,15 +45,18 @@ func (s *Service) SeedItems(ctx context.Context) error {
 
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
+		log.Println("Error starting transaction:", err)
 		return fmt.Errorf("begin tx: %w", err)
 	}
 	defer tx.Rollback(ctx)
 
-	if err := s.repo.SeedItems(ctx, tx, items); err != nil {
+	if err = s.repo.SeedItems(ctx, tx, items); err != nil {
+		log.Println("Error seeding items:", err)
 		return fmt.Errorf("seed items: %w", err)
 	}
 
-	if err := tx.Commit(ctx); err != nil {
+	if err = tx.Commit(ctx); err != nil {
+		log.Println("Error commiting transaction:", err)
 		return fmt.Errorf("commit tx: %w", err)
 	}
 
@@ -79,6 +83,7 @@ func (s *Service) GetByID(ctx context.Context, id ItemID) (*Item, error) {
 
 	item, err = s.repo.FindItem(ctx, s.pool, id)
 	if err != nil {
+		log.Println("Error finding item:", err)
 		return nil, err
 	}
 
@@ -92,16 +97,19 @@ func (s *Service) GetByID(ctx context.Context, id ItemID) (*Item, error) {
 func (s *Service) CreateItem(ctx context.Context, item *Item) (*Item, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
+		log.Println("Error starting transaction:", err)
 		return nil, err
 	}
 	defer tx.Rollback(ctx)
 
 	item, err = s.repo.SaveItem(ctx, tx, item)
 	if err != nil {
+		log.Println("Error saving item:", err)
 		return nil, err
 	}
 
 	if err = tx.Commit(ctx); err != nil {
+		log.Println("Error commiting transaction:", err)
 		return nil, err
 	}
 

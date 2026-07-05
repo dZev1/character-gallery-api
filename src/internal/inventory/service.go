@@ -29,6 +29,7 @@ func NewService(repo Repository, pool *pgxpool.Pool, cache cache.Cache) *Service
 func (s *Service) AddItem(ctx context.Context, characterID characters.CharacterID, itemID items.ItemID, quantity uint8) (*InventoryItem, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
+		log.Println("Error starting transaction:", err)
 		return nil, err
 	}
 	defer tx.Rollback(ctx)
@@ -41,10 +42,12 @@ func (s *Service) AddItem(ctx context.Context, characterID characters.CharacterI
 
 	invItem, err := s.repo.AddItemToCharacter(ctx, tx, repoParam)
 	if err != nil {
+		log.Println("Error adding item to character:", err)
 		return nil, err
 	}
 
 	if err = tx.Commit(ctx); err != nil {
+		log.Println("Error committing transaction:", err)
 		return nil, err
 	}
 
@@ -58,6 +61,7 @@ func (s *Service) AddItem(ctx context.Context, characterID characters.CharacterI
 func (s *Service) DeleteItem(ctx context.Context, characterID characters.CharacterID, itemID items.ItemID, quantity uint8) (*InventoryItem, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
+		log.Println("Error starting transaction:", err)
 		return nil, err
 	}
 	defer tx.Rollback(ctx)
@@ -70,10 +74,12 @@ func (s *Service) DeleteItem(ctx context.Context, characterID characters.Charact
 
 	item, err := s.repo.RemoveItemFromCharacter(ctx, tx, repoParam)
 	if err != nil {
+		log.Println("Error removing item from character:", err)
 		return nil, err
 	}
 
 	if err = tx.Commit(ctx); err != nil {
+		log.Println("Error committing transaction:", err)
 		return nil, err
 	}
 
@@ -98,6 +104,7 @@ func (s *Service) GetByCharacterID(ctx context.Context, characterID characters.C
 
 	inv, err = s.repo.GetCharacterInventory(ctx, s.pool, characterID)
 	if err != nil {
+		log.Println("Error getting inventory for character:", err)
 		return nil, err
 	}
 
