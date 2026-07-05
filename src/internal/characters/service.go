@@ -27,16 +27,19 @@ func NewService(repo Repository, pool *pgxpool.Pool, cache cache.Cache) *Service
 func (s *Service) Create(ctx context.Context, character *Character) (*Character, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
+		log.Println("Error starting transaction:", err)
 		return nil, err
 	}
 	defer tx.Rollback(ctx)
 
 	character, err = s.repo.SaveCharacter(ctx, tx, character)
 	if err != nil {
+		log.Println("Error creating character:", err)
 		return nil, err
 	}
 
 	if err = tx.Commit(ctx); err != nil {
+		log.Println("Error committing transaction:", err)
 		return nil, err
 	}
 
@@ -59,6 +62,7 @@ func (s *Service) GetByID(ctx context.Context, id CharacterID) (*Character, erro
 
 	character, err = s.repo.FindCharacter(ctx, s.pool, id)
 	if err != nil {
+		log.Println("Error getting character:", err)
 		return nil, err
 	}
 
@@ -76,16 +80,19 @@ func (s *Service) GetAll(ctx context.Context, page, limit int) ([]Character, uin
 func (s *Service) Update(ctx context.Context, character *Character) (*Character, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
+		log.Println("Error beginning transaction:", err)
 		return nil, err
 	}
 	defer tx.Rollback(ctx)
 
 	updated, err := s.repo.UpdateCharacter(ctx, tx, character)
 	if err != nil {
+		log.Println("Error updating character:", err)
 		return nil, err
 	}
 
 	if err = tx.Commit(ctx); err != nil {
+		log.Println("Error commiting transaction:", err)
 		return nil, err
 	}
 
@@ -99,6 +106,7 @@ func (s *Service) Update(ctx context.Context, character *Character) (*Character,
 func (s *Service) Delete(ctx context.Context, id CharacterID) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
+		log.Println("Error beginning transaction:", err)
 		return err
 	}
 	defer tx.Rollback(ctx)
@@ -109,6 +117,7 @@ func (s *Service) Delete(ctx context.Context, id CharacterID) error {
 	}
 
 	if err = tx.Commit(ctx); err != nil {
+		log.Println("Error committing transaction:", err)
 		return err
 	}
 
