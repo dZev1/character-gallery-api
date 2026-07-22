@@ -1,3 +1,10 @@
+CREATE TABLE IF NOT EXISTS users (
+    id BIGSERIAL PRIMARY KEY,
+    username TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS items (
     id BIGSERIAL PRIMARY KEY,
     name TEXT NOT NULL,
@@ -19,6 +26,10 @@ CREATE TABLE IF NOT EXISTS items (
     duration INT,
     cooldown INT,
     capacity INT,
+    level       INT  NOT NULL DEFAULT 1,
+    xp          INT  NOT NULL DEFAULT 0,
+    hp_max      INT  NOT NULL DEFAULT 1,
+    hp_current  INT  NOT NULL DEFAULT 1,
 
     CONSTRAINT items_name_rarity_unique UNIQUE (name, rarity)
 );
@@ -69,4 +80,3 @@ CREATE TABLE IF NOT EXISTS customizations (
     pants SMALLINT NOT NULL CHECK (pants BETWEEN 0 AND 30),
     shoes SMALLINT NOT NULL CHECK (shoes BETWEEN 0 AND 30)
 );
-

@@ -46,6 +46,10 @@ type Item struct {
 	Duration    pgtype.Int4
 	Cooldown    pgtype.Int4
 	Capacity    pgtype.Int4
+	Level       int32
+	Xp          int32
+	HpMax       int32
+	HpCurrent   int32
 }
 
 type Stat struct {
@@ -56,4 +60,11 @@ type Stat struct {
 	Intelligence int16
 	Wisdom       int16
 	Charisma     int16
+}
+
+type User struct {
+	ID           int64
+	Username     string
+	PasswordHash string
+	CreatedAt    pgtype.Timestamptz
 }

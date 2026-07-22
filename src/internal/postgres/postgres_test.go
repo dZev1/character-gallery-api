@@ -40,6 +40,18 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
+	if _, err := pool.Exec(ctx, `
+		DROP TABLE IF EXISTS customizations CASCADE;
+		DROP TABLE IF EXISTS stats CASCADE;
+		DROP TABLE IF EXISTS inventory CASCADE;
+		DROP TABLE IF EXISTS items CASCADE;
+		DROP TABLE IF EXISTS characters CASCADE;
+		DROP TABLE IF EXISTS users CASCADE;
+	`); err != nil {
+		fmt.Fprintf(os.Stderr, "failed to drop tables: %v\n", err)
+		os.Exit(1)
+	}
+
 	schema, err := os.ReadFile("../../database/schema/schema.sql")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to read schema: %v\n", err)
