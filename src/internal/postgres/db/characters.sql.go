@@ -22,18 +22,22 @@ func (q *Queries) CountAllCharacters(ctx context.Context) (int64, error) {
 
 const createCharacter = `-- name: CreateCharacter :one
 INSERT INTO characters (
-    name, body_type, species, class
+    name, body_type, species, class, level, xp, hp_max, hp_current
 ) VALUES (
-    $1, $2, $3, $4
+    $1, $2, $3, $4, $5, $6, $7, $8
 )
-RETURNING id, name, body_type, species, class
+RETURNING id, name, body_type, species, class, level, xp, hp_max, hp_current
 `
 
 type CreateCharacterParams struct {
-	Name     string
-	BodyType string
-	Species  string
-	Class    string
+	Name      string
+	BodyType  string
+	Species   string
+	Class     string
+	Level     int32
+	Xp        int32
+	HpMax     int32
+	HpCurrent int32
 }
 
 func (q *Queries) CreateCharacter(ctx context.Context, arg CreateCharacterParams) (*Character, error) {
@@ -42,6 +46,10 @@ func (q *Queries) CreateCharacter(ctx context.Context, arg CreateCharacterParams
 		arg.BodyType,
 		arg.Species,
 		arg.Class,
+		arg.Level,
+		arg.Xp,
+		arg.HpMax,
+		arg.HpCurrent,
 	)
 	var i Character
 	err := row.Scan(
@@ -50,6 +58,10 @@ func (q *Queries) CreateCharacter(ctx context.Context, arg CreateCharacterParams
 		&i.BodyType,
 		&i.Species,
 		&i.Class,
+		&i.Level,
+		&i.Xp,
+		&i.HpMax,
+		&i.HpCurrent,
 	)
 	return &i, err
 }
@@ -146,7 +158,7 @@ func (q *Queries) DeleteCharacter(ctx context.Context, id int64) error {
 }
 
 const selectAllCharacters = `-- name: SelectAllCharacters :many
-SELECT id, name, body_type, species, class FROM characters
+SELECT id, name, body_type, species, class, level, xp, hp_max, hp_current FROM characters
 ORDER BY id
 LIMIT $1 OFFSET $2
 `
@@ -171,6 +183,10 @@ func (q *Queries) SelectAllCharacters(ctx context.Context, arg SelectAllCharacte
 			&i.BodyType,
 			&i.Species,
 			&i.Class,
+			&i.Level,
+			&i.Xp,
+			&i.HpMax,
+			&i.HpCurrent,
 		); err != nil {
 			return nil, err
 		}
@@ -183,7 +199,7 @@ func (q *Queries) SelectAllCharacters(ctx context.Context, arg SelectAllCharacte
 }
 
 const selectCharacter = `-- name: SelectCharacter :one
-SELECT id, name, body_type, species, class FROM characters
+SELECT id, name, body_type, species, class, level, xp, hp_max, hp_current FROM characters
 WHERE id = $1
 `
 
@@ -196,6 +212,10 @@ func (q *Queries) SelectCharacter(ctx context.Context, id int64) (*Character, er
 		&i.BodyType,
 		&i.Species,
 		&i.Class,
+		&i.Level,
+		&i.Xp,
+		&i.HpMax,
+		&i.HpCurrent,
 	)
 	return &i, err
 }
@@ -241,17 +261,22 @@ func (q *Queries) SelectCharacterStats(ctx context.Context, characterID int64) (
 
 const updateCharacter = `-- name: UpdateCharacter :one
 UPDATE characters
-SET name = $2, body_type = $3, species = $4, class = $5
+SET name = $2, body_type = $3, species = $4, class = $5,
+    level = $6, xp = $7, hp_max = $8, hp_current = $9
 WHERE id = $1
-RETURNING id, name, body_type, species, class
+RETURNING id, name, body_type, species, class, level, xp, hp_max, hp_current
 `
 
 type UpdateCharacterParams struct {
-	ID       int64
-	Name     string
-	BodyType string
-	Species  string
-	Class    string
+	ID        int64
+	Name      string
+	BodyType  string
+	Species   string
+	Class     string
+	Level     int32
+	Xp        int32
+	HpMax     int32
+	HpCurrent int32
 }
 
 func (q *Queries) UpdateCharacter(ctx context.Context, arg UpdateCharacterParams) (*Character, error) {
@@ -261,6 +286,10 @@ func (q *Queries) UpdateCharacter(ctx context.Context, arg UpdateCharacterParams
 		arg.BodyType,
 		arg.Species,
 		arg.Class,
+		arg.Level,
+		arg.Xp,
+		arg.HpMax,
+		arg.HpCurrent,
 	)
 	var i Character
 	err := row.Scan(
@@ -269,6 +298,10 @@ func (q *Queries) UpdateCharacter(ctx context.Context, arg UpdateCharacterParams
 		&i.BodyType,
 		&i.Species,
 		&i.Class,
+		&i.Level,
+		&i.Xp,
+		&i.HpMax,
+		&i.HpCurrent,
 	)
 	return &i, err
 }

@@ -26,10 +26,6 @@ CREATE TABLE IF NOT EXISTS items (
     duration INT,
     cooldown INT,
     capacity INT,
-    level       INT  NOT NULL DEFAULT 1,
-    xp          INT  NOT NULL DEFAULT 0,
-    hp_max      INT  NOT NULL DEFAULT 1,
-    hp_current  INT  NOT NULL DEFAULT 1,
 
     CONSTRAINT items_name_rarity_unique UNIQUE (name, rarity)
 );
@@ -50,7 +46,11 @@ CREATE TABLE IF NOT EXISTS characters (
             'monk', 'paladin', 'ranger', 'rogue', 'sorcerer',
             'warlock', 'wizard'
         )
-    )
+    ),
+    level       INT  NOT NULL DEFAULT 1,
+    xp          INT  NOT NULL DEFAULT 0,
+    hp_max      INT  NOT NULL DEFAULT 1,
+    hp_current  INT NOT NULL DEFAULT 1
 );
 
 CREATE TABLE IF NOT EXISTS inventory (

@@ -27,10 +27,14 @@ func (c *characterRepo) SaveCharacter(ctx context.Context, exec db.DBTX, charact
 	q := c.q(exec)
 
 	createCharacterParams := db.CreateCharacterParams{
-		Name:     character.Name,
-		BodyType: string(character.BodyType),
-		Species:  string(character.Species),
-		Class:    string(character.Class),
+		Name:      character.Name,
+		BodyType:  string(character.BodyType),
+		Species:   string(character.Species),
+		Class:     string(character.Class),
+		Level:     int32(character.Level),
+		Xp:        int32(character.Xp),
+		HpMax:     int32(character.HpMax),
+		HpCurrent: int32(character.HpCurrent),
 	}
 
 	char, err := q.CreateCharacter(ctx, createCharacterParams)
@@ -100,6 +104,10 @@ func (c *characterRepo) FindCharacter(ctx context.Context, exec db.DBTX, id char
 		BodyType: characters.BodyType(dbChar.BodyType),
 		Species:  characters.Species(dbChar.Species),
 		Class:    characters.Class(dbChar.Class),
+		Level:    uint8(dbChar.Level),
+		Xp:       uint64(dbChar.Xp),
+		HpMax:    uint8(dbChar.HpMax),
+		HpCurrent: uint8(dbChar.HpCurrent),
 		Stats: &characters.Stats{
 			ID:           characters.CharacterID(dbStats.CharacterID),
 			Strength:     uint8(dbStats.Strength),
@@ -154,6 +162,10 @@ func (c *characterRepo) FindAllCharacters(ctx context.Context, exec db.DBTX, lim
 			BodyType: characters.BodyType(dbChar.BodyType),
 			Species:  characters.Species(dbChar.Species),
 			Class:    characters.Class(dbChar.Class),
+			Level:    uint8(dbChar.Level),
+			Xp:       uint64(dbChar.Xp),
+			HpMax:    uint8(dbChar.HpMax),
+			HpCurrent: uint8(dbChar.HpCurrent),
 			Stats: &characters.Stats{
 				ID:           characters.CharacterID(dbStats.CharacterID),
 				Strength:     uint8(dbStats.Strength),
@@ -181,11 +193,15 @@ func (c *characterRepo) UpdateCharacter(ctx context.Context, exec db.DBTX, chara
 	q := c.q(exec)
 
 	_, err := q.UpdateCharacter(ctx, db.UpdateCharacterParams{
-		ID:       int64(character.ID),
-		Name:     character.Name,
-		BodyType: string(character.BodyType),
-		Species:  string(character.Species),
-		Class:    string(character.Class),
+		ID:        int64(character.ID),
+		Name:      character.Name,
+		BodyType:  string(character.BodyType),
+		Species:   string(character.Species),
+		Class:     string(character.Class),
+		Level:     int32(character.Level),
+		Xp:        int32(character.Xp),
+		HpMax:     int32(character.HpMax),
+		HpCurrent: int32(character.HpCurrent),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("update character %d: %w", character.ID, err)

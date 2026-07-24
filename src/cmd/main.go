@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"dZev1/character-gallery/internal/auth"
 	"dZev1/character-gallery/internal/cache"
 	"dZev1/character-gallery/internal/characters"
 	"dZev1/character-gallery/internal/inventory"
@@ -46,6 +47,15 @@ func main() {
 	}
 	defer rdb.Close()
 
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		log.Fatal("JWT_SECRET environment variable not set")
+	}
+
+	authRepo := postgres.NewAuthRepo(pool)
+	authSvc := auth.NewService(authRepo, pool, jwtSecret)
+	authHandler := handlers.NewAuthHandler(authSvc)
+
 	charCache := cache.NewRedisCache(rdb, 5*time.Minute, "character")
 	itemCache := cache.NewRedisCache(rdb, 5*time.Minute, "item")
 	invCache := cache.NewRedisCache(rdb, 5*time.Minute, "inventory")
@@ -64,34 +74,56 @@ func main() {
 
 	gallery := handlers.NewGallery(charService, itemService, invService)
 
+	baseURL := os.Getenv("BASE_URL")
+	if baseURL == "" {
+		baseURL = "/api/v1"
+	}
+
 	rl := middleware.NewRateLimiter(rdb, 1*time.Minute)
-	rl.SetLimit("POST", "/api/v1/characters", 10)
-	rl.SetLimit("DELETE", "/api/v1/characters/{characterId}", 30)
-	rl.SetLimit("POST", "/api/v1/items", 10)
+	rl.SetLimit("POST", baseURL+"/characters", 10)
+	rl.SetLimit("DELETE", baseURL+"/characters/{characterId}", 30)
+	rl.SetLimit("POST", baseURL+"/items", 10)
+	rl.SetLimit("POST", baseURL+"/auth/register", 5)
+	rl.SetLimit("POST", baseURL+"/auth/login", 10)
 
 	mux := http.NewServeMux()
+
+	mux.HandleFunc("POST "+baseURL+"/auth/register", authHandler.HandleRegister)
+	mux.HandleFunc("POST "+baseURL+"/auth/login", authHandler.HandleLogin)
 	mux.HandleFunc("GET /openapi.yaml", handlers.OpenAPIHandler)
 	mux.HandleFunc("GET /docs", handlers.DocsHandler)
 
-	mux.HandleFunc("POST /api/v1/characters", gallery.HandleCreateCharacter)
-	mux.HandleFunc("GET /api/v1/characters", gallery.HandleGetAllCharacters)
-	mux.HandleFunc("GET /api/v1/characters/{characterId}", gallery.HandleGetCharacter)
-	mux.HandleFunc("PUT /api/v1/characters/{characterId}", gallery.HandleUpdateCharacter)
-	mux.HandleFunc("DELETE /api/v1/characters/{characterId}", gallery.HandleDeleteCharacter)
+	mux.HandleFunc("POST "+baseURL+"/characters", gallery.HandleCreateCharacter)
+	mux.HandleFunc("GET "+baseURL+"/characters", gallery.HandleGetAllCharacters)
+	mux.HandleFunc("GET "+baseURL+"/characters/{characterId}", gallery.HandleGetCharacter)
+	mux.HandleFunc("PUT "+baseURL+"/characters/{characterId}", gallery.HandleUpdateCharacter)
+	mux.HandleFunc("DELETE "+baseURL+"/characters/{characterId}", gallery.HandleDeleteCharacter)
 
-	mux.HandleFunc("POST /api/v1/items", gallery.HandleCreateItem)
-	mux.HandleFunc("GET /api/v1/items", gallery.HandleGetAllItems)
-	mux.HandleFunc("GET /api/v1/items/{itemId}", gallery.HandleGetItem)
+	mux.HandleFunc("POST "+baseURL+"/items", gallery.HandleCreateItem)
+	mux.HandleFunc("GET "+baseURL+"/items", gallery.HandleGetAllItems)
+	mux.HandleFunc("GET "+baseURL+"/items/{itemId}", gallery.HandleGetItem)
 
-	mux.HandleFunc("GET /api/v1/characters/{characterId}/inventory", gallery.HandleGetCharacterInventory)
-	mux.HandleFunc("POST /api/v1/characters/{characterId}/inventory/{itemId}", gallery.HandleAddItemToCharacter)
-	mux.HandleFunc("DELETE /api/v1/characters/{characterId}/inventory/{itemId}", gallery.HandleRemoveItemFromCharacter)
+	mux.HandleFunc("GET "+baseURL+"/characters/{characterId}/inventory", gallery.HandleGetCharacterInventory)
+	mux.HandleFunc("POST "+baseURL+"/characters/{characterId}/inventory/{itemId}", gallery.HandleAddItemToCharacter)
+	mux.HandleFunc("DELETE "+baseURL+"/characters/{characterId}/inventory/{itemId}", gallery.HandleRemoveItemFromCharacter)
 
 	mux.Handle("GET /metrics", metrics.Handler())
 
-	handler := metrics.Middleware(rl.Limit(mux))
+	jwtMw := middleware.AuthMiddleware(jwtSecret,
+		"POST "+baseURL+"/auth/register",
+		"POST "+baseURL+"/auth/login",
+		"GET /openapi.yaml",
+		"GET /docs",
+		"GET /metrics",
+	)
+	handler := middleware.MetricsMiddleware(jwtMw(rl.Limit(mux)))
 	handler = middleware.EnableCors(handler)
 
-	log.Println("Server listening on :8080")
-	log.Fatal(http.ListenAndServe(":8080", handler))
+	addr := os.Getenv("PORT")
+	if addr == "" {
+		addr = ":8080"
+	}
+
+	log.Println("Server listening on " + addr)
+	log.Fatal(http.ListenAndServe(addr, handler))
 }

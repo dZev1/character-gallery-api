@@ -1,8 +1,8 @@
 -- name: CreateCharacter :one
 INSERT INTO characters (
-    name, body_type, species, class
+    name, body_type, species, class, level, xp, hp_max, hp_current
 ) VALUES (
-    $1, $2, $3, $4
+    $1, $2, $3, $4, $5, $6, $7, $8
 )
 RETURNING *;
 
@@ -44,7 +44,8 @@ SELECT COUNT(*) FROM characters;
 
 -- name: UpdateCharacter :one
 UPDATE characters
-SET name = $2, body_type = $3, species = $4, class = $5
+SET name = $2, body_type = $3, species = $4, class = $5,
+    level = $6, xp = $7, hp_max = $8, hp_current = $9
 WHERE id = $1
 RETURNING *;
 

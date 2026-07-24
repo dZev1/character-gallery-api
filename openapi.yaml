@@ -4,7 +4,8 @@ info:
   description: |
     A RESTful API built in Go to create, manage and see a gallery of Role
     Playing Game characters. Supports full CRUD operations, including base
-    stats and character appearance customization.
+    stats and character appearance customization, plus a turn-based tactical
+    RPG combat system.
   version: "1.0.0"
 
 servers:
@@ -12,6 +13,74 @@ servers:
     description: Current server (adapts automatically to localhost or Cloudflare)
 
 paths:
+  # ─── Authentication ────────────────────────────────────────────────
+
+  /auth/register:
+    post:
+      operationId: register
+      summary: Register a new user
+      description: Creates a new user account with a hashed password.
+      tags: [Authentication]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "201":
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          description: Username already taken
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /auth/login:
+    post:
+      operationId: login
+      summary: Login
+      description: Authenticates a user and returns a JWT token (24h expiry).
+      tags: [Authentication]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ─── Characters ────────────────────────────────────────────────────
+
   /characters:
     post:
       operationId: createCharacter
@@ -42,8 +111,8 @@ paths:
       operationId: getAllCharacters
       summary: Get all characters
       description: |
-        Returns a paginated list of all characters, including their stats and
-        customization fields.
+        Returns a paginated list of the authenticated user's characters,
+        including stats, customization, and RPG fields.
       tags: [Characters]
       parameters:
         - name: page
@@ -168,6 +237,49 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /characters/{characterId}/equip/{itemId}:
+    put:
+      operationId: equipItem
+      summary: Equip or unequip an item
+      description: |
+        Equips or unequips an item on a character. Recalculates combat
+        stats server-side (AC, damage, etc.).
+      tags: [Characters]
+      parameters:
+        - name: characterId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EquipRequest"
+      responses:
+        "200":
+          description: Item equipped/unequipped successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EquipResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ─── Inventory ────────────────────────────────────────────────────
+
   /characters/{characterId}/inventory:
     get:
       operationId: getCharacterInventory
@@ -276,6 +388,8 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  # ─── Items ─────────────────────────────────────────────────────────
+
   /items:
     post:
       operationId: createItem
@@ -366,7 +480,356 @@ paths:
           $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalError"
-  
+
+  # ─── Dice Rolling ──────────────────────────────────────────────────
+
+  /roll:
+    post:
+      operationId: rollDice
+      summary: Roll dice
+      description: |
+        Server-authoritative dice roll. The server is the source of truth—
+        the client never rolls dice locally.
+      tags: [Combat]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RollRequest"
+      responses:
+        "200":
+          description: Dice roll result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RollResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ─── Game Sessions ─────────────────────────────────────────────────
+
+  /sessions:
+    post:
+      operationId: createSession
+      summary: Create a game session
+      description: Creates a new game session with selected characters.
+      tags: [Sessions]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSessionRequest"
+      responses:
+        "201":
+          description: Session created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    get:
+      operationId: listSessions
+      summary: List game sessions
+      description: Returns all game sessions for the authenticated user.
+      tags: [Sessions]
+      responses:
+        "200":
+          description: List of sessions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/SessionListItem"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /sessions/{sessionId}:
+    get:
+      operationId: getSession
+      summary: Get session details
+      description: Returns a game session with its participants.
+      tags: [Sessions]
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: Session object
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    put:
+      operationId: updateSession
+      summary: Update a game session
+      description: Updates session name or character list.
+      tags: [Sessions]
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSessionRequest"
+      responses:
+        "200":
+          description: Session updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    delete:
+      operationId: deleteSession
+      summary: Delete a game session
+      description: Deletes a session and all associated encounters.
+      tags: [Sessions]
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: Session deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ─── Encounters ────────────────────────────────────────────────────
+
+  /sessions/{sessionId}/encounters:
+    post:
+      operationId: createEncounter
+      summary: Create an encounter
+      description: Adds enemies to a session for combat.
+      tags: [Encounters]
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateEncounterRequest"
+      responses:
+        "201":
+          description: Encounter created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Encounter"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    get:
+      operationId: listEncounters
+      summary: List encounters
+      description: Returns all encounters for a session.
+      tags: [Encounters]
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: List of encounters
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EncounterSummary"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /sessions/{sessionId}/encounters/{encounterId}/start:
+    post:
+      operationId: startEncounter
+      summary: Start an encounter
+      description: |
+        Rolls initiative for all participants and begins combat. Sets
+        encounter status to active.
+      tags: [Encounters]
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: encounterId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: Encounter started with initiative order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StartEncounterResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ─── Combat Turns ──────────────────────────────────────────────────
+
+  /combat/{sessionId}/status:
+    get:
+      operationId: getCombatStatus
+      summary: Get combat status
+      description: Returns the current state of the active encounter.
+      tags: [Combat]
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: Combat state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CombatStatusResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /combat/{sessionId}/turn/attack:
+    post:
+      operationId: attack
+      summary: Execute an attack
+      description: |
+        Rolls attack against a target, applies hit/miss logic, and
+        updates HP. Must be the attacker's turn.
+      tags: [Combat]
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AttackRequest"
+      responses:
+        "200":
+          description: Attack result
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/AttackHitResponse"
+                  - $ref: "#/components/schemas/AttackMissResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /combat/{sessionId}/turn/end:
+    post:
+      operationId: endTurn
+      summary: End current turn
+      description: |
+        Ends the current participant's turn and advances to the next
+        in initiative order. If all enemies or all characters are
+        defeated, ends the encounter.
+      tags: [Combat]
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: Turn ended, next participant
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TurnEndResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ─── System ────────────────────────────────────────────────────────
+
   /metrics:
     servers:
       - url: /
@@ -385,6 +848,69 @@ paths:
 
 components:
   schemas:
+
+    # ─── Auth ────────────────────────────────────────────────────────
+
+    RegisterRequest:
+      type: object
+      description: Payload for creating a new user account.
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 30
+          pattern: "^[a-zA-Z0-9_]+$"
+          example: "player1"
+        password:
+          type: string
+          minLength: 8
+          maxLength: 128
+          example: "secret123"
+
+    LoginRequest:
+      type: object
+      description: Payload for user authentication.
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          example: "player1"
+        password:
+          type: string
+          example: "secret123"
+
+    AuthResponse:
+      type: object
+      description: JWT token response.
+      required: [token, expires_at]
+      properties:
+        token:
+          type: string
+          example: "eyJhbGciOiJIUzI1NiIs..."
+        expires_at:
+          type: string
+          format: date-time
+          example: "2025-01-02T00:00:00Z"
+
+    UserResponse:
+      type: object
+      description: Public user profile (no password hash).
+      required: [id, username, created_at]
+      properties:
+        id:
+          type: integer
+          example: 1
+        username:
+          type: string
+          example: "player1"
+        created_at:
+          type: string
+          format: date-time
+          example: "2025-01-01T00:00:00Z"
+
+    # ─── Stats ───────────────────────────────────────────────────────
+
     Stats:
       type: object
       description: Character base statistics (each 1-99).
@@ -421,6 +947,8 @@ components:
           maximum: 99
           example: 3
 
+    # ─── Customization ───────────────────────────────────────────────
+
     Customization:
       type: object
       description: Character appearance customization fields (each 0-30).
@@ -452,10 +980,14 @@ components:
           maximum: 30
           example: 1
 
+    # ─── Character ───────────────────────────────────────────────────
+
     Character:
       type: object
-      description: A full character object with stats and customization.
-      required: [id, name, body_type, species, class, stats, customization]
+      description: A full character object with stats, customization, and RPG fields.
+      required:
+        [id, name, body_type, species, class, level, xp, hp_max, hp_current,
+         stats, customization]
       properties:
         id:
           type: integer
@@ -470,12 +1002,32 @@ components:
           example: "type_b"
         species:
           type: string
-          enum: [aasimar, dragonborn, dwarf, elf, gnome, goliath, halfling, human, orc, tiefling]
+          enum:
+            [aasimar, dragonborn, dwarf, elf, gnome, goliath, halfling,
+             human, orc, tiefling]
           example: "elf"
         class:
           type: string
-          enum: [barbarian, bard, cleric, druid, fighter, monk, paladin, ranger, rogue, sorcerer, warlock, wizard]
+          enum:
+            [barbarian, bard, cleric, druid, fighter, monk, paladin,
+             ranger, rogue, sorcerer, warlock, wizard]
           example: "wizard"
+        level:
+          type: integer
+          minimum: 1
+          example: 3
+        xp:
+          type: integer
+          minimum: 0
+          example: 1200
+        hp_max:
+          type: integer
+          minimum: 1
+          example: 28
+        hp_current:
+          type: integer
+          minimum: 0
+          example: 20
         stats:
           $ref: "#/components/schemas/Stats"
         customization:
@@ -496,16 +1048,57 @@ components:
           example: "type_b"
         species:
           type: string
-          enum: [aasimar, dragonborn, dwarf, elf, gnome, goliath, halfling, human, orc, tiefling]
+          enum:
+            [aasimar, dragonborn, dwarf, elf, gnome, goliath, halfling,
+             human, orc, tiefling]
           example: "elf"
         class:
           type: string
-          enum: [barbarian, bard, cleric, druid, fighter, monk, paladin, ranger, rogue, sorcerer, warlock, wizard]
+          enum:
+            [barbarian, bard, cleric, druid, fighter, monk, paladin,
+             ranger, rogue, sorcerer, warlock, wizard]
           example: "wizard"
         stats:
           $ref: "#/components/schemas/Stats"
         customization:
           $ref: "#/components/schemas/Customization"
+
+    EquipRequest:
+      type: object
+      description: Payload for equipping or unequipping an item.
+      required: [equip]
+      properties:
+        equip:
+          type: boolean
+          description: true to equip, false to unequip
+          example: true
+
+    EquipResponse:
+      type: object
+      description: Character state after equipping/unequipping.
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        ac:
+          type: integer
+          example: 15
+        hp_current:
+          type: integer
+        hp_max:
+          type: integer
+        level:
+          type: integer
+        xp:
+          type: integer
+        equipped_items:
+          type: array
+          items:
+            type: integer
+          example: [1, 4]
+
+    # ─── Item ────────────────────────────────────────────────────────
 
     Item:
       type: object
@@ -523,8 +1116,8 @@ components:
         type:
           type: string
           enum:
-            [armor, ring, weapon, shield, tool, adventuring_gear, rod, staff,
-             wand, scroll, potion, ammo, consumable, wondrous_item]
+            [armor, ring, weapon, shield, tool, adventuring_gear, rod,
+             staff, wand, scroll, potion, ammo, consumable, wondrous_item]
           example: "weapon"
         description:
           type: string
@@ -581,8 +1174,8 @@ components:
         type:
           type: string
           enum:
-            [armor, ring, weapon, shield, tool, adventuring_gear, rod, staff,
-             wand, scroll, potion, ammo, consumable, wondrous_item]
+            [armor, ring, weapon, shield, tool, adventuring_gear, rod,
+             staff, wand, scroll, potion, ammo, consumable, wondrous_item]
           example: "weapon"
         description:
           type: string
@@ -640,6 +1233,390 @@ components:
         is_equipped:
           type: boolean
           example: false
+
+    # ─── Dice Rolling ────────────────────────────────────────────────
+
+    RollRequest:
+      type: object
+      description: Payload for a dice roll.
+      required: [dice, count]
+      properties:
+        dice:
+          type: string
+          enum: [d4, d6, d8, d10, d12, d20, d100]
+          example: "d20"
+        count:
+          type: integer
+          minimum: 1
+          maximum: 100
+          example: 1
+        modifier:
+          type: integer
+          minimum: -100
+          maximum: 100
+          example: 5
+
+    RollResponse:
+      type: object
+      description: Result of a dice roll.
+      required: [rolls, total, dice, count]
+      properties:
+        rolls:
+          type: array
+          items:
+            type: integer
+          example: [17]
+        total:
+          type: integer
+          example: 22
+        modifier:
+          type: integer
+          example: 5
+        dice:
+          type: string
+          example: "d20"
+        count:
+          type: integer
+          example: 1
+
+    # ─── Sessions ────────────────────────────────────────────────────
+
+    CreateSessionRequest:
+      type: object
+      description: Payload for creating or updating a game session.
+      required: [name, character_ids]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          example: "The Lost Mine of Phandelver"
+        character_ids:
+          type: array
+          items:
+            type: integer
+          example: [1, 2, 3]
+
+    Session:
+      type: object
+      description: A game session with its participants.
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: "The Lost Mine of Phandelver"
+        user_id:
+          type: integer
+          example: 1
+        status:
+          type: string
+          enum: [idle, encounter_active, completed]
+          example: "idle"
+        characters:
+          type: array
+          items:
+            $ref: "#/components/schemas/SessionCharacter"
+        current_encounter_id:
+          type: integer
+          nullable: true
+          example: null
+        created_at:
+          type: string
+          format: date-time
+
+    SessionCharacter:
+      type: object
+      description: A character summary within a session.
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        class:
+          type: string
+        level:
+          type: integer
+        hp_current:
+          type: integer
+        hp_max:
+          type: integer
+
+    SessionListItem:
+      type: object
+      description: A session summary for list views.
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        status:
+          type: string
+        character_count:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+
+    # ─── Encounters ──────────────────────────────────────────────────
+
+    CreateEncounterRequest:
+      type: object
+      description: Payload for creating an encounter with enemies.
+      required: [name, enemies]
+      properties:
+        name:
+          type: string
+          example: "Goblin Ambush"
+        enemies:
+          type: array
+          items:
+            $ref: "#/components/schemas/EnemyTemplate"
+
+    EnemyTemplate:
+      type: object
+      description: Template for an enemy participant.
+      required:
+        [name, class, level, hp_max, hp_current, ac, stats]
+      properties:
+        name:
+          type: string
+          example: "Goblin A"
+        class:
+          type: string
+          example: "goblin"
+        level:
+          type: integer
+          example: 1
+        hp_max:
+          type: integer
+          example: 7
+        hp_current:
+          type: integer
+          example: 7
+        ac:
+          type: integer
+          example: 15
+        stats:
+          $ref: "#/components/schemas/Stats"
+
+    Encounter:
+      type: object
+      description: A combat encounter with participants.
+      properties:
+        id:
+          type: integer
+        session_id:
+          type: integer
+        name:
+          type: string
+        status:
+          type: string
+          enum: [pending, active, victory, defeat]
+        participants:
+          type: array
+          items:
+            $ref: "#/components/schemas/Participant"
+
+    EncounterSummary:
+      type: object
+      description: A lightweight encounter summary.
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        status:
+          type: string
+        participant_count:
+          type: integer
+
+    Participant:
+      type: object
+      description: A participant in an encounter (character or enemy).
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          enum: [character, enemy]
+        name:
+          type: string
+        initiative:
+          type: integer
+          nullable: true
+        hp_current:
+          type: integer
+        hp_max:
+          type: integer
+        ac:
+          type: integer
+        status_effects:
+          type: array
+          items:
+            type: string
+
+    StartEncounterResponse:
+      type: object
+      description: Result of starting an encounter (initiative order).
+      properties:
+        encounter_id:
+          type: integer
+        status:
+          type: string
+          enum: [active]
+        turn_order:
+          type: array
+          items:
+            type: object
+            properties:
+              participant_id:
+                type: integer
+              name:
+                type: string
+              initiative:
+                type: integer
+              type:
+                type: string
+                enum: [character, enemy]
+        current_turn:
+          type: integer
+        current_participant_id:
+          type: integer
+
+    # ─── Combat ──────────────────────────────────────────────────────
+
+    CombatStatusResponse:
+      type: object
+      description: Full state of an active combat encounter.
+      properties:
+        session_id:
+          type: integer
+        encounter_id:
+          type: integer
+        status:
+          type: string
+          enum: [active, victory, defeat]
+        turn:
+          type: integer
+        current_participant:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            type:
+              type: string
+        participants:
+          type: array
+          items:
+            $ref: "#/components/schemas/CombatParticipant"
+
+    CombatParticipant:
+      type: object
+      description: A participant in combat with current state.
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        type:
+          type: string
+          enum: [character, enemy]
+        hp_current:
+          type: integer
+        hp_max:
+          type: integer
+        ac:
+          type: integer
+        status_effects:
+          type: array
+          items:
+            type: string
+
+    AttackRequest:
+      type: object
+      description: Payload for an attack action.
+      required: [attacker_id, target_id, ability]
+      properties:
+        attacker_id:
+          type: integer
+          description: Participant ID of the attacker
+        target_id:
+          type: integer
+          description: Participant ID of the target
+        ability:
+          type: string
+          enum:
+            [strength, dexterity, constitution, intelligence, wisdom, charisma]
+          example: "strength"
+        weapon_item_id:
+          type: integer
+          description: Optional equipped weapon item ID for damage
+
+    AttackHitResponse:
+      type: object
+      description: Result of a successful attack.
+      properties:
+        attack_roll:
+          type: integer
+        attack_total:
+          type: integer
+        is_hit:
+          type: boolean
+          enum: [true]
+        damage_roll:
+          type: integer
+        damage_total:
+          type: integer
+        target_id:
+          type: integer
+        target_hp_before:
+          type: integer
+        target_hp_after:
+          type: integer
+        target_defeated:
+          type: boolean
+
+    AttackMissResponse:
+      type: object
+      description: Result of a missed attack.
+      properties:
+        attack_roll:
+          type: integer
+        attack_total:
+          type: integer
+        is_hit:
+          type: boolean
+          enum: [false]
+        target_id:
+          type: integer
+        target_ac:
+          type: integer
+
+    TurnEndResponse:
+      type: object
+      description: Result of ending a turn.
+      properties:
+        previous_participant_id:
+          type: integer
+        current_participant_id:
+          type: integer
+        current_participant_name:
+          type: string
+        current_participant_type:
+          type: string
+        turn_number:
+          type: integer
+        status:
+          type: string
+          enum: [active, victory, defeat]
+        xp_reward:
+          type: integer
+
+    # ─── Common ──────────────────────────────────────────────────────
 
     DeleteResponse:
       type: object

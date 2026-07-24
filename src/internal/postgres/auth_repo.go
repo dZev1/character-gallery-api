@@ -37,23 +37,7 @@ func (a *authRepo) SaveUser(ctx context.Context, exec db.DBTX, username, passwor
 	}
 
 	return &auth.User{
-		ID:           uint64(usr.ID),
-		Username:     usr.Username,
-		PasswordHash: usr.PasswordHash,
-		CreatedAt:    &usr.CreatedAt.Time,
-	}, nil
-}
-
-func (a *authRepo) FindUserByID(ctx context.Context, exec db.DBTX, id uint64) (*auth.User, error) {
-	q := a.q(exec)
-
-	usr, err := q.SelectUserByID(ctx, int64(id))
-	if err != nil {
-		return nil, fmt.Errorf("cannot find user %d: %w", id, err)
-	}
-
-	return &auth.User{
-		ID:           id,
+		ID:           auth.UserID(usr.ID),
 		Username:     usr.Username,
 		PasswordHash: usr.PasswordHash,
 		CreatedAt:    &usr.CreatedAt.Time,
@@ -69,7 +53,7 @@ func (a *authRepo) FindUserByUsername(ctx context.Context, exec db.DBTX, usernam
 	}
 
 	return &auth.User{
-		ID:           uint64(usr.ID),
+		ID:           auth.UserID(usr.ID),
 		Username:     username,
 		PasswordHash: usr.PasswordHash,
 		CreatedAt:    &usr.CreatedAt.Time,

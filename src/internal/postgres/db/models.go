@@ -9,11 +9,15 @@ import (
 )
 
 type Character struct {
-	ID       int64
-	Name     string
-	BodyType string
-	Species  string
-	Class    string
+	ID        int64
+	Name      string
+	BodyType  string
+	Species   string
+	Class     string
+	Level     int32
+	Xp        int32
+	HpMax     int32
+	HpCurrent int32
 }
 
 type Customization struct {
@@ -46,10 +50,6 @@ type Item struct {
 	Duration    pgtype.Int4
 	Cooldown    pgtype.Int4
 	Capacity    pgtype.Int4
-	Level       int32
-	Xp          int32
-	HpMax       int32
-	HpCurrent   int32
 }
 
 type Stat struct {

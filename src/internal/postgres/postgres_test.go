@@ -207,6 +207,10 @@ func domainCharacter(char *db.Character, stats *db.Stat, cust *db.Customization)
 		BodyType: characters.BodyType(char.BodyType),
 		Species:  characters.Species(char.Species),
 		Class:    characters.Class(char.Class),
+		Level:    uint8(char.Level),
+		Xp:       uint64(char.Xp),
+		HpMax:    uint8(char.HpMax),
+		HpCurrent: uint8(char.HpCurrent),
 		Stats: &characters.Stats{
 			ID:           characters.CharacterID(stats.CharacterID),
 			Strength:     uint8(stats.Strength),

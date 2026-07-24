@@ -2,7 +2,7 @@ package characters
 
 import "fmt"
 
-const formatString = "\nName: %v\nSpecies: %v\nBody Type: %v\nClass: %v\n\n-STATS-\n%v\n\nCustomization: %v\n\n"
+const formatString = "\nName: %v\nSpecies: %v\nBody Type: %v\nClass: %v\nLevel: %v\nXP: %v\nHP: %v/%v\n\n-STATS-\n%v\n\nCustomization: %v\n\n"
 
 type Character struct {
 	ID            CharacterID    `db:"id" json:"id" redis:"id"`
@@ -10,6 +10,10 @@ type Character struct {
 	BodyType      BodyType       `db:"body_type" json:"body_type" redis:"body_type"`
 	Species       Species        `db:"species" json:"species" redis:"species"`
 	Class         Class          `db:"class" json:"class" redis:"class"`
+	Level         uint8          `json:"level"`
+	Xp            uint64         `json:"xp"`
+	HpMax         uint8          `json:"hp_max"`
+	HpCurrent     uint8          `json:"hp_current"`
 	Stats         *Stats         `json:"stats" redis:"stats"`
 	Customization *Customization `json:"customization" redis:"customization"`
 }
@@ -20,6 +24,10 @@ func (char *Character) String() string {
 		char.Species,
 		char.BodyType,
 		char.Class,
+		char.Level,
+		char.Xp,
+		char.HpMax,
+		char.HpCurrent,
 		char.Stats,
 		char.Customization,
 	)

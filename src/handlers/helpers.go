@@ -6,9 +6,15 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"unicode"
 
 	"dZev1/character-gallery/internal/characters"
 	"dZev1/character-gallery/internal/items"
+)
+
+var (
+	ErrInvalidUsername = errors.New("username must be 3-30 alphanumeric characters or underscores")
+	ErrInvalidPassword = errors.New("password must be 8-128 characters")
 )
 
 func isCharacterNotFound(err error) bool {
@@ -69,4 +75,29 @@ func parseQueryInt(r *http.Request, name string, defaultVal int) int {
 		return defaultVal
 	}
 	return val
+}
+
+type registerRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+type loginRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+func validateCredentials(username, password string) error {
+	if len(username) < 3 || len(username) > 30 {
+		return ErrInvalidUsername
+	}
+	for _, c := range username {
+		if !(unicode.IsLetter(c) || unicode.IsDigit(c) || c == '_') {
+			return ErrInvalidUsername
+		}
+	}
+	if len(password) < 8 || len(password) > 128 {
+		return ErrInvalidPassword
+	}
+	return nil
 }

@@ -32,7 +32,7 @@ INSERT INTO items (
     $6, $7, $8, $9, $10,
     $11, $12
 )
-RETURNING id, name, type, description, equippable, rarity, damage, defense, heal_amount, mana_cost, duration, cooldown, capacity, level, xp, hp_max, hp_current
+RETURNING id, name, type, description, equippable, rarity, damage, defense, heal_amount, mana_cost, duration, cooldown, capacity
 `
 
 type CreateItemParams struct {
@@ -80,16 +80,12 @@ func (q *Queries) CreateItem(ctx context.Context, arg CreateItemParams) (*Item, 
 		&i.Duration,
 		&i.Cooldown,
 		&i.Capacity,
-		&i.Level,
-		&i.Xp,
-		&i.HpMax,
-		&i.HpCurrent,
 	)
 	return &i, err
 }
 
 const findAllItems = `-- name: FindAllItems :many
-SELECT id, name, type, description, equippable, rarity, damage, defense, heal_amount, mana_cost, duration, cooldown, capacity, level, xp, hp_max, hp_current FROM items
+SELECT id, name, type, description, equippable, rarity, damage, defense, heal_amount, mana_cost, duration, cooldown, capacity FROM items
 ORDER BY id
 LIMIT $1 OFFSET $2
 `
@@ -122,10 +118,6 @@ func (q *Queries) FindAllItems(ctx context.Context, arg FindAllItemsParams) ([]*
 			&i.Duration,
 			&i.Cooldown,
 			&i.Capacity,
-			&i.Level,
-			&i.Xp,
-			&i.HpMax,
-			&i.HpCurrent,
 		); err != nil {
 			return nil, err
 		}
@@ -138,7 +130,7 @@ func (q *Queries) FindAllItems(ctx context.Context, arg FindAllItemsParams) ([]*
 }
 
 const findItem = `-- name: FindItem :one
-SELECT id, name, type, description, equippable, rarity, damage, defense, heal_amount, mana_cost, duration, cooldown, capacity, level, xp, hp_max, hp_current FROM items
+SELECT id, name, type, description, equippable, rarity, damage, defense, heal_amount, mana_cost, duration, cooldown, capacity FROM items
 WHERE id = $1
 `
 
@@ -159,10 +151,6 @@ func (q *Queries) FindItem(ctx context.Context, id int64) (*Item, error) {
 		&i.Duration,
 		&i.Cooldown,
 		&i.Capacity,
-		&i.Level,
-		&i.Xp,
-		&i.HpMax,
-		&i.HpCurrent,
 	)
 	return &i, err
 }
