@@ -18,3 +18,5 @@ jobs:
       - uses: peakoss/anti-slop@v0
         with:
           max-failures: 4
+          exempt-author-association: "OWNER,MEMBER,COLLABORATOR"
+
