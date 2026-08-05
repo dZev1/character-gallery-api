@@ -8,6 +8,8 @@ import (
 	"log"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/google/uuid"
 )
 
 type Service struct {
@@ -24,7 +26,7 @@ func NewService(repo Repository, pool *pgxpool.Pool, cache cache.Cache) *Service
 	}
 }
 
-func (s *Service) Create(ctx context.Context, character *Character) (*Character, error) {
+func (s *Service) Create(ctx context.Context, character *Character, ownerID uuid.UUID) (*Character, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		log.Println("Error starting transaction:", err)
@@ -32,7 +34,7 @@ func (s *Service) Create(ctx context.Context, character *Character) (*Character,
 	}
 	defer tx.Rollback(ctx)
 
-	character, err = s.repo.SaveCharacter(ctx, tx, character)
+	character, err = s.repo.SaveCharacter(ctx, tx, character, ownerID)
 	if err != nil {
 		log.Println("Error creating character:", err)
 		return nil, err
@@ -77,7 +79,7 @@ func (s *Service) GetAll(ctx context.Context, page, limit int) ([]Character, uin
 	return s.repo.FindAllCharacters(ctx, s.pool, limit, offset)
 }
 
-func (s *Service) Update(ctx context.Context, character *Character) (*Character, error) {
+func (s *Service) Update(ctx context.Context, character *Character, ownerID uuid.UUID) (*Character, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		log.Println("Error beginning transaction:", err)
@@ -85,7 +87,7 @@ func (s *Service) Update(ctx context.Context, character *Character) (*Character,
 	}
 	defer tx.Rollback(ctx)
 
-	updated, err := s.repo.UpdateCharacter(ctx, tx, character)
+	updated, err := s.repo.UpdateCharacter(ctx, tx, character, ownerID)
 	if err != nil {
 		log.Println("Error updating character:", err)
 		return nil, err
@@ -103,7 +105,7 @@ func (s *Service) Update(ctx context.Context, character *Character) (*Character,
 	return updated, nil
 }
 
-func (s *Service) Delete(ctx context.Context, id CharacterID) error {
+func (s *Service) Delete(ctx context.Context, id CharacterID, ownerID uuid.UUID) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		log.Println("Error beginning transaction:", err)
@@ -111,7 +113,7 @@ func (s *Service) Delete(ctx context.Context, id CharacterID) error {
 	}
 	defer tx.Rollback(ctx)
 
-	err = s.repo.DeleteCharacter(ctx, tx, id)
+	err = s.repo.DeleteCharacter(ctx, tx, id, ownerID)
 	if err != nil {
 		return err
 	}

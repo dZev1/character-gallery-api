@@ -1,16 +1,33 @@
 package handlers
 
 import (
+	"dZev1/character-gallery/internal/auth"
 	"dZev1/character-gallery/internal/characters"
 	"encoding/json"
 	"net/http"
+
+	"github.com/google/uuid"
 )
+
+func ownerIDForRequest(claims *auth.Claims) uuid.UUID {
+	if claims.Role == "admin" {
+		return uuid.Nil
+	}
+	return claims.UserID
+}
 
 func (g *Gallery) HandleCreateCharacter(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
+	claims, ok := auth.ClaimsFromContext(ctx)
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
+		return
+	}
+
 	character := &characters.Character{}
 
+	limitBody(w, r)
 	err := json.NewDecoder(r.Body).Decode(character)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "Error parsing request body")
@@ -22,7 +39,7 @@ func (g *Gallery) HandleCreateCharacter(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	character, err = g.characterService.Create(ctx, character)
+	character, err = g.characterService.Create(ctx, character, claims.UserID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Error creating character")
 		return
@@ -34,8 +51,7 @@ func (g *Gallery) HandleCreateCharacter(w http.ResponseWriter, r *http.Request) 
 func (g *Gallery) HandleGetAllCharacters(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	page := max(parseQueryInt(r, "page", 1), 1)
-	limit := max(parseQueryInt(r, "limit", 20), 20)
+	page, limit := paginationParams(r)
 
 	chars, total, err := g.characterService.GetAll(ctx, page, limit)
 	if err != nil {
@@ -87,7 +103,14 @@ func (g *Gallery) HandleUpdateCharacter(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	ownerID, ok := auth.ClaimsFromContext(ctx)
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
+		return
+	}
+
 	character := &characters.Character{}
+	limitBody(w, r)
 	err = json.NewDecoder(r.Body).Decode(character)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "Error parsing request body")
@@ -100,7 +123,7 @@ func (g *Gallery) HandleUpdateCharacter(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	character, err = g.characterService.Update(ctx, character)
+	character, err = g.characterService.Update(ctx, character, ownerIDForRequest(ownerID))
 	if err != nil {
 		if isCharacterNotFound(err) {
 			writeError(w, http.StatusNotFound, "NOT_FOUND", "Character not found")
@@ -122,7 +145,13 @@ func (g *Gallery) HandleDeleteCharacter(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	err = g.characterService.Delete(ctx, characters.CharacterID(id))
+	claims, ok := auth.ClaimsFromContext(ctx)
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
+		return
+	}
+
+	err = g.characterService.Delete(ctx, characters.CharacterID(id), ownerIDForRequest(claims))
 	if err != nil {
 		if isCharacterNotFound(err) {
 			writeError(w, http.StatusNotFound, "NOT_FOUND", "Character not found")

@@ -6,6 +6,7 @@ import (
 	"dZev1/character-gallery/internal/postgres/db"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -23,10 +24,11 @@ func (c *authRepo) q(exec db.DBTX) *db.Queries {
 	return db.New(exec)
 }
 
-func (a *authRepo) SaveUser(ctx context.Context, exec db.DBTX, username, passwordHash string) (*auth.User, error) {
+func (a *authRepo) SaveUser(ctx context.Context, exec db.DBTX, id uuid.UUID, username, passwordHash string) (*auth.User, error) {
 	q := a.q(exec)
 
 	createParams := db.CreateUserParams{
+		ID:           id,
 		Username:     username,
 		PasswordHash: passwordHash,
 	}
@@ -40,6 +42,7 @@ func (a *authRepo) SaveUser(ctx context.Context, exec db.DBTX, username, passwor
 		ID:           auth.UserID(usr.ID),
 		Username:     usr.Username,
 		PasswordHash: usr.PasswordHash,
+		Role:         usr.Role,
 		CreatedAt:    &usr.CreatedAt.Time,
 	}, nil
 }
@@ -56,6 +59,7 @@ func (a *authRepo) FindUserByUsername(ctx context.Context, exec db.DBTX, usernam
 		ID:           auth.UserID(usr.ID),
 		Username:     username,
 		PasswordHash: usr.PasswordHash,
+		Role:         usr.Role,
 		CreatedAt:    &usr.CreatedAt.Time,
 	}, nil
 }

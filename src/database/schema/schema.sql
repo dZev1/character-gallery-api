@@ -1,7 +1,8 @@
 CREATE TABLE IF NOT EXISTS users (
-    id BIGSERIAL PRIMARY KEY,
+    id UUID PRIMARY KEY,
     username TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT 'user',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -32,6 +33,7 @@ CREATE TABLE IF NOT EXISTS items (
 
 CREATE TABLE IF NOT EXISTS characters (
     id BIGSERIAL PRIMARY KEY,
+    owner_id UUID NOT NULL REFERENCES users(id),
     name TEXT NOT NULL,
     body_type TEXT NOT NULL CHECK (body_type IN ('type_a', 'type_b')),
     species TEXT NOT NULL CHECK (

@@ -80,10 +80,7 @@ func (rl *RateLimiter) Limit(next http.Handler) http.Handler {
 			return
 		}
 
-		ip := r.RemoteAddr
-		if idx := strings.LastIndex(ip, ":"); idx != -1 {
-			ip = ip[:idx]
-		}
+		ip := clientIP(r)
 
 		now := time.Now().UnixMilli() / int64(rl.window.Milliseconds())
 		key := fmt.Sprintf("ratelimit:%s:%s:%d", ip, r.Method+" "+path, now)
@@ -115,4 +112,25 @@ func (rl *RateLimiter) Limit(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r)
 	})
+}
+
+// clientIP returns the client IP to use for rate limiting. When a reverse
+// proxy (e.g. Cloudflare) is in front, X-Forwarded-For is authoritative;
+// otherwise it falls back to RemoteAddr. Only the first forwarded address is
+// trusted since the proxy rewrites the header.
+func clientIP(r *http.Request) string {
+	if fwd := r.Header.Get("X-Forwarded-For"); fwd != "" {
+		if i := strings.Index(fwd, ","); i != -1 {
+			fwd = fwd[:i]
+		}
+		if ip := strings.TrimSpace(fwd); ip != "" {
+			return ip
+		}
+	}
+
+	ip := r.RemoteAddr
+	if idx := strings.LastIndex(ip, ":"); idx != -1 {
+		ip = ip[:idx]
+	}
+	return ip
 }

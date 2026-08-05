@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"dZev1/character-gallery/internal/uuidv7"
 	"errors"
 	"fmt"
 	"log"
@@ -47,7 +48,13 @@ func (s *Service) Register(ctx context.Context, username, password string) (*Use
 		return nil, fmt.Errorf("hash password: %w", err)
 	}
 
-	user, err := s.repo.SaveUser(ctx, tx, username, hash)
+	id, err := uuidv7.New()
+	if err != nil {
+		log.Println("Error generating user id:", err)
+		return nil, fmt.Errorf("generate user id: %w", err)
+	}
+
+	user, err := s.repo.SaveUser(ctx, tx, id, username, hash)
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) && pgErr.Code == PGErrUniqueViolation {
 		return nil, ErrDuplicateUsername
@@ -64,6 +71,7 @@ func (s *Service) Register(ctx context.Context, username, password string) (*Use
 	return &UserResponse{
 		ID:        user.ID,
 		Username:  user.Username,
+		Role:      user.Role,
 		CreatedAt: *user.CreatedAt,
 	}, nil
 }

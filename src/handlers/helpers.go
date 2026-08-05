@@ -12,6 +12,44 @@ import (
 	"dZev1/character-gallery/internal/items"
 )
 
+// maxBodyBytes caps the size of request bodies to avoid memory exhaustion via
+// oversized payloads. Character customizations make bodies small; 1 MiB is a
+// generous ceiling.
+const maxBodyBytes = 1 << 20
+
+func limitBody(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodyBytes)
+}
+
+const (
+	defaultPage  = 1
+	defaultLimit = 20
+	minLimit     = 20
+	maxLimit     = 100
+	maxPage      = 10000
+)
+
+// paginationParams resolves and clamps page/limit query values so clients
+// cannot trigger unbounded scans (e.g. limit=10000000).
+func paginationParams(r *http.Request) (page, limit int) {
+	page = parseQueryInt(r, "page", defaultPage)
+	if page < 1 {
+		page = defaultPage
+	}
+	if page > maxPage {
+		page = maxPage
+	}
+
+	limit = parseQueryInt(r, "limit", defaultLimit)
+	if limit < minLimit {
+		limit = minLimit
+	}
+	if limit > maxLimit {
+		limit = maxLimit
+	}
+	return page, limit
+}
+
 var (
 	ErrInvalidUsername = errors.New("username must be 3-30 alphanumeric characters or underscores")
 	ErrInvalidPassword = errors.New("password must be 8-128 characters")

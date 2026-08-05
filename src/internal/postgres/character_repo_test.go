@@ -2,9 +2,12 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"dZev1/character-gallery/internal/characters"
+
+	"github.com/google/uuid"
 )
 
 func TestCharacterRepo_SaveAndFindCharacter(t *testing.T) {
@@ -34,12 +37,15 @@ func TestCharacterRepo_SaveAndFindCharacter(t *testing.T) {
 		},
 	}
 
-	saved, err := repo.SaveCharacter(ctx, tt.Tx, char)
+	saved, err := repo.SaveCharacter(ctx, tt.Tx, char, testOwnerID(t, tt.Q))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if saved.ID == 0 {
 		t.Fatal("expected non-zero ID")
+	}
+	if saved.OwnerID == (uuid.UUID{}) {
+		t.Fatal("expected owner ID to be set")
 	}
 	if saved.Stats.ID != saved.ID {
 		t.Errorf("stats ID %d does not match character ID %d", saved.Stats.ID, saved.ID)
@@ -78,20 +84,21 @@ func TestCharacterRepo_FindAllCharacters(t *testing.T) {
 	tt := newTestTx(t)
 	repo := newCharacterRepo(t)
 	ctx := context.Background()
+	owner := testOwnerID(t, tt.Q)
 
 	base := &characters.Character{
-		BodyType: "type_a",
-		Species:  "human",
-		Class:    "fighter",
-		Stats:    &characters.Stats{Strength: 10, Dexterity: 10, Constitution: 10, Intelligence: 10, Wisdom: 10, Charisma: 10},
+		BodyType:      "type_a",
+		Species:       "human",
+		Class:         "fighter",
+		Stats:         &characters.Stats{Strength: 10, Dexterity: 10, Constitution: 10, Intelligence: 10, Wisdom: 10, Charisma: 10},
 		Customization: &characters.Customization{Hair: 1, Face: 1, Shirt: 1, Pants: 1, Shoes: 1},
 	}
 	base.Name = "Hero One"
-	if _, err := repo.SaveCharacter(ctx, tt.Tx, base); err != nil {
+	if _, err := repo.SaveCharacter(ctx, tt.Tx, base, owner); err != nil {
 		t.Fatal(err)
 	}
 	base.Name = "Hero Two"
-	if _, err := repo.SaveCharacter(ctx, tt.Tx, base); err != nil {
+	if _, err := repo.SaveCharacter(ctx, tt.Tx, base, owner); err != nil {
 		t.Fatal(err)
 	}
 
@@ -111,18 +118,19 @@ func TestCharacterRepo_FindAllCharacters_Pagination(t *testing.T) {
 	tt := newTestTx(t)
 	repo := newCharacterRepo(t)
 	ctx := context.Background()
+	owner := testOwnerID(t, tt.Q)
 
 	base := &characters.Character{
-		BodyType: "type_a",
-		Species:  "human",
-		Class:    "fighter",
-		Stats:    &characters.Stats{Strength: 10, Dexterity: 10, Constitution: 10, Intelligence: 10, Wisdom: 10, Charisma: 10},
+		BodyType:      "type_a",
+		Species:       "human",
+		Class:         "fighter",
+		Stats:         &characters.Stats{Strength: 10, Dexterity: 10, Constitution: 10, Intelligence: 10, Wisdom: 10, Charisma: 10},
 		Customization: &characters.Customization{Hair: 1, Face: 1, Shirt: 1, Pants: 1, Shoes: 1},
 	}
 
 	for i := 0; i < 5; i++ {
 		base.Name = "Hero"
-		if _, err := repo.SaveCharacter(ctx, tt.Tx, base); err != nil {
+		if _, err := repo.SaveCharacter(ctx, tt.Tx, base, owner); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -169,15 +177,15 @@ func TestCharacterRepo_UpdateCharacter(t *testing.T) {
 	repo := newCharacterRepo(t)
 	ctx := context.Background()
 
-	char := &characters.Character{
-		Name:     "Aragorn",
-		BodyType: "type_a",
-		Species:  "human",
-		Class:    "ranger",
-		Stats:    &characters.Stats{Strength: 15, Dexterity: 14, Constitution: 13, Intelligence: 12, Wisdom: 11, Charisma: 10},
+	base := &characters.Character{
+		Name:          "Aragorn",
+		BodyType:      "type_a",
+		Species:       "human",
+		Class:         "ranger",
+		Stats:         &characters.Stats{Strength: 15, Dexterity: 14, Constitution: 13, Intelligence: 12, Wisdom: 11, Charisma: 10},
 		Customization: &characters.Customization{Hair: 5, Face: 3, Shirt: 12, Pants: 8, Shoes: 2},
 	}
-	saved, err := repo.SaveCharacter(ctx, tt.Tx, char)
+	saved, err := repo.SaveCharacter(ctx, tt.Tx, base, testOwnerID(t, tt.Q))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -186,7 +194,7 @@ func TestCharacterRepo_UpdateCharacter(t *testing.T) {
 	saved.Species = "elf"
 	saved.Stats.Strength = 18
 
-	got, err := repo.UpdateCharacter(ctx, tt.Tx, saved)
+	got, err := repo.UpdateCharacter(ctx, tt.Tx, saved, saved.OwnerID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -204,19 +212,20 @@ func TestCharacterRepo_DeleteCharacter(t *testing.T) {
 	ctx := context.Background()
 
 	char := &characters.Character{
-		Name:     "ToDelete",
-		BodyType: "type_a",
-		Species:  "human",
-		Class:    "fighter",
-		Stats:    &characters.Stats{Strength: 10, Dexterity: 10, Constitution: 10, Intelligence: 10, Wisdom: 10, Charisma: 10},
+		Name:          "ToDelete",
+		BodyType:      "type_a",
+		Species:       "human",
+		Class:         "fighter",
+		Stats:         &characters.Stats{Strength: 10, Dexterity: 10, Constitution: 10, Intelligence: 10, Wisdom: 10, Charisma: 10},
 		Customization: &characters.Customization{Hair: 1, Face: 1, Shirt: 1, Pants: 1, Shoes: 1},
 	}
-	saved, err := repo.SaveCharacter(ctx, tt.Tx, char)
+	owner := testOwnerID(t, tt.Q)
+	saved, err := repo.SaveCharacter(ctx, tt.Tx, char, owner)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = repo.DeleteCharacter(ctx, tt.Tx, saved.ID)
+	err = repo.DeleteCharacter(ctx, tt.Tx, saved.ID, owner)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -227,25 +236,124 @@ func TestCharacterRepo_DeleteCharacter(t *testing.T) {
 	}
 }
 
+func TestCharacterRepo_DeleteCharacter_ForbiddenOwner(t *testing.T) {
+	tt := newTestTx(t)
+	repo := newCharacterRepo(t)
+	ctx := context.Background()
+
+	owner := testOwnerID(t, tt.Q)
+	other := testOwnerID(t, tt.Q)
+
+	char := &characters.Character{
+		Name:          "Private",
+		BodyType:      "type_a",
+		Species:       "human",
+		Class:         "fighter",
+		Stats:         &characters.Stats{Strength: 10, Dexterity: 10, Constitution: 10, Intelligence: 10, Wisdom: 10, Charisma: 10},
+		Customization: &characters.Customization{Hair: 1, Face: 1, Shirt: 1, Pants: 1, Shoes: 1},
+	}
+	saved, err := repo.SaveCharacter(ctx, tt.Tx, char, owner)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = repo.DeleteCharacter(ctx, tt.Tx, saved.ID, other)
+	if err == nil || !errors.Is(err, characters.ErrNotFound) {
+		t.Fatalf("expected ErrNotFound when deleting another user's character, got %v", err)
+	}
+
+	if _, err := repo.FindCharacter(ctx, tt.Tx, saved.ID); err != nil {
+		t.Fatalf("character should still exist, got %v", err)
+	}
+}
+
+func TestCharacterRepo_UpdateCharacter_ForbiddenOwner(t *testing.T) {
+	tt := newTestTx(t)
+	repo := newCharacterRepo(t)
+	ctx := context.Background()
+
+	owner := testOwnerID(t, tt.Q)
+	other := testOwnerID(t, tt.Q)
+
+	char := &characters.Character{
+		Name:          "Private",
+		BodyType:      "type_a",
+		Species:       "human",
+		Class:         "fighter",
+		Stats:         &characters.Stats{Strength: 10, Dexterity: 10, Constitution: 10, Intelligence: 10, Wisdom: 10, Charisma: 10},
+		Customization: &characters.Customization{Hair: 1, Face: 1, Shirt: 1, Pants: 1, Shoes: 1},
+	}
+	saved, err := repo.SaveCharacter(ctx, tt.Tx, char, owner)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	saved.Name = "Hijacked"
+	_, err = repo.UpdateCharacter(ctx, tt.Tx, saved, other)
+	if err == nil || !errors.Is(err, characters.ErrNotFound) {
+		t.Fatalf("expected ErrNotFound when updating another user's character, got %v", err)
+	}
+}
+
+func TestCharacterRepo_AdminBypassesOwnership(t *testing.T) {
+	tt := newTestTx(t)
+	repo := newCharacterRepo(t)
+	ctx := context.Background()
+
+	owner := testOwnerID(t, tt.Q)
+	var admin uuid.UUID = uuid.Nil // admin bypass sentinel (handlers pass uuid.Nil for admin role)
+
+	char := &characters.Character{
+		Name:          "OthersChar",
+		BodyType:      "type_a",
+		Species:       "human",
+		Class:         "fighter",
+		Stats:         &characters.Stats{Strength: 10, Dexterity: 10, Constitution: 10, Intelligence: 10, Wisdom: 10, Charisma: 10},
+		Customization: &characters.Customization{Hair: 1, Face: 1, Shirt: 1, Pants: 1, Shoes: 1},
+	}
+	saved, err := repo.SaveCharacter(ctx, tt.Tx, char, owner)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	saved.Name = "AdminEdited"
+	got, err := repo.UpdateCharacter(ctx, tt.Tx, saved, admin)
+	if err != nil {
+		t.Fatalf("admin should be able to update, got %v", err)
+	}
+	if got.Name != "AdminEdited" {
+		t.Errorf("got name %q, want %q", got.Name, "AdminEdited")
+	}
+
+	err = repo.DeleteCharacter(ctx, tt.Tx, saved.ID, admin)
+	if err != nil {
+		t.Fatalf("admin should be able to delete, got %v", err)
+	}
+	if _, err := repo.FindCharacter(ctx, tt.Tx, saved.ID); err == nil {
+		t.Fatal("expected character to be deleted by admin")
+	}
+}
+
 func TestCharacterRepo_DeleteCharacter_Cascades(t *testing.T) {
 	tt := newTestTx(t)
 	repo := newCharacterRepo(t)
 	ctx := context.Background()
 
 	char := &characters.Character{
-		Name:     "CascadeTest",
-		BodyType: "type_a",
-		Species:  "human",
-		Class:    "fighter",
-		Stats:    &characters.Stats{Strength: 10, Dexterity: 10, Constitution: 10, Intelligence: 10, Wisdom: 10, Charisma: 10},
+		Name:          "CascadeTest",
+		BodyType:      "type_a",
+		Species:       "human",
+		Class:         "fighter",
+		Stats:         &characters.Stats{Strength: 10, Dexterity: 10, Constitution: 10, Intelligence: 10, Wisdom: 10, Charisma: 10},
 		Customization: &characters.Customization{Hair: 1, Face: 1, Shirt: 1, Pants: 1, Shoes: 1},
 	}
-	saved, err := repo.SaveCharacter(ctx, tt.Tx, char)
+	owner := testOwnerID(t, tt.Q)
+	saved, err := repo.SaveCharacter(ctx, tt.Tx, char, owner)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = repo.DeleteCharacter(ctx, tt.Tx, saved.ID)
+	err = repo.DeleteCharacter(ctx, tt.Tx, saved.ID, owner)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -1,11 +1,16 @@
 package characters
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/google/uuid"
+)
 
 const formatString = "\nName: %v\nSpecies: %v\nBody Type: %v\nClass: %v\nLevel: %v\nXP: %v\nHP: %v/%v\n\n-STATS-\n%v\n\nCustomization: %v\n\n"
 
 type Character struct {
 	ID            CharacterID    `db:"id" json:"id" redis:"id"`
+	OwnerID       uuid.UUID      `db:"owner_id" json:"-"`
 	Name          string         `db:"name" json:"name" redis:"name"`
 	BodyType      BodyType       `db:"body_type" json:"body_type" redis:"body_type"`
 	Species       Species        `db:"species" json:"species" redis:"species"`

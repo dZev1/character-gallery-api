@@ -14,8 +14,6 @@ WORKDIR /root/
 
 COPY --from=builder /app/main .
 
-COPY openapi.yaml /openapi.yaml
-
 ENV DATABASE_URL=""
 ENV REDIS_URL="redis://localhost:6379/0"
 

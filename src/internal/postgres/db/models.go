@@ -5,11 +5,13 @@
 package db
 
 import (
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Character struct {
 	ID        int64
+	OwnerID   uuid.UUID
 	Name      string
 	BodyType  string
 	Species   string
@@ -63,8 +65,9 @@ type Stat struct {
 }
 
 type User struct {
-	ID           int64
+	ID           uuid.UUID
 	Username     string
 	PasswordHash string
+	Role         string
 	CreatedAt    pgtype.Timestamptz
 }

@@ -7,6 +7,8 @@ package db
 
 import (
 	"context"
+
+	"github.com/google/uuid"
 )
 
 const countAllCharacters = `-- name: CountAllCharacters :one
@@ -22,14 +24,15 @@ func (q *Queries) CountAllCharacters(ctx context.Context) (int64, error) {
 
 const createCharacter = `-- name: CreateCharacter :one
 INSERT INTO characters (
-    name, body_type, species, class, level, xp, hp_max, hp_current
+    owner_id, name, body_type, species, class, level, xp, hp_max, hp_current
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8
+    $1, $2, $3, $4, $5, $6, $7, $8, $9
 )
-RETURNING id, name, body_type, species, class, level, xp, hp_max, hp_current
+RETURNING id, owner_id, name, body_type, species, class, level, xp, hp_max, hp_current
 `
 
 type CreateCharacterParams struct {
+	OwnerID   uuid.UUID
 	Name      string
 	BodyType  string
 	Species   string
@@ -42,6 +45,7 @@ type CreateCharacterParams struct {
 
 func (q *Queries) CreateCharacter(ctx context.Context, arg CreateCharacterParams) (*Character, error) {
 	row := q.db.QueryRow(ctx, createCharacter,
+		arg.OwnerID,
 		arg.Name,
 		arg.BodyType,
 		arg.Species,
@@ -54,6 +58,7 @@ func (q *Queries) CreateCharacter(ctx context.Context, arg CreateCharacterParams
 	var i Character
 	err := row.Scan(
 		&i.ID,
+		&i.OwnerID,
 		&i.Name,
 		&i.BodyType,
 		&i.Species,
@@ -147,18 +152,39 @@ func (q *Queries) CreateStats(ctx context.Context, arg CreateStatsParams) (*Stat
 	return &i, err
 }
 
-const deleteCharacter = `-- name: DeleteCharacter :exec
+const deleteCharacter = `-- name: DeleteCharacter :execrows
 DELETE FROM characters
 WHERE id = $1
 `
 
-func (q *Queries) DeleteCharacter(ctx context.Context, id int64) error {
-	_, err := q.db.Exec(ctx, deleteCharacter, id)
-	return err
+func (q *Queries) DeleteCharacter(ctx context.Context, id int64) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteCharacter, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const deleteCharacterOwned = `-- name: DeleteCharacterOwned :execrows
+DELETE FROM characters
+WHERE id = $1 AND owner_id = $2
+`
+
+type DeleteCharacterOwnedParams struct {
+	ID      int64
+	OwnerID uuid.UUID
+}
+
+func (q *Queries) DeleteCharacterOwned(ctx context.Context, arg DeleteCharacterOwnedParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteCharacterOwned, arg.ID, arg.OwnerID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const selectAllCharacters = `-- name: SelectAllCharacters :many
-SELECT id, name, body_type, species, class, level, xp, hp_max, hp_current FROM characters
+SELECT id, owner_id, name, body_type, species, class, level, xp, hp_max, hp_current FROM characters
 ORDER BY id
 LIMIT $1 OFFSET $2
 `
@@ -179,6 +205,7 @@ func (q *Queries) SelectAllCharacters(ctx context.Context, arg SelectAllCharacte
 		var i Character
 		if err := rows.Scan(
 			&i.ID,
+			&i.OwnerID,
 			&i.Name,
 			&i.BodyType,
 			&i.Species,
@@ -199,7 +226,7 @@ func (q *Queries) SelectAllCharacters(ctx context.Context, arg SelectAllCharacte
 }
 
 const selectCharacter = `-- name: SelectCharacter :one
-SELECT id, name, body_type, species, class, level, xp, hp_max, hp_current FROM characters
+SELECT id, owner_id, name, body_type, species, class, level, xp, hp_max, hp_current FROM characters
 WHERE id = $1
 `
 
@@ -208,6 +235,7 @@ func (q *Queries) SelectCharacter(ctx context.Context, id int64) (*Character, er
 	var i Character
 	err := row.Scan(
 		&i.ID,
+		&i.OwnerID,
 		&i.Name,
 		&i.BodyType,
 		&i.Species,
@@ -264,7 +292,7 @@ UPDATE characters
 SET name = $2, body_type = $3, species = $4, class = $5,
     level = $6, xp = $7, hp_max = $8, hp_current = $9
 WHERE id = $1
-RETURNING id, name, body_type, species, class, level, xp, hp_max, hp_current
+RETURNING id, owner_id, name, body_type, species, class, level, xp, hp_max, hp_current
 `
 
 type UpdateCharacterParams struct {
@@ -294,6 +322,57 @@ func (q *Queries) UpdateCharacter(ctx context.Context, arg UpdateCharacterParams
 	var i Character
 	err := row.Scan(
 		&i.ID,
+		&i.OwnerID,
+		&i.Name,
+		&i.BodyType,
+		&i.Species,
+		&i.Class,
+		&i.Level,
+		&i.Xp,
+		&i.HpMax,
+		&i.HpCurrent,
+	)
+	return &i, err
+}
+
+const updateCharacterOwned = `-- name: UpdateCharacterOwned :one
+UPDATE characters
+SET name = $3, body_type = $4, species = $5, class = $6,
+    level = $7, xp = $8, hp_max = $9, hp_current = $10
+WHERE id = $1 AND owner_id = $2
+RETURNING id, owner_id, name, body_type, species, class, level, xp, hp_max, hp_current
+`
+
+type UpdateCharacterOwnedParams struct {
+	ID        int64
+	OwnerID   uuid.UUID
+	Name      string
+	BodyType  string
+	Species   string
+	Class     string
+	Level     int32
+	Xp        int32
+	HpMax     int32
+	HpCurrent int32
+}
+
+func (q *Queries) UpdateCharacterOwned(ctx context.Context, arg UpdateCharacterOwnedParams) (*Character, error) {
+	row := q.db.QueryRow(ctx, updateCharacterOwned,
+		arg.ID,
+		arg.OwnerID,
+		arg.Name,
+		arg.BodyType,
+		arg.Species,
+		arg.Class,
+		arg.Level,
+		arg.Xp,
+		arg.HpMax,
+		arg.HpCurrent,
+	)
+	var i Character
+	err := row.Scan(
+		&i.ID,
+		&i.OwnerID,
 		&i.Name,
 		&i.BodyType,
 		&i.Species,

@@ -7,49 +7,54 @@ package db
 
 import (
 	"context"
+
+	"github.com/google/uuid"
 )
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO users (username, password_hash)
-VALUES ($1, $2)
-RETURNING id, username, password_hash, created_at
+INSERT INTO users (id, username, password_hash)
+VALUES ($1, $2, $3)
+RETURNING id, username, password_hash, role, created_at
 `
 
 type CreateUserParams struct {
+	ID           uuid.UUID
 	Username     string
 	PasswordHash string
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (*User, error) {
-	row := q.db.QueryRow(ctx, createUser, arg.Username, arg.PasswordHash)
+	row := q.db.QueryRow(ctx, createUser, arg.ID, arg.Username, arg.PasswordHash)
 	var i User
 	err := row.Scan(
 		&i.ID,
 		&i.Username,
 		&i.PasswordHash,
+		&i.Role,
 		&i.CreatedAt,
 	)
 	return &i, err
 }
 
 const selectUserByID = `-- name: SelectUserByID :one
-SELECT id, username, password_hash, created_at FROM users WHERE id = $1
+SELECT id, username, password_hash, role, created_at FROM users WHERE id = $1
 `
 
-func (q *Queries) SelectUserByID(ctx context.Context, id int64) (*User, error) {
+func (q *Queries) SelectUserByID(ctx context.Context, id uuid.UUID) (*User, error) {
 	row := q.db.QueryRow(ctx, selectUserByID, id)
 	var i User
 	err := row.Scan(
 		&i.ID,
 		&i.Username,
 		&i.PasswordHash,
+		&i.Role,
 		&i.CreatedAt,
 	)
 	return &i, err
 }
 
 const selectUserByUsername = `-- name: SelectUserByUsername :one
-SELECT id, username, password_hash, created_at FROM users WHERE username = $1
+SELECT id, username, password_hash, role, created_at FROM users WHERE username = $1
 `
 
 func (q *Queries) SelectUserByUsername(ctx context.Context, username string) (*User, error) {
@@ -59,6 +64,7 @@ func (q *Queries) SelectUserByUsername(ctx context.Context, username string) (*U
 		&i.ID,
 		&i.Username,
 		&i.PasswordHash,
+		&i.Role,
 		&i.CreatedAt,
 	)
 	return &i, err

@@ -272,7 +272,10 @@ func TestInventoryRepo_DeleteCharacter_CascadesToInventory(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = q.DeleteCharacter(ctx, char.ID)
+	_, err = q.DeleteCharacterOwned(ctx, db.DeleteCharacterOwnedParams{
+		ID:      char.ID,
+		OwnerID: char.OwnerID,
+	})
 	if err != nil {
 		t.Fatal(err)
 	}

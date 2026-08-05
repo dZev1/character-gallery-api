@@ -5,10 +5,13 @@ import (
 	"dZev1/character-gallery/internal/characters"
 	"dZev1/character-gallery/internal/inventory"
 	"dZev1/character-gallery/internal/items"
+	"dZev1/character-gallery/internal/uuidv7"
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -100,6 +103,7 @@ func createTestCharacter(t *testing.T, q *db.Queries) *db.Character {
 	t.Helper()
 	ctx := context.Background()
 	char, err := q.CreateCharacter(ctx, db.CreateCharacterParams{
+		OwnerID:  testOwnerID(t, q),
 		Name:     "Test Hero",
 		BodyType: "type_a",
 		Species:  "human",
@@ -109,6 +113,20 @@ func createTestCharacter(t *testing.T, q *db.Queries) *db.Character {
 		t.Fatal(err)
 	}
 	return char
+}
+
+func testOwnerID(t *testing.T, q *db.Queries) uuid.UUID {
+	t.Helper()
+	ctx := context.Background()
+	user, err := q.CreateUser(ctx, db.CreateUserParams{
+		ID:           uuidv7.Must(),
+		Username:     fmt.Sprintf("testuser_%d", time.Now().UnixNano()),
+		PasswordHash: "hash",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return user.ID
 }
 
 func createTestCharacterFull(t *testing.T, q *db.Queries) *db.Character {
@@ -202,14 +220,14 @@ func newInventoryRepo(t *testing.T) *inventoryRepo {
 
 func domainCharacter(char *db.Character, stats *db.Stat, cust *db.Customization) *characters.Character {
 	return &characters.Character{
-		ID:       characters.CharacterID(char.ID),
-		Name:     char.Name,
-		BodyType: characters.BodyType(char.BodyType),
-		Species:  characters.Species(char.Species),
-		Class:    characters.Class(char.Class),
-		Level:    uint8(char.Level),
-		Xp:       uint64(char.Xp),
-		HpMax:    uint8(char.HpMax),
+		ID:        characters.CharacterID(char.ID),
+		Name:      char.Name,
+		BodyType:  characters.BodyType(char.BodyType),
+		Species:   characters.Species(char.Species),
+		Class:     characters.Class(char.Class),
+		Level:     uint8(char.Level),
+		Xp:        uint64(char.Xp),
+		HpMax:     uint8(char.HpMax),
 		HpCurrent: uint8(char.HpCurrent),
 		Stats: &characters.Stats{
 			ID:           characters.CharacterID(stats.CharacterID),

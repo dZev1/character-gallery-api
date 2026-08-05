@@ -1,15 +1,20 @@
 package auth
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 type User struct {
 	ID           UserID     `db:"id" json:"id"`
 	Username     string     `db:"username" json:"username"`
 	PasswordHash string     `db:"password_hash" json:"-"`
+	Role         string     `db:"role" json:"role"`
 	CreatedAt    *time.Time `db:"created_at" json:"-"`
 }
 
-type UserID uint64
+type UserID uuid.UUID
 
 type LoginResponse struct {
 	Token     string    `json:"token"`
@@ -19,5 +24,6 @@ type LoginResponse struct {
 type UserResponse struct {
 	ID        UserID    `json:"id"`
 	Username  string    `json:"username"`
+	Role      string    `json:"role"`
 	CreatedAt time.Time `json:"created_at"`
 }

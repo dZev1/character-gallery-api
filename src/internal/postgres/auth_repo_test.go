@@ -6,6 +6,9 @@ import (
 
 	"dZev1/character-gallery/internal/auth"
 	"dZev1/character-gallery/internal/postgres/db"
+	"dZev1/character-gallery/internal/uuidv7"
+
+	"github.com/google/uuid"
 )
 
 func newAuthRepo(t *testing.T) *authRepo {
@@ -17,6 +20,7 @@ func createTestUser(t *testing.T, q *db.Queries) *db.User {
 	t.Helper()
 	ctx := context.Background()
 	user, err := q.CreateUser(ctx, db.CreateUserParams{
+		ID:           uuidv7.Must(),
 		Username:     "testuser",
 		PasswordHash: "test_hash",
 	})
@@ -31,18 +35,21 @@ func TestAuthRepo_SaveUser(t *testing.T) {
 	repo := newAuthRepo(t)
 	ctx := context.Background()
 
-	user, err := repo.SaveUser(ctx, tt.Tx, "aragorn", "password_hash_123")
+	user, err := repo.SaveUser(ctx, tt.Tx, uuidv7.Must(), "aragorn", "password_hash_123")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if user.ID == 0 {
-		t.Fatal("expected non-zero ID")
+	if user.ID == (auth.UserID(uuid.Nil)) {
+		t.Fatal("expected non-nil (generated) ID")
 	}
 	if user.Username != "aragorn" {
 		t.Errorf("got username %q, want %q", user.Username, "aragorn")
 	}
 	if user.PasswordHash != "password_hash_123" {
 		t.Errorf("got password_hash %q, want %q", user.PasswordHash, "password_hash_123")
+	}
+	if user.Role != "user" {
+		t.Errorf("got role %q, want %q", user.Role, "user")
 	}
 	if user.CreatedAt == nil {
 		t.Fatal("expected non-nil CreatedAt")
@@ -84,12 +91,12 @@ func TestAuthRepo_SaveUser_DuplicateUsername(t *testing.T) {
 	repo := newAuthRepo(t)
 	ctx := context.Background()
 
-	_, err := repo.SaveUser(ctx, tt.Tx, "gimli", "axe_hash")
+	_, err := repo.SaveUser(ctx, tt.Tx, uuidv7.Must(), "gimli", "axe_hash")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = repo.SaveUser(ctx, tt.Tx, "gimli", "different_hash")
+	_, err = repo.SaveUser(ctx, tt.Tx, uuidv7.Must(), "gimli", "different_hash")
 	if err == nil {
 		t.Fatal("expected error for duplicate username")
 	}

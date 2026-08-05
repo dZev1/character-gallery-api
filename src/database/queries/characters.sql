@@ -1,8 +1,8 @@
 -- name: CreateCharacter :one
 INSERT INTO characters (
-    name, body_type, species, class, level, xp, hp_max, hp_current
+    owner_id, name, body_type, species, class, level, xp, hp_max, hp_current
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8
+    $1, $2, $3, $4, $5, $6, $7, $8, $9
 )
 RETURNING *;
 
@@ -49,6 +49,13 @@ SET name = $2, body_type = $3, species = $4, class = $5,
 WHERE id = $1
 RETURNING *;
 
+-- name: UpdateCharacterOwned :one
+UPDATE characters
+SET name = $3, body_type = $4, species = $5, class = $6,
+    level = $7, xp = $8, hp_max = $9, hp_current = $10
+WHERE id = $1 AND owner_id = $2
+RETURNING *;
+
 -- name: UpdateStats :one
 UPDATE stats
 SET strength = $2, dexterity = $3, constitution = $4,
@@ -62,6 +69,10 @@ SET hair = $2, face = $3, shirt = $4, pants = $5, shoes = $6
 WHERE character_id = $1
 RETURNING *;
 
--- name: DeleteCharacter :exec
+-- name: DeleteCharacter :execrows
 DELETE FROM characters
 WHERE id = $1;
+
+-- name: DeleteCharacterOwned :execrows
+DELETE FROM characters
+WHERE id = $1 AND owner_id = $2;

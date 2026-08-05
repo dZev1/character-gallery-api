@@ -12,11 +12,17 @@ servers:
   - url: /api/v1
     description: Current server (adapts automatically to localhost or Cloudflare)
 
+# All endpoints require a valid JWT by default. Public endpoints
+# (register, login, metrics, docs) override this with `security: []`.
+security:
+  - bearerAuth: []
+
 paths:
   # ─── Authentication ────────────────────────────────────────────────
 
   /auth/register:
     post:
+      security: []
       operationId: register
       summary: Register a new user
       description: Creates a new user account with a hashed password.
@@ -49,6 +55,7 @@ paths:
 
   /auth/login:
     post:
+      security: []
       operationId: login
       summary: Login
       description: Authenticates a user and returns a JWT token (24h expiry).
@@ -180,7 +187,9 @@ paths:
     put:
       operationId: updateCharacter
       summary: Update a character
-      description: Updates an existing character by their ID.
+      description: |
+        Updates an existing character by their ID. Only the owning user may
+        update; an `admin` may update any character.
       tags: [Characters]
       parameters:
         - name: characterId
@@ -204,6 +213,8 @@ paths:
                 $ref: "#/components/schemas/Character"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
         "500":
@@ -212,7 +223,9 @@ paths:
     delete:
       operationId: deleteCharacter
       summary: Delete a character
-      description: Deletes an existing character by their ID.
+      description: |
+        Deletes an existing character by their ID. Only the owning user may
+        delete; an `admin` may delete any character.
       tags: [Characters]
       parameters:
         - name: characterId
@@ -230,6 +243,8 @@ paths:
                 $ref: "#/components/schemas/DeleteResponse"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
         "429":
@@ -394,7 +409,9 @@ paths:
     post:
       operationId: createItem
       summary: Create an item
-      description: Creates a new item and adds it to the item pool.
+      description: |
+        Creates a new item and adds it to the item pool. **Admin only**;
+        requires a JWT with role `admin`.
       tags: [Items]
       requestBody:
         required: true
@@ -411,6 +428,10 @@ paths:
                 $ref: "#/components/schemas/Item"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "429":
           $ref: "#/components/responses/TooManyRequests"
         "500":
@@ -834,6 +855,7 @@ paths:
     servers:
       - url: /
     get:
+      security: []
       operationId: getMetrics
       summary: Prometheus metrics
       description: Exposes Prometheus metrics for monitoring
@@ -847,6 +869,15 @@ paths:
                 type: string
 
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT returned by `/auth/login`. Include as `Authorization: Bearer <token>`.
+        Send on every authenticated request. The token embeds the user's role
+        (`user` or `admin`); `admin` can modify/delete any character.
   schemas:
 
     # ─── Auth ────────────────────────────────────────────────────────
@@ -882,7 +913,7 @@ components:
 
     AuthResponse:
       type: object
-      description: JWT token response.
+      description: JWT token response. The token's `user_id` claim is the user's UUIDv7 (string) and `role` is `user` or `admin`.
       required: [token, expires_at]
       properties:
         token:
@@ -899,8 +930,14 @@ components:
       required: [id, username, created_at]
       properties:
         id:
-          type: integer
-          example: 1
+          type: string
+          format: uuid
+          description: Time-ordered UUIDv7 assigned to the user at registration.
+          example: "0194f8c0-0000-7000-8000-000000000000"
+        role:
+          type: string
+          enum: [user, admin]
+          example: "user"
         username:
           type: string
           example: "player1"
@@ -1664,6 +1701,18 @@ components:
   responses:
     BadRequest:
       description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+    Unauthorized:
+      description: Missing or invalid JWT token
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+    Forbidden:
+      description: Not the character owner (and not an admin)
       content:
         application/json:
           schema:

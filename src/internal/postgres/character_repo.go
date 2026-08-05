@@ -4,8 +4,11 @@ import (
 	"context"
 	"dZev1/character-gallery/internal/characters"
 	"dZev1/character-gallery/internal/postgres/db"
+	"errors"
 	"fmt"
 
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -23,10 +26,11 @@ func (c *characterRepo) q(exec db.DBTX) *db.Queries {
 	return db.New(exec)
 }
 
-func (c *characterRepo) SaveCharacter(ctx context.Context, exec db.DBTX, character *characters.Character) (*characters.Character, error) {
+func (c *characterRepo) SaveCharacter(ctx context.Context, exec db.DBTX, character *characters.Character, ownerID uuid.UUID) (*characters.Character, error) {
 	q := c.q(exec)
 
 	createCharacterParams := db.CreateCharacterParams{
+		OwnerID:   ownerID,
 		Name:      character.Name,
 		BodyType:  string(character.BodyType),
 		Species:   string(character.Species),
@@ -43,6 +47,7 @@ func (c *characterRepo) SaveCharacter(ctx context.Context, exec db.DBTX, charact
 	}
 
 	character.ID = characters.CharacterID(char.ID)
+	character.OwnerID = char.OwnerID
 
 	createCustomizationParams := db.CreateCustomizationParams{
 		CharacterID: char.ID,
@@ -99,14 +104,15 @@ func (c *characterRepo) FindCharacter(ctx context.Context, exec db.DBTX, id char
 	}
 
 	return &characters.Character{
-		ID:       characters.CharacterID(dbChar.ID),
-		Name:     dbChar.Name,
-		BodyType: characters.BodyType(dbChar.BodyType),
-		Species:  characters.Species(dbChar.Species),
-		Class:    characters.Class(dbChar.Class),
-		Level:    uint8(dbChar.Level),
-		Xp:       uint64(dbChar.Xp),
-		HpMax:    uint8(dbChar.HpMax),
+		ID:        characters.CharacterID(dbChar.ID),
+		OwnerID:   dbChar.OwnerID,
+		Name:      dbChar.Name,
+		BodyType:  characters.BodyType(dbChar.BodyType),
+		Species:   characters.Species(dbChar.Species),
+		Class:     characters.Class(dbChar.Class),
+		Level:     uint8(dbChar.Level),
+		Xp:        uint64(dbChar.Xp),
+		HpMax:     uint8(dbChar.HpMax),
 		HpCurrent: uint8(dbChar.HpCurrent),
 		Stats: &characters.Stats{
 			ID:           characters.CharacterID(dbStats.CharacterID),
@@ -157,14 +163,15 @@ func (c *characterRepo) FindAllCharacters(ctx context.Context, exec db.DBTX, lim
 		}
 
 		result[i] = characters.Character{
-			ID:       characters.CharacterID(dbChar.ID),
-			Name:     dbChar.Name,
-			BodyType: characters.BodyType(dbChar.BodyType),
-			Species:  characters.Species(dbChar.Species),
-			Class:    characters.Class(dbChar.Class),
-			Level:    uint8(dbChar.Level),
-			Xp:       uint64(dbChar.Xp),
-			HpMax:    uint8(dbChar.HpMax),
+			ID:        characters.CharacterID(dbChar.ID),
+			OwnerID:   dbChar.OwnerID,
+			Name:      dbChar.Name,
+			BodyType:  characters.BodyType(dbChar.BodyType),
+			Species:   characters.Species(dbChar.Species),
+			Class:     characters.Class(dbChar.Class),
+			Level:     uint8(dbChar.Level),
+			Xp:        uint64(dbChar.Xp),
+			HpMax:     uint8(dbChar.HpMax),
 			HpCurrent: uint8(dbChar.HpCurrent),
 			Stats: &characters.Stats{
 				ID:           characters.CharacterID(dbStats.CharacterID),
@@ -189,21 +196,40 @@ func (c *characterRepo) FindAllCharacters(ctx context.Context, exec db.DBTX, lim
 	return result, uint64(count), nil
 }
 
-func (c *characterRepo) UpdateCharacter(ctx context.Context, exec db.DBTX, character *characters.Character) (*characters.Character, error) {
+func (c *characterRepo) UpdateCharacter(ctx context.Context, exec db.DBTX, character *characters.Character, ownerID uuid.UUID) (*characters.Character, error) {
 	q := c.q(exec)
 
-	_, err := q.UpdateCharacter(ctx, db.UpdateCharacterParams{
-		ID:        int64(character.ID),
-		Name:      character.Name,
-		BodyType:  string(character.BodyType),
-		Species:   string(character.Species),
-		Class:     string(character.Class),
-		Level:     int32(character.Level),
-		Xp:        int32(character.Xp),
-		HpMax:     int32(character.HpMax),
-		HpCurrent: int32(character.HpCurrent),
-	})
+	var err error
+	if ownerID == uuid.Nil {
+		_, err = q.UpdateCharacter(ctx, db.UpdateCharacterParams{
+			ID:        int64(character.ID),
+			Name:      character.Name,
+			BodyType:  string(character.BodyType),
+			Species:   string(character.Species),
+			Class:     string(character.Class),
+			Level:     int32(character.Level),
+			Xp:        int32(character.Xp),
+			HpMax:     int32(character.HpMax),
+			HpCurrent: int32(character.HpCurrent),
+		})
+	} else {
+		_, err = q.UpdateCharacterOwned(ctx, db.UpdateCharacterOwnedParams{
+			ID:        int64(character.ID),
+			OwnerID:   ownerID,
+			Name:      character.Name,
+			BodyType:  string(character.BodyType),
+			Species:   string(character.Species),
+			Class:     string(character.Class),
+			Level:     int32(character.Level),
+			Xp:        int32(character.Xp),
+			HpMax:     int32(character.HpMax),
+			HpCurrent: int32(character.HpCurrent),
+		})
+	}
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("update character %d: %w", character.ID, characters.ErrNotFound)
+		}
 		return nil, fmt.Errorf("update character %d: %w", character.ID, err)
 	}
 
@@ -235,11 +261,24 @@ func (c *characterRepo) UpdateCharacter(ctx context.Context, exec db.DBTX, chara
 	return c.FindCharacter(ctx, exec, character.ID)
 }
 
-func (c *characterRepo) DeleteCharacter(ctx context.Context, exec db.DBTX, id characters.CharacterID) error {
+func (c *characterRepo) DeleteCharacter(ctx context.Context, exec db.DBTX, id characters.CharacterID, ownerID uuid.UUID) error {
 	q := c.q(exec)
-	err := q.DeleteCharacter(ctx, int64(id))
+
+	var rows int64
+	var err error
+	if ownerID == uuid.Nil {
+		rows, err = q.DeleteCharacter(ctx, int64(id))
+	} else {
+		rows, err = q.DeleteCharacterOwned(ctx, db.DeleteCharacterOwnedParams{
+			ID:      int64(id),
+			OwnerID: ownerID,
+		})
+	}
 	if err != nil {
 		return fmt.Errorf("delete character %d: %w", id, err)
+	}
+	if rows == 0 {
+		return fmt.Errorf("delete character %d: %w", id, characters.ErrNotFound)
 	}
 	return nil
 }

@@ -6,11 +6,13 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 )
 
 type Claims struct {
-	UserID   uint64 `json:"user_id"`
-	Username string `json:"username"`
+	UserID   uuid.UUID `json:"user_id"`
+	Username string    `json:"username"`
+	Role     string    `json:"role"`
 	jwt.RegisteredClaims
 }
 
@@ -18,8 +20,9 @@ func generateJWT(user *User, secret string) (string, time.Time, error) {
 	expiresAt := time.Now().Add(24 * time.Hour)
 
 	claims := Claims{
-		UserID:   uint64(user.ID),
+		UserID:   uuid.UUID(user.ID),
 		Username: user.Username,
+		Role:     user.Role,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expiresAt),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
