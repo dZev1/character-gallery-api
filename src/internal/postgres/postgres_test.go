@@ -44,6 +44,9 @@ func TestMain(m *testing.M) {
 	}
 
 	if _, err := pool.Exec(ctx, `
+		DROP TABLE IF EXISTS daily_scores CASCADE;
+		DROP TABLE IF EXISTS daily_runs CASCADE;
+		DROP TABLE IF EXISTS enemies CASCADE;
 		DROP TABLE IF EXISTS customizations CASCADE;
 		DROP TABLE IF EXISTS stats CASCADE;
 		DROP TABLE IF EXISTS inventory CASCADE;
@@ -220,7 +223,7 @@ func newInventoryRepo(t *testing.T) *inventoryRepo {
 
 func domainCharacter(char *db.Character, stats *db.Stat, cust *db.Customization) *characters.Character {
 	return &characters.Character{
-		ID:        characters.CharacterID(char.ID),
+		ID:        characters.ID(char.ID),
 		Name:      char.Name,
 		BodyType:  characters.BodyType(char.BodyType),
 		Species:   characters.Species(char.Species),
@@ -230,7 +233,7 @@ func domainCharacter(char *db.Character, stats *db.Stat, cust *db.Customization)
 		HpMax:     uint8(char.HpMax),
 		HpCurrent: uint8(char.HpCurrent),
 		Stats: &characters.Stats{
-			ID:           characters.CharacterID(stats.CharacterID),
+			ID:           characters.ID(stats.CharacterID),
 			Strength:     uint8(stats.Strength),
 			Dexterity:    uint8(stats.Dexterity),
 			Constitution: uint8(stats.Constitution),
@@ -239,7 +242,7 @@ func domainCharacter(char *db.Character, stats *db.Stat, cust *db.Customization)
 			Charisma:     uint8(stats.Charisma),
 		},
 		Customization: &characters.Customization{
-			ID:    characters.CharacterID(cust.CharacterID),
+			ID:    characters.ID(cust.CharacterID),
 			Hair:  uint8(cust.Hair),
 			Face:  uint8(cust.Face),
 			Shirt: uint8(cust.Shirt),
@@ -251,7 +254,7 @@ func domainCharacter(char *db.Character, stats *db.Stat, cust *db.Customization)
 
 func domainItem(it *db.Item) *items.Item {
 	return &items.Item{
-		ID:          items.ItemID(it.ID),
+		ID:          items.ID(it.ID),
 		Name:        it.Name,
 		Type:        items.Type(it.Type),
 		Description: it.Description,
@@ -269,8 +272,8 @@ func domainItem(it *db.Item) *items.Item {
 
 func domainInventoryParam(charID int64, itemID int64, quantity int32) inventory.RepositoryParam {
 	return inventory.RepositoryParam{
-		CharacterID: characters.CharacterID(charID),
-		ItemID:      items.ItemID(itemID),
+		CharacterID: characters.ID(charID),
+		ItemID:      items.ID(itemID),
 		Quantity:    uint8(quantity),
 	}
 }

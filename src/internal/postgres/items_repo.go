@@ -27,7 +27,7 @@ func (i *itemRepo) q(exec db.DBTX) *db.Queries {
 func (i *itemRepo) FindAllItems(ctx context.Context, exec db.DBTX, limit, offset int) ([]items.Item, uint64, error) {
 	q := i.q(exec)
 
-	findAllParams := db.FindAllItemsParams {
+	findAllParams := db.FindAllItemsParams{
 		Limit:  int32(limit),
 		Offset: int32(offset),
 	}
@@ -45,7 +45,7 @@ func (i *itemRepo) FindAllItems(ctx context.Context, exec db.DBTX, limit, offset
 	result := make([]items.Item, len(allItems))
 	for idx, it := range allItems {
 		result[idx] = items.Item{
-			ID:          items.ItemID(it.ID),
+			ID:          items.ID(it.ID),
 			Name:        it.Name,
 			Type:        items.Type(it.Type),
 			Description: it.Description,
@@ -64,7 +64,7 @@ func (i *itemRepo) FindAllItems(ctx context.Context, exec db.DBTX, limit, offset
 	return result, uint64(total), nil
 }
 
-func (i *itemRepo) FindItem(ctx context.Context, exec db.DBTX, itemID items.ItemID) (*items.Item, error) {
+func (i *itemRepo) FindItem(ctx context.Context, exec db.DBTX, itemID items.ID) (*items.Item, error) {
 	q := i.q(exec)
 
 	itm, err := q.FindItem(ctx, int64(itemID))
@@ -73,7 +73,7 @@ func (i *itemRepo) FindItem(ctx context.Context, exec db.DBTX, itemID items.Item
 	}
 
 	return &items.Item{
-		ID:          items.ItemID(itm.ID),
+		ID:          items.ID(itm.ID),
 		Name:        itm.Name,
 		Type:        items.Type(itm.Type),
 		Description: itm.Description,
@@ -112,7 +112,7 @@ func (i *itemRepo) SaveItem(ctx context.Context, exec db.DBTX, item *items.Item)
 		return nil, fmt.Errorf("create item: %w", err)
 	}
 
-	item.ID = items.ItemID(saveItem.ID)
+	item.ID = items.ID(saveItem.ID)
 
 	return item, nil
 }

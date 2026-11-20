@@ -52,7 +52,7 @@ func (s *Service) Create(ctx context.Context, character *Character, ownerID uuid
 	return character, nil
 }
 
-func (s *Service) GetByID(ctx context.Context, id CharacterID) (*Character, error) {
+func (s *Service) GetByID(ctx context.Context, id ID) (*Character, error) {
 	character := &Character{}
 	err := s.cache.Get(ctx, fmt.Sprintf("%d", id), character)
 	if err == nil {
@@ -105,7 +105,7 @@ func (s *Service) Update(ctx context.Context, character *Character, ownerID uuid
 	return updated, nil
 }
 
-func (s *Service) Delete(ctx context.Context, id CharacterID, ownerID uuid.UUID) error {
+func (s *Service) Delete(ctx context.Context, id ID, ownerID uuid.UUID) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		log.Println("Error beginning transaction:", err)

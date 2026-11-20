@@ -87,6 +87,37 @@ func TestCharacterOwnership_Update(t *testing.T) {
 	}
 }
 
+func TestInventoryOwnership_AddAndRemove(t *testing.T) {
+	ownerToken := registerAndLogin(t, newUsername("invOwner"))
+	charID := createCharacter(t, ownerToken)
+
+	otherToken := registerAndLogin(t, newUsername("invOther"))
+
+	// Seeded item 1 exists in the pool.
+	invURL := fmt.Sprintf("%s/characters/%d/inventory/1?quantity=2", apiBase(), charID)
+
+	// Other user cannot add items to owner's character.
+	doReq(t, http.MethodPost, invURL, bearer(otherToken), "", http.StatusNotFound)
+
+	// Owner can add items.
+	doReq(t, http.MethodPost, invURL, bearer(ownerToken), "", http.StatusOK)
+
+	// Other user cannot remove items from owner's character.
+	remURL := fmt.Sprintf("%s/characters/%d/inventory/1?quantity=1", apiBase(), charID)
+	doReq(t, http.MethodDelete, remURL, bearer(otherToken), "", http.StatusNotFound)
+
+	// Owner can remove items.
+	doReq(t, http.MethodDelete, remURL, bearer(ownerToken), "", http.StatusOK)
+
+	// Admin can also modify inventory.
+	adminUser := newUsername("invAdmin")
+	registerAndLogin(t, adminUser)
+	promoteUserToAdmin(t, adminUser)
+	adminToken := loginOnly(t, adminUser)
+
+	doReq(t, http.MethodDelete, remURL, bearer(adminToken), "", http.StatusOK)
+}
+
 func TestCreateCharacter_RequiresAuthForOtherOwners(t *testing.T) {
 	// Sanity: users can read the public character listing, but creating
 	// attributes the character to the authenticated user only.

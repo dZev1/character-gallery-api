@@ -11,7 +11,7 @@ func (bt BodyType) String() string {
 	return string(bt)
 }
 
-func (bt BodyType) Validate() bool {
+func (bt BodyType) IsValid() bool {
 	switch bt {
 	case TypeA, TypeB:
 		return true

@@ -21,7 +21,7 @@ func (c Class) String() string {
 	return string(c)
 }
 
-func (c Class) Validate() bool {
+func (c Class) IsValid() bool {
 	switch c {
 	case Barbarian, Bard, Cleric, Druid, Fighter, Monk, Paladin, Ranger, Rogue, Sorcerer, Warlock, Wizard:
 		return true

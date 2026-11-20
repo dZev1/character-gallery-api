@@ -34,7 +34,7 @@ func (g *Gallery) HandleCreateCharacter(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if !character.Validate() {
+	if !character.IsValid() {
 		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "Invalid character")
 		return
 	}
@@ -81,7 +81,7 @@ func (g *Gallery) HandleGetCharacter(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	char, err := g.characterService.GetByID(ctx, characters.CharacterID(id))
+	char, err := g.characterService.GetByID(ctx, characters.ID(id))
 	if err != nil {
 		if isCharacterNotFound(err) {
 			writeError(w, http.StatusNotFound, "NOT_FOUND", "Character not found")
@@ -117,8 +117,8 @@ func (g *Gallery) HandleUpdateCharacter(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	character.ID = characters.CharacterID(id)
-	if !character.Validate() {
+	character.ID = characters.ID(id)
+	if !character.IsValid() {
 		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "Invalid character")
 		return
 	}
@@ -151,7 +151,7 @@ func (g *Gallery) HandleDeleteCharacter(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	err = g.characterService.Delete(ctx, characters.CharacterID(id), ownerIDForRequest(claims))
+	err = g.characterService.Delete(ctx, characters.ID(id), ownerIDForRequest(claims))
 	if err != nil {
 		if isCharacterNotFound(err) {
 			writeError(w, http.StatusNotFound, "NOT_FOUND", "Character not found")

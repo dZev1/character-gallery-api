@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -26,7 +27,7 @@ func NewService(repo Repository, pool *pgxpool.Pool, cache cache.Cache) *Service
 	}
 }
 
-func (s *Service) AddItem(ctx context.Context, characterID characters.CharacterID, itemID items.ItemID, quantity uint8) (*InventoryItem, error) {
+func (s *Service) AddItem(ctx context.Context, characterID characters.ID, ownerID uuid.UUID, itemID items.ID, quantity uint8) (*InventoryItem, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		log.Println("Error starting transaction:", err)
@@ -36,6 +37,7 @@ func (s *Service) AddItem(ctx context.Context, characterID characters.CharacterI
 
 	repoParam := RepositoryParam{
 		CharacterID: characterID,
+		OwnerID:     ownerID,
 		ItemID:      itemID,
 		Quantity:    quantity,
 	}
@@ -58,7 +60,7 @@ func (s *Service) AddItem(ctx context.Context, characterID characters.CharacterI
 	return invItem, nil
 }
 
-func (s *Service) DeleteItem(ctx context.Context, characterID characters.CharacterID, itemID items.ItemID, quantity uint8) (*InventoryItem, error) {
+func (s *Service) DeleteItem(ctx context.Context, characterID characters.ID, ownerID uuid.UUID, itemID items.ID, quantity uint8) (*InventoryItem, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		log.Println("Error starting transaction:", err)
@@ -68,6 +70,7 @@ func (s *Service) DeleteItem(ctx context.Context, characterID characters.Charact
 
 	repoParam := RepositoryParam{
 		CharacterID: characterID,
+		OwnerID:     ownerID,
 		ItemID:      itemID,
 		Quantity:    quantity,
 	}
@@ -90,7 +93,7 @@ func (s *Service) DeleteItem(ctx context.Context, characterID characters.Charact
 	return item, nil
 }
 
-func (s *Service) GetByCharacterID(ctx context.Context, characterID characters.CharacterID) ([]InventoryItem, error) {
+func (s *Service) GetByCharacterID(ctx context.Context, characterID characters.ID) ([]InventoryItem, error) {
 	key := fmt.Sprintf("%d", characterID)
 
 	var inv []InventoryItem

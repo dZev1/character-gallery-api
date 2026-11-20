@@ -1,8 +1,11 @@
 package handlers
 
 import (
+	"dZev1/character-gallery/internal/auth"
 	"dZev1/character-gallery/internal/characters"
+	"dZev1/character-gallery/internal/inventory"
 	"dZev1/character-gallery/internal/items"
+	"errors"
 	"net/http"
 )
 
@@ -15,7 +18,7 @@ func (g *Gallery) HandleGetCharacterInventory(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	inventory, err := g.inventoryService.GetByCharacterID(ctx, characters.CharacterID(id))
+	inv, err := g.inventoryService.GetByCharacterID(ctx, characters.ID(id))
 	if err != nil {
 		if isCharacterNotFound(err) {
 			writeError(w, http.StatusNotFound, "NOT_FOUND", "Character not found")
@@ -25,11 +28,17 @@ func (g *Gallery) HandleGetCharacterInventory(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	writeJSON(w, http.StatusOK, inventory)
+	writeJSON(w, http.StatusOK, inv)
 }
 
 func (g *Gallery) HandleAddItemToCharacter(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+
+	claims, ok := auth.ClaimsFromContext(ctx)
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
+		return
+	}
 
 	charID, err := parseID(r, "characterId")
 	if err != nil {
@@ -47,8 +56,12 @@ func (g *Gallery) HandleAddItemToCharacter(w http.ResponseWriter, r *http.Reques
 	if quantity < 1 {
 		quantity = 1
 	}
+	if quantity > 255 {
+		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "Invalid quantity")
+		return
+	}
 
-	item, err := g.inventoryService.AddItem(ctx, characters.CharacterID(charID), items.ItemID(itemID), uint8(quantity))
+	item, err := g.inventoryService.AddItem(ctx, characters.ID(charID), ownerIDForRequest(claims), items.ID(itemID), uint8(quantity))
 	if err != nil {
 		switch {
 		case isCharacterNotFound(err):
@@ -66,6 +79,12 @@ func (g *Gallery) HandleAddItemToCharacter(w http.ResponseWriter, r *http.Reques
 func (g *Gallery) HandleRemoveItemFromCharacter(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
+	claims, ok := auth.ClaimsFromContext(ctx)
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
+		return
+	}
+
 	charID, err := parseID(r, "characterId")
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "Invalid character id")
@@ -82,14 +101,20 @@ func (g *Gallery) HandleRemoveItemFromCharacter(w http.ResponseWriter, r *http.R
 	if quantity < 1 {
 		quantity = 1
 	}
+	if quantity > 255 {
+		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "Invalid quantity")
+		return
+	}
 
-	_, err = g.inventoryService.DeleteItem(ctx, characters.CharacterID(charID), items.ItemID(itemID), uint8(quantity))
+	_, err = g.inventoryService.DeleteItem(ctx, characters.ID(charID), ownerIDForRequest(claims), items.ID(itemID), uint8(quantity))
 	if err != nil {
 		switch {
 		case isCharacterNotFound(err):
 			writeError(w, http.StatusNotFound, "NOT_FOUND", "Character not found")
 		case isItemNotFound(err):
 			writeError(w, http.StatusNotFound, "NOT_FOUND", "Item not found")
+		case errors.Is(err, inventory.ErrInsufficientQuantity):
+			writeError(w, http.StatusBadRequest, "BAD_REQUEST", "Cannot remove more items than character owns")
 		default:
 			writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Error removing item from character")
 		}

@@ -28,7 +28,7 @@ func (g *Gallery) HandleCreateItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !item.Validate() {
+	if !item.IsValid() {
 		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "Invalid item")
 		return
 	}
@@ -72,7 +72,7 @@ func (g *Gallery) HandleGetItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	item, err := g.itemsService.GetByID(ctx, items.ItemID(id))
+	item, err := g.itemsService.GetByID(ctx, items.ID(id))
 	if err != nil {
 		if isItemNotFound(err) {
 			writeError(w, http.StatusNotFound, "NOT_FOUND", "Item not found")

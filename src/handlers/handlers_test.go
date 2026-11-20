@@ -28,12 +28,12 @@ import (
 const testJWTSecret = "test-secret-that-is-long-enough-for-hmac-123456789"
 
 var (
-	testServer    *httptest.Server
-	testPool      *pgxpool.Pool
-	testAuthSvc   *auth.Service
-	testItemSvc   *items.Service
-	testCharSvc   *characters.Service
-	userCounter   int
+	testServer  *httptest.Server
+	testPool    *pgxpool.Pool
+	testAuthSvc *auth.Service
+	testItemSvc *items.Service
+	testCharSvc *characters.Service
+	userCounter int
 )
 
 func TestMain(m *testing.M) {
@@ -52,6 +52,9 @@ func TestMain(m *testing.M) {
 	}
 
 	if _, err := pool.Exec(ctx, `
+		DROP TABLE IF EXISTS daily_scores CASCADE;
+		DROP TABLE IF EXISTS daily_runs CASCADE;
+		DROP TABLE IF EXISTS enemies CASCADE;
 		DROP TABLE IF EXISTS customizations CASCADE;
 		DROP TABLE IF EXISTS stats CASCADE;
 		DROP TABLE IF EXISTS inventory CASCADE;

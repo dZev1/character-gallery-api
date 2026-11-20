@@ -38,7 +38,7 @@ func (s *Service) SeedItems(ctx context.Context) error {
 
 	for i := range items {
 		items[i].ID = 0
-		if !items[i].Validate() {
+		if !items[i].IsValid() {
 			return fmt.Errorf("invalid item in pool: %s", items[i].Name)
 		}
 	}
@@ -69,7 +69,7 @@ func (s *Service) GetAll(ctx context.Context, page, limit int) ([]Item, uint64, 
 	return s.repo.FindAllItems(ctx, s.pool, limit, offset)
 }
 
-func (s *Service) GetByID(ctx context.Context, id ItemID) (*Item, error) {
+func (s *Service) GetByID(ctx context.Context, id ID) (*Item, error) {
 	item := &Item{}
 	key := fmt.Sprintf("%d", id)
 

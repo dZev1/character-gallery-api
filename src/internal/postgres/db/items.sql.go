@@ -155,6 +155,84 @@ func (q *Queries) FindItem(ctx context.Context, id int64) (*Item, error) {
 	return &i, err
 }
 
+const findItemsByRarityRange = `-- name: FindItemsByRarityRange :many
+SELECT id, name, type, description, equippable, rarity, damage, defense, heal_amount, mana_cost, duration, cooldown, capacity FROM items
+WHERE rarity BETWEEN $1 AND $2
+ORDER BY id
+`
+
+type FindItemsByRarityRangeParams struct {
+	Rarity   int32
+	Rarity_2 int32
+}
+
+func (q *Queries) FindItemsByRarityRange(ctx context.Context, arg FindItemsByRarityRangeParams) ([]*Item, error) {
+	rows, err := q.db.Query(ctx, findItemsByRarityRange, arg.Rarity, arg.Rarity_2)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*Item
+	for rows.Next() {
+		var i Item
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Type,
+			&i.Description,
+			&i.Equippable,
+			&i.Rarity,
+			&i.Damage,
+			&i.Defense,
+			&i.HealAmount,
+			&i.ManaCost,
+			&i.Duration,
+			&i.Cooldown,
+			&i.Capacity,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const findRandomItemByRarityRange = `-- name: FindRandomItemByRarityRange :one
+SELECT id, name, type, description, equippable, rarity, damage, defense, heal_amount, mana_cost, duration, cooldown, capacity FROM items
+WHERE rarity BETWEEN $1 AND $2
+ORDER BY RANDOM()
+LIMIT 1
+`
+
+type FindRandomItemByRarityRangeParams struct {
+	Rarity   int32
+	Rarity_2 int32
+}
+
+func (q *Queries) FindRandomItemByRarityRange(ctx context.Context, arg FindRandomItemByRarityRangeParams) (*Item, error) {
+	row := q.db.QueryRow(ctx, findRandomItemByRarityRange, arg.Rarity, arg.Rarity_2)
+	var i Item
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Type,
+		&i.Description,
+		&i.Equippable,
+		&i.Rarity,
+		&i.Damage,
+		&i.Defense,
+		&i.HealAmount,
+		&i.ManaCost,
+		&i.Duration,
+		&i.Cooldown,
+		&i.Capacity,
+	)
+	return &i, err
+}
+
 type SeedItemsParams struct {
 	Name        string
 	Type        string

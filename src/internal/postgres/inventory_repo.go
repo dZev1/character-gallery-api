@@ -9,6 +9,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -29,12 +31,12 @@ func (i *inventoryRepo) q(exec db.DBTX) *db.Queries {
 func (i *inventoryRepo) AddItemToCharacter(ctx context.Context, exec db.DBTX, param inventory.RepositoryParam) (*inventory.InventoryItem, error) {
 	q := i.q(exec)
 
-	item, err := checkItem(ctx, q, param.ItemID)
-	if err != nil {
+	if err := checkCharacter(ctx, q, param.CharacterID, param.OwnerID); err != nil {
 		return nil, err
 	}
 
-	if err := checkCharacter(ctx, q, param.CharacterID); err != nil {
+	item, err := checkItem(ctx, q, param.ItemID)
+	if err != nil {
 		return nil, err
 	}
 
@@ -60,12 +62,12 @@ func (i *inventoryRepo) AddItemToCharacter(ctx context.Context, exec db.DBTX, pa
 func (i *inventoryRepo) RemoveItemFromCharacter(ctx context.Context, exec db.DBTX, param inventory.RepositoryParam) (*inventory.InventoryItem, error) {
 	q := i.q(exec)
 
-	item, err := checkItem(ctx, q, param.ItemID)
-	if err != nil {
+	if err := checkCharacter(ctx, q, param.CharacterID, param.OwnerID); err != nil {
 		return nil, err
 	}
 
-	if err := checkCharacter(ctx, q, param.CharacterID); err != nil {
+	item, err := checkItem(ctx, q, param.ItemID)
+	if err != nil {
 		return nil, err
 	}
 
@@ -77,10 +79,13 @@ func (i *inventoryRepo) RemoveItemFromCharacter(ctx context.Context, exec db.DBT
 
 	row, err := q.RemoveItemFromCharacter(ctx, params)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, inventory.ErrInsufficientQuantity
+		}
 		return nil, fmt.Errorf("remove item %d from character %d: %w", param.ItemID, param.CharacterID, err)
 	}
 	if row == nil {
-		return nil, errors.New("cannot remove more items than you have")
+		return nil, inventory.ErrInsufficientQuantity
 	}
 	return &inventory.InventoryItem{
 		Item:       item,
@@ -89,10 +94,14 @@ func (i *inventoryRepo) RemoveItemFromCharacter(ctx context.Context, exec db.DBT
 	}, nil
 }
 
-func (i *inventoryRepo) GetCharacterInventory(ctx context.Context, exec db.DBTX, characterID characters.CharacterID) ([]inventory.InventoryItem, error) {
+func (i *inventoryRepo) GetCharacterInventory(ctx context.Context, exec db.DBTX, characterID characters.ID) ([]inventory.InventoryItem, error) {
 	q := i.q(exec)
 
-	var itemSlice []inventory.InventoryItem
+	if err := checkCharacter(ctx, q, characterID, uuid.Nil); err != nil {
+		return nil, err
+	}
+
+	itemSlice := make([]inventory.InventoryItem, 0)
 
 	rows, err := q.GetCharacterInventory(ctx, int64(characterID))
 	if err != nil {
@@ -100,7 +109,7 @@ func (i *inventoryRepo) GetCharacterInventory(ctx context.Context, exec db.DBTX,
 	}
 	for _, row := range rows {
 		item := &items.Item{
-			ID:          items.ItemID(row.ItemID),
+			ID:          items.ID(row.ItemID),
 			Name:        row.Name,
 			Type:        items.Type(row.Type),
 			Description: row.Description,
@@ -124,15 +133,18 @@ func (i *inventoryRepo) GetCharacterInventory(ctx context.Context, exec db.DBTX,
 	return itemSlice, nil
 }
 
-func checkCharacter(ctx context.Context, q *db.Queries, charID characters.CharacterID) error {
-	_, err := q.SelectCharacter(ctx, int64(charID))
+func checkCharacter(ctx context.Context, q *db.Queries, charID characters.ID, ownerID uuid.UUID) error {
+	char, err := q.SelectCharacter(ctx, int64(charID))
 	if err != nil {
+		return fmt.Errorf("character %d: %w", charID, characters.ErrNotFound)
+	}
+	if ownerID != uuid.Nil && char.OwnerID != ownerID {
 		return fmt.Errorf("character %d: %w", charID, characters.ErrNotFound)
 	}
 	return nil
 }
 
-func checkItem(ctx context.Context, q *db.Queries, itemID items.ItemID) (*items.Item, error) {
+func checkItem(ctx context.Context, q *db.Queries, itemID items.ID) (*items.Item, error) {
 	itemRow, err := q.FindItem(ctx, int64(itemID))
 	if err != nil {
 		return nil, fmt.Errorf("item %d: %w", itemID, items.ErrNotFound)

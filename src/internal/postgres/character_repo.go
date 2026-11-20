@@ -46,7 +46,7 @@ func (c *characterRepo) SaveCharacter(ctx context.Context, exec db.DBTX, charact
 		return nil, fmt.Errorf("create character: %w", err)
 	}
 
-	character.ID = characters.CharacterID(char.ID)
+	character.ID = characters.ID(char.ID)
 	character.OwnerID = char.OwnerID
 
 	createCustomizationParams := db.CreateCustomizationParams{
@@ -85,7 +85,7 @@ func (c *characterRepo) SaveCharacter(ctx context.Context, exec db.DBTX, charact
 	return character, nil
 }
 
-func (c *characterRepo) FindCharacter(ctx context.Context, exec db.DBTX, id characters.CharacterID) (*characters.Character, error) {
+func (c *characterRepo) FindCharacter(ctx context.Context, exec db.DBTX, id characters.ID) (*characters.Character, error) {
 	q := c.q(exec)
 
 	dbChar, err := q.SelectCharacter(ctx, int64(id))
@@ -104,7 +104,7 @@ func (c *characterRepo) FindCharacter(ctx context.Context, exec db.DBTX, id char
 	}
 
 	return &characters.Character{
-		ID:        characters.CharacterID(dbChar.ID),
+		ID:        characters.ID(dbChar.ID),
 		OwnerID:   dbChar.OwnerID,
 		Name:      dbChar.Name,
 		BodyType:  characters.BodyType(dbChar.BodyType),
@@ -115,7 +115,7 @@ func (c *characterRepo) FindCharacter(ctx context.Context, exec db.DBTX, id char
 		HpMax:     uint8(dbChar.HpMax),
 		HpCurrent: uint8(dbChar.HpCurrent),
 		Stats: &characters.Stats{
-			ID:           characters.CharacterID(dbStats.CharacterID),
+			ID:           characters.ID(dbStats.CharacterID),
 			Strength:     uint8(dbStats.Strength),
 			Dexterity:    uint8(dbStats.Dexterity),
 			Constitution: uint8(dbStats.Constitution),
@@ -124,7 +124,7 @@ func (c *characterRepo) FindCharacter(ctx context.Context, exec db.DBTX, id char
 			Charisma:     uint8(dbStats.Charisma),
 		},
 		Customization: &characters.Customization{
-			ID:    characters.CharacterID(dbCust.CharacterID),
+			ID:    characters.ID(dbCust.CharacterID),
 			Hair:  uint8(dbCust.Hair),
 			Face:  uint8(dbCust.Face),
 			Shirt: uint8(dbCust.Shirt),
@@ -163,7 +163,7 @@ func (c *characterRepo) FindAllCharacters(ctx context.Context, exec db.DBTX, lim
 		}
 
 		result[i] = characters.Character{
-			ID:        characters.CharacterID(dbChar.ID),
+			ID:        characters.ID(dbChar.ID),
 			OwnerID:   dbChar.OwnerID,
 			Name:      dbChar.Name,
 			BodyType:  characters.BodyType(dbChar.BodyType),
@@ -174,7 +174,7 @@ func (c *characterRepo) FindAllCharacters(ctx context.Context, exec db.DBTX, lim
 			HpMax:     uint8(dbChar.HpMax),
 			HpCurrent: uint8(dbChar.HpCurrent),
 			Stats: &characters.Stats{
-				ID:           characters.CharacterID(dbStats.CharacterID),
+				ID:           characters.ID(dbStats.CharacterID),
 				Strength:     uint8(dbStats.Strength),
 				Dexterity:    uint8(dbStats.Dexterity),
 				Constitution: uint8(dbStats.Constitution),
@@ -183,7 +183,7 @@ func (c *characterRepo) FindAllCharacters(ctx context.Context, exec db.DBTX, lim
 				Charisma:     uint8(dbStats.Charisma),
 			},
 			Customization: &characters.Customization{
-				ID:    characters.CharacterID(dbCust.CharacterID),
+				ID:    characters.ID(dbCust.CharacterID),
 				Hair:  uint8(dbCust.Hair),
 				Face:  uint8(dbCust.Face),
 				Shirt: uint8(dbCust.Shirt),
@@ -261,7 +261,7 @@ func (c *characterRepo) UpdateCharacter(ctx context.Context, exec db.DBTX, chara
 	return c.FindCharacter(ctx, exec, character.ID)
 }
 
-func (c *characterRepo) DeleteCharacter(ctx context.Context, exec db.DBTX, id characters.CharacterID, ownerID uuid.UUID) error {
+func (c *characterRepo) DeleteCharacter(ctx context.Context, exec db.DBTX, id characters.ID, ownerID uuid.UUID) error {
 	q := c.q(exec)
 
 	var rows int64

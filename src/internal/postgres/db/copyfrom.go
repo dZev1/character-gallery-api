@@ -9,6 +9,46 @@ import (
 	"context"
 )
 
+// iteratorForSeedEnemies implements pgx.CopyFromSource.
+type iteratorForSeedEnemies struct {
+	rows                 []SeedEnemiesParams
+	skippedFirstNextCall bool
+}
+
+func (r *iteratorForSeedEnemies) Next() bool {
+	if len(r.rows) == 0 {
+		return false
+	}
+	if !r.skippedFirstNextCall {
+		r.skippedFirstNextCall = true
+		return true
+	}
+	r.rows = r.rows[1:]
+	return len(r.rows) > 0
+}
+
+func (r iteratorForSeedEnemies) Values() ([]interface{}, error) {
+	return []interface{}{
+		r.rows[0].Name,
+		r.rows[0].Type,
+		r.rows[0].Tier,
+		r.rows[0].Description,
+		r.rows[0].HpMax,
+		r.rows[0].Ac,
+		r.rows[0].Damage,
+		r.rows[0].XpReward,
+		r.rows[0].ScoreReward,
+	}, nil
+}
+
+func (r iteratorForSeedEnemies) Err() error {
+	return nil
+}
+
+func (q *Queries) SeedEnemies(ctx context.Context, arg []SeedEnemiesParams) (int64, error) {
+	return q.db.CopyFrom(ctx, []string{"enemies"}, []string{"name", "type", "tier", "description", "hp_max", "ac", "damage", "xp_reward", "score_reward"}, &iteratorForSeedEnemies{rows: arg})
+}
+
 // iteratorForSeedItems implements pgx.CopyFromSource.
 type iteratorForSeedItems struct {
 	rows                 []SeedItemsParams

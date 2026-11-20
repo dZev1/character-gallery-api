@@ -24,7 +24,7 @@ const (
 	WondrousItem Type = "wondrous_item"
 )
 
-func (t Type) Validate() bool {
+func (t Type) IsValid() bool {
 	switch t {
 	case Armor, Ring, Weapon, Shield, Tool, AdventuringGear, Rod, Staff, Wand, Scroll, Potion, Ammo, Consumable, WondrousItem:
 		return true

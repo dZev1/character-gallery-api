@@ -3,13 +3,13 @@ package characters
 import "fmt"
 
 type Stats struct {
-	ID           CharacterID `db:"id" json:"-"`
-	Strength     uint8       `db:"strength" json:"strength" redis:"strength"`
-	Dexterity    uint8       `db:"dexterity" json:"dexterity" redis:"dexterity"`
-	Constitution uint8       `db:"constitution" json:"constitution" redis:"constitution"`
-	Intelligence uint8       `db:"intelligence" json:"intelligence" redis:"intelligence"`
-	Wisdom       uint8       `db:"wisdom" json:"wisdom" redis:"wisdom"`
-	Charisma     uint8       `db:"charisma" json:"charisma" redis:"charisma"`
+	ID           ID    `db:"id" json:"-"`
+	Strength     uint8 `db:"strength" json:"strength" redis:"strength"`
+	Dexterity    uint8 `db:"dexterity" json:"dexterity" redis:"dexterity"`
+	Constitution uint8 `db:"constitution" json:"constitution" redis:"constitution"`
+	Intelligence uint8 `db:"intelligence" json:"intelligence" redis:"intelligence"`
+	Wisdom       uint8 `db:"wisdom" json:"wisdom" redis:"wisdom"`
+	Charisma     uint8 `db:"charisma" json:"charisma" redis:"charisma"`
 }
 
 func (s *Stats) String() string {
@@ -23,7 +23,7 @@ func (s *Stats) String() string {
 	)
 }
 
-func (s *Stats) Validate() bool {
+func (s *Stats) IsValid() bool {
 	for _, stat := range []uint8{s.Strength, s.Dexterity, s.Constitution, s.Intelligence, s.Wisdom, s.Charisma} {
 		if stat < 1 || stat > 99 {
 			return false
