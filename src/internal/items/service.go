@@ -31,6 +31,11 @@ func NewService(repo Repository, pool *pgxpool.Pool, cache cache.Cache) *Service
 }
 
 func (s *Service) SeedItems(ctx context.Context) error {
+	_, existingCount, err := s.repo.FindAllItems(ctx, s.pool, 1, 0)
+	if err == nil && existingCount > 0 {
+		return nil
+	}
+
 	var items []Item
 	if err := json.Unmarshal(itemPoolData, &items); err != nil {
 		return fmt.Errorf("unmarshal item pool: %w", err)
@@ -38,7 +43,7 @@ func (s *Service) SeedItems(ctx context.Context) error {
 
 	for i := range items {
 		items[i].ID = 0
-		if !items[i].Validate() {
+		if !items[i].IsValid() {
 			return fmt.Errorf("invalid item in pool: %s", items[i].Name)
 		}
 	}
@@ -69,7 +74,7 @@ func (s *Service) GetAll(ctx context.Context, page, limit int) ([]Item, uint64, 
 	return s.repo.FindAllItems(ctx, s.pool, limit, offset)
 }
 
-func (s *Service) GetByID(ctx context.Context, id ItemID) (*Item, error) {
+func (s *Service) GetByID(ctx context.Context, id ID) (*Item, error) {
 	item := &Item{}
 	key := fmt.Sprintf("%d", id)
 

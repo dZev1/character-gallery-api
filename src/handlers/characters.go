@@ -1,29 +1,51 @@
 package handlers
 
 import (
+	"dZev1/character-gallery/internal/auth"
 	"dZev1/character-gallery/internal/characters"
 	"encoding/json"
+	"errors"
 	"net/http"
+
+	"github.com/google/uuid"
 )
+
+func ownerIDForRequest(claims *auth.Claims) uuid.UUID {
+	if claims.Role == "admin" {
+		return uuid.Nil
+	}
+	return claims.UserID
+}
 
 func (g *Gallery) HandleCreateCharacter(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
+	claims, ok := auth.ClaimsFromContext(ctx)
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
+		return
+	}
+
 	character := &characters.Character{}
 
+	limitBody(w, r)
 	err := json.NewDecoder(r.Body).Decode(character)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "Error parsing request body")
 		return
 	}
 
-	if !character.Validate() {
+	if !character.IsValid() {
 		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "Invalid character")
 		return
 	}
 
-	character, err = g.characterService.Create(ctx, character)
+	character, err = g.characterService.Create(ctx, character, claims.UserID)
 	if err != nil {
+		if errors.Is(err, characters.ErrCharacterLimitReached) {
+			writeError(w, http.StatusConflict, "CHARACTER_LIMIT_REACHED", "Maximum of 6 characters per user reached")
+			return
+		}
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Error creating character")
 		return
 	}
@@ -34,8 +56,7 @@ func (g *Gallery) HandleCreateCharacter(w http.ResponseWriter, r *http.Request) 
 func (g *Gallery) HandleGetAllCharacters(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	page := max(parseQueryInt(r, "page", 1), 1)
-	limit := max(parseQueryInt(r, "limit", 20), 20)
+	page, limit := paginationParams(r)
 
 	chars, total, err := g.characterService.GetAll(ctx, page, limit)
 	if err != nil {
@@ -65,7 +86,7 @@ func (g *Gallery) HandleGetCharacter(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	char, err := g.characterService.GetByID(ctx, characters.CharacterID(id))
+	char, err := g.characterService.GetByID(ctx, characters.ID(id))
 	if err != nil {
 		if isCharacterNotFound(err) {
 			writeError(w, http.StatusNotFound, "NOT_FOUND", "Character not found")
@@ -87,20 +108,27 @@ func (g *Gallery) HandleUpdateCharacter(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	ownerID, ok := auth.ClaimsFromContext(ctx)
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
+		return
+	}
+
 	character := &characters.Character{}
+	limitBody(w, r)
 	err = json.NewDecoder(r.Body).Decode(character)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "Error parsing request body")
 		return
 	}
 
-	character.ID = characters.CharacterID(id)
-	if !character.Validate() {
+	character.ID = characters.ID(id)
+	if !character.IsValid() {
 		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "Invalid character")
 		return
 	}
 
-	character, err = g.characterService.Update(ctx, character)
+	character, err = g.characterService.Update(ctx, character, ownerIDForRequest(ownerID))
 	if err != nil {
 		if isCharacterNotFound(err) {
 			writeError(w, http.StatusNotFound, "NOT_FOUND", "Character not found")
@@ -122,7 +150,13 @@ func (g *Gallery) HandleDeleteCharacter(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	err = g.characterService.Delete(ctx, characters.CharacterID(id))
+	claims, ok := auth.ClaimsFromContext(ctx)
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
+		return
+	}
+
+	err = g.characterService.Delete(ctx, characters.ID(id), ownerIDForRequest(claims))
 	if err != nil {
 		if isCharacterNotFound(err) {
 			writeError(w, http.StatusNotFound, "NOT_FOUND", "Character not found")
@@ -133,4 +167,35 @@ func (g *Gallery) HandleDeleteCharacter(w http.ResponseWriter, r *http.Request) 
 	}
 
 	writeJSON(w, http.StatusOK, map[string]string{"result": "success"})
+}
+
+func (g *Gallery) HandlePrestigeCharacter(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	id, err := parseID(r, "characterId")
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "Invalid character id")
+		return
+	}
+
+	claims, ok := auth.ClaimsFromContext(ctx)
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
+		return
+	}
+
+	char, err := g.characterService.Prestige(ctx, characters.ID(id), ownerIDForRequest(claims))
+	if err != nil {
+		switch {
+		case isCharacterNotFound(err):
+			writeError(w, http.StatusNotFound, "NOT_FOUND", "Character not found")
+		case errors.Is(err, characters.ErrPrestigeRequirement):
+			writeError(w, http.StatusBadRequest, "BAD_REQUEST", "Character must be at least level 10 to prestige")
+		default:
+			writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Error prestiging character")
+		}
+		return
+	}
+
+	writeJSON(w, http.StatusOK, char)
 }

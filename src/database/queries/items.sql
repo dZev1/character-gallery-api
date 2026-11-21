@@ -32,3 +32,14 @@ INSERT INTO items (
     $6, $7, $8, $9, $10,
     $11, $12
 );
+
+-- name: FindItemsByRarityRange :many
+SELECT * FROM items
+WHERE rarity BETWEEN $1 AND $2
+ORDER BY id;
+
+-- name: FindRandomItemByRarityRange :one
+SELECT * FROM items
+WHERE rarity BETWEEN $1 AND $2
+ORDER BY RANDOM()
+LIMIT 1;

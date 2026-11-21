@@ -1,7 +1,20 @@
 package items
 
+import (
+	"errors"
+	"fmt"
+)
+
+var ErrNotFound = errors.New("item not found")
+
+type ID uint64
+
+func (id ID) String() string {
+	return fmt.Sprintf("Nº%d", id)
+}
+
 type Item struct {
-	ID          ItemID `db:"id" json:"id,omitempty" redis:"id"`
+	ID          ID     `db:"id" json:"id,omitempty" redis:"id"`
 	Name        string `db:"name" json:"name" redis:"name"`
 	Type        Type   `db:"type" json:"type" redis:"type"`
 	Description string `db:"description" json:"description" redis:"description"`
@@ -17,8 +30,11 @@ type Item struct {
 	Capacity   *uint64 `db:"capacity" json:"capacity,omitempty" redis:"capacity"`
 }
 
-func (i *Item) Validate() bool {
+func (i *Item) IsValid() bool {
 	if len(i.Name) < 3 || len(i.Name) > 50 {
+		return false
+	}
+	if !i.Type.IsValid() {
 		return false
 	}
 	if len(i.Description) < 3 || len(i.Description) > 300 {
@@ -27,13 +43,13 @@ func (i *Item) Validate() bool {
 	if i.Rarity < 1 || i.Rarity > 5 {
 		return false
 	}
-	if !ValidateStats(i) && i.Equippable {
+	if !HasValidStats(i) && i.Equippable {
 		return false
 	}
 	return true
 }
 
-func ValidateStats(i *Item) bool {
+func HasValidStats(i *Item) bool {
 	return (i.Damage != nil && *i.Damage > 0) ||
 		(i.Defense != nil && *i.Defense > 0) ||
 		(i.HealAmount != nil && *i.HealAmount > 0) ||

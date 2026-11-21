@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"dZev1/character-gallery/internal/auth"
 	"dZev1/character-gallery/internal/items"
 	"encoding/json"
 	"net/http"
@@ -9,14 +10,25 @@ import (
 func (g *Gallery) HandleCreateItem(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
+	claims, ok := auth.ClaimsFromContext(ctx)
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
+		return
+	}
+	if claims.Role != "admin" {
+		writeError(w, http.StatusForbidden, "FORBIDDEN", "Admin role required")
+		return
+	}
+
 	item := &items.Item{}
+	limitBody(w, r)
 	err := json.NewDecoder(r.Body).Decode(item)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "Error parsing request body")
 		return
 	}
 
-	if !item.Validate() {
+	if !item.IsValid() {
 		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "Invalid item")
 		return
 	}
@@ -33,8 +45,7 @@ func (g *Gallery) HandleCreateItem(w http.ResponseWriter, r *http.Request) {
 func (g *Gallery) HandleGetAllItems(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	page := max(parseQueryInt(r, "page", 1), 1)
-	limit := max(parseQueryInt(r, "limit", 20), 20)
+	page, limit := paginationParams(r)
 
 	itms, total, err := g.itemsService.GetAll(ctx, page, limit)
 	if err != nil {
@@ -61,7 +72,7 @@ func (g *Gallery) HandleGetItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	item, err := g.itemsService.GetByID(ctx, items.ItemID(id))
+	item, err := g.itemsService.GetByID(ctx, items.ID(id))
 	if err != nil {
 		if isItemNotFound(err) {
 			writeError(w, http.StatusNotFound, "NOT_FOUND", "Item not found")

@@ -2,6 +2,7 @@ package cache
 
 import (
 	"context"
+	"dZev1/character-gallery/internal/metrics"
 	"encoding/json"
 	"errors"
 	"time"
@@ -27,11 +28,18 @@ func (rc *RedisCache) Get(ctx context.Context, key string, dest interface{}) err
 	val, err := rc.client.Get(ctx, rc.prefix+":"+key).Bytes()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
+			metrics.CacheOperationsTotal.WithLabelValues(rc.prefix, "miss").Inc()
 			return ErrMiss
 		}
+		metrics.CacheOperationsTotal.WithLabelValues(rc.prefix, "error").Inc()
 		return err
 	}
-	return json.Unmarshal(val, dest)
+	if err := json.Unmarshal(val, dest); err != nil {
+		metrics.CacheOperationsTotal.WithLabelValues(rc.prefix, "error").Inc()
+		return err
+	}
+	metrics.CacheOperationsTotal.WithLabelValues(rc.prefix, "hit").Inc()
+	return nil
 }
 
 func (rc *RedisCache) Set(ctx context.Context, key string, value interface{}, ttl time.Duration) error {

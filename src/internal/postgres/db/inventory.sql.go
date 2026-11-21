@@ -37,6 +37,81 @@ func (q *Queries) AddItemToCharacter(ctx context.Context, arg AddItemToCharacter
 	return &i, err
 }
 
+const getCharacterEquippedItems = `-- name: GetCharacterEquippedItems :many
+SELECT i.id             AS item_id,
+       i.name,
+       i.type,
+       i.description,
+       i.equippable,
+       i.rarity,
+       i.damage,
+       i.defense,
+       i.heal_amount,
+       i.mana_cost,
+       i.duration,
+       i.cooldown,
+       i.capacity,
+       inv.quantity,
+       inv.is_equipped
+FROM inventory inv
+JOIN items i ON i.id = inv.item_id
+WHERE inv.character_id = $1 AND inv.is_equipped = TRUE
+`
+
+type GetCharacterEquippedItemsRow struct {
+	ItemID      int64
+	Name        string
+	Type        string
+	Description string
+	Equippable  bool
+	Rarity      int32
+	Damage      pgtype.Int4
+	Defense     pgtype.Int4
+	HealAmount  pgtype.Int4
+	ManaCost    pgtype.Int4
+	Duration    pgtype.Int4
+	Cooldown    pgtype.Int4
+	Capacity    pgtype.Int4
+	Quantity    int32
+	IsEquipped  bool
+}
+
+func (q *Queries) GetCharacterEquippedItems(ctx context.Context, characterID int64) ([]*GetCharacterEquippedItemsRow, error) {
+	rows, err := q.db.Query(ctx, getCharacterEquippedItems, characterID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*GetCharacterEquippedItemsRow
+	for rows.Next() {
+		var i GetCharacterEquippedItemsRow
+		if err := rows.Scan(
+			&i.ItemID,
+			&i.Name,
+			&i.Type,
+			&i.Description,
+			&i.Equippable,
+			&i.Rarity,
+			&i.Damage,
+			&i.Defense,
+			&i.HealAmount,
+			&i.ManaCost,
+			&i.Duration,
+			&i.Cooldown,
+			&i.Capacity,
+			&i.Quantity,
+			&i.IsEquipped,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getCharacterInventory = `-- name: GetCharacterInventory :many
 SELECT i.id             AS item_id,
        i.name,
@@ -152,4 +227,50 @@ func (q *Queries) RemoveItemFromCharacter(ctx context.Context, arg RemoveItemFro
 		&i.IsEquipped,
 	)
 	return &i, err
+}
+
+const setInventoryItemEquipped = `-- name: SetInventoryItemEquipped :one
+UPDATE inventory
+SET is_equipped = $3
+WHERE character_id = $1 AND item_id = $2
+RETURNING character_id, item_id, quantity, is_equipped
+`
+
+type SetInventoryItemEquippedParams struct {
+	CharacterID int64
+	ItemID      int64
+	IsEquipped  bool
+}
+
+func (q *Queries) SetInventoryItemEquipped(ctx context.Context, arg SetInventoryItemEquippedParams) (*Inventory, error) {
+	row := q.db.QueryRow(ctx, setInventoryItemEquipped, arg.CharacterID, arg.ItemID, arg.IsEquipped)
+	var i Inventory
+	err := row.Scan(
+		&i.CharacterID,
+		&i.ItemID,
+		&i.Quantity,
+		&i.IsEquipped,
+	)
+	return &i, err
+}
+
+const unequipItemsByType = `-- name: UnequipItemsByType :exec
+UPDATE inventory
+SET is_equipped = FALSE
+FROM items i
+WHERE inventory.item_id = i.id
+  AND inventory.character_id = $1
+  AND i.type = $2
+  AND inventory.item_id <> $3
+`
+
+type UnequipItemsByTypeParams struct {
+	CharacterID int64
+	Type        string
+	ItemID      int64
+}
+
+func (q *Queries) UnequipItemsByType(ctx context.Context, arg UnequipItemsByTypeParams) error {
+	_, err := q.db.Exec(ctx, unequipItemsByType, arg.CharacterID, arg.Type, arg.ItemID)
+	return err
 }

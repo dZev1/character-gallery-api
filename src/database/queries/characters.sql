@@ -1,8 +1,8 @@
 -- name: CreateCharacter :one
 INSERT INTO characters (
-    name, body_type, species, class
+    owner_id, name, body_type, species, class, level, xp, hp_max, hp_current
 ) VALUES (
-    $1, $2, $3, $4
+    $1, $2, $3, $4, $5, $6, $7, $8, $9
 )
 RETURNING *;
 
@@ -44,8 +44,16 @@ SELECT COUNT(*) FROM characters;
 
 -- name: UpdateCharacter :one
 UPDATE characters
-SET name = $2, body_type = $3, species = $4, class = $5
+SET name = $2, body_type = $3, species = $4, class = $5,
+    level = $6, xp = $7, hp_max = $8, hp_current = $9
 WHERE id = $1
+RETURNING *;
+
+-- name: UpdateCharacterOwned :one
+UPDATE characters
+SET name = $3, body_type = $4, species = $5, class = $6,
+    level = $7, xp = $8, hp_max = $9, hp_current = $10
+WHERE id = $1 AND owner_id = $2
 RETURNING *;
 
 -- name: UpdateStats :one
@@ -61,6 +69,62 @@ SET hair = $2, face = $3, shirt = $4, pants = $5, shoes = $6
 WHERE character_id = $1
 RETURNING *;
 
--- name: DeleteCharacter :exec
+-- name: DeleteCharacter :execrows
 DELETE FROM characters
 WHERE id = $1;
+
+-- name: DeleteCharacterOwned :execrows
+DELETE FROM characters
+WHERE id = $1 AND owner_id = $2;
+
+-- name: SelectCharactersByOwner :many
+SELECT * FROM characters
+WHERE owner_id = $1
+ORDER BY id
+LIMIT $2 OFFSET $3;
+
+-- name: CountCharactersByOwner :one
+SELECT COUNT(*) FROM characters
+WHERE owner_id = $1;
+
+-- name: UpdateCharacterHP :one
+UPDATE characters
+SET hp_current = LEAST(GREATEST($2, 0), hp_max)
+WHERE id = $1
+RETURNING *;
+
+-- name: HealCharacter :one
+UPDATE characters
+SET hp_current = LEAST(hp_current + $2, hp_max)
+WHERE id = $1
+RETURNING *;
+
+-- name: UpdateCharacterProgress :one
+UPDATE characters
+SET level = $2,
+    xp = $3,
+    hp_max = $4,
+    hp_current = $5
+WHERE id = $1
+RETURNING *;
+
+-- name: PrestigeCharacter :one
+UPDATE characters
+SET level = 1,
+    xp = 0,
+    hp_max = $2,
+    hp_current = $2,
+    prestige = prestige + 1
+WHERE id = $1 AND owner_id = $3 AND level >= 10
+RETURNING *;
+
+-- name: BoostAllStatsOnPrestige :one
+UPDATE stats
+SET strength     = LEAST(strength + 1, 99),
+    dexterity    = LEAST(dexterity + 1, 99),
+    constitution = LEAST(constitution + 1, 99),
+    intelligence = LEAST(intelligence + 1, 99),
+    wisdom       = LEAST(wisdom + 1, 99),
+    charisma     = LEAST(charisma + 1, 99)
+WHERE character_id = $1
+RETURNING *;

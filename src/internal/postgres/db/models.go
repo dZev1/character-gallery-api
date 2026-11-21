@@ -5,15 +5,22 @@
 package db
 
 import (
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Character struct {
-	ID       int64
-	Name     string
-	BodyType string
-	Species  string
-	Class    string
+	ID        int64
+	OwnerID   uuid.UUID
+	Name      string
+	BodyType  string
+	Species   string
+	Class     string
+	Level     int32
+	Xp        int32
+	HpMax     int32
+	HpCurrent int32
+	Prestige  int32
 }
 
 type Customization struct {
@@ -23,6 +30,57 @@ type Customization struct {
 	Shirt       int16
 	Pants       int16
 	Shoes       int16
+}
+
+type DailyRun struct {
+	ID             int64
+	RunDate        pgtype.Date
+	Tier           int16
+	UserID         uuid.UUID
+	CharacterID    int64
+	TotalFloors    int16
+	CurrentFloor   int16
+	CurrentNodeID  string
+	VisitedNodes   []string
+	TurnsTaken     int32
+	Score          int32
+	Status         string
+	CurrentEnemyID pgtype.Int8
+	CurrentEnemyHp pgtype.Int4
+	CreatedAt      pgtype.Timestamptz
+	UpdatedAt      pgtype.Timestamptz
+}
+
+type DailyScore struct {
+	ID                int64
+	RunDate           pgtype.Date
+	Tier              int16
+	UserID            uuid.UUID
+	CharacterID       int64
+	CharacterName     string
+	CharacterClass    string
+	CharacterLevel    int32
+	CharacterPrestige int32
+	Score             int32
+	FloorsCleared     int16
+	TotalFloors       int16
+	TurnsTaken        int32
+	HpRemaining       int32
+	Completed         bool
+	CreatedAt         pgtype.Timestamptz
+}
+
+type Enemy struct {
+	ID          int64
+	Name        string
+	Type        string
+	Tier        int16
+	Description string
+	HpMax       int32
+	Ac          int32
+	Damage      int32
+	XpReward    int32
+	ScoreReward int32
 }
 
 type Inventory struct {
@@ -56,4 +114,12 @@ type Stat struct {
 	Intelligence int16
 	Wisdom       int16
 	Charisma     int16
+}
+
+type User struct {
+	ID           uuid.UUID
+	Username     string
+	PasswordHash string
+	Role         string
+	CreatedAt    pgtype.Timestamptz
 }

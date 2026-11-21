@@ -40,3 +40,38 @@ SELECT i.id             AS item_id,
 FROM inventory inv
 JOIN items i ON i.id = inv.item_id
 WHERE inv.character_id = $1;
+
+-- name: GetCharacterEquippedItems :many
+SELECT i.id             AS item_id,
+       i.name,
+       i.type,
+       i.description,
+       i.equippable,
+       i.rarity,
+       i.damage,
+       i.defense,
+       i.heal_amount,
+       i.mana_cost,
+       i.duration,
+       i.cooldown,
+       i.capacity,
+       inv.quantity,
+       inv.is_equipped
+FROM inventory inv
+JOIN items i ON i.id = inv.item_id
+WHERE inv.character_id = $1 AND inv.is_equipped = TRUE;
+
+-- name: SetInventoryItemEquipped :one
+UPDATE inventory
+SET is_equipped = $3
+WHERE character_id = $1 AND item_id = $2
+RETURNING *;
+
+-- name: UnequipItemsByType :exec
+UPDATE inventory
+SET is_equipped = FALSE
+FROM items i
+WHERE inventory.item_id = i.id
+  AND inventory.character_id = $1
+  AND i.type = $2
+  AND inventory.item_id <> $3;

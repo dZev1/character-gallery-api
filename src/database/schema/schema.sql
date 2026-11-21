@@ -1,3 +1,11 @@
+CREATE TABLE IF NOT EXISTS users (
+    id UUID PRIMARY KEY,
+    username TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT 'user',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS items (
     id BIGSERIAL PRIMARY KEY,
     name TEXT NOT NULL,
@@ -25,6 +33,7 @@ CREATE TABLE IF NOT EXISTS items (
 
 CREATE TABLE IF NOT EXISTS characters (
     id BIGSERIAL PRIMARY KEY,
+    owner_id UUID NOT NULL REFERENCES users(id),
     name TEXT NOT NULL,
     body_type TEXT NOT NULL CHECK (body_type IN ('type_a', 'type_b')),
     species TEXT NOT NULL CHECK (
@@ -39,7 +48,12 @@ CREATE TABLE IF NOT EXISTS characters (
             'monk', 'paladin', 'ranger', 'rogue', 'sorcerer',
             'warlock', 'wizard'
         )
-    )
+    ),
+    level       INT  NOT NULL DEFAULT 1,
+    xp          INT  NOT NULL DEFAULT 0,
+    hp_max      INT  NOT NULL DEFAULT 1,
+    hp_current  INT  NOT NULL DEFAULT 1,
+    prestige    INT  NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS inventory (
@@ -70,3 +84,66 @@ CREATE TABLE IF NOT EXISTS customizations (
     shoes SMALLINT NOT NULL CHECK (shoes BETWEEN 0 AND 30)
 );
 
+CREATE TABLE IF NOT EXISTS enemies (
+    id BIGSERIAL PRIMARY KEY,
+    name TEXT NOT NULL,
+    type TEXT NOT NULL CHECK (
+        type IN ('normal', 'elite', 'mini_boss', 'boss')
+    ),
+    tier SMALLINT NOT NULL CHECK (tier BETWEEN 1 AND 5),
+    description TEXT NOT NULL,
+    hp_max INT NOT NULL CHECK (hp_max > 0),
+    ac INT NOT NULL CHECK (ac > 0),
+    damage INT NOT NULL CHECK (damage > 0),
+    xp_reward INT NOT NULL DEFAULT 0,
+    score_reward INT NOT NULL DEFAULT 0,
+
+    CONSTRAINT enemies_name_tier_unique UNIQUE (name, tier)
+);
+
+CREATE TABLE IF NOT EXISTS daily_runs (
+    id BIGSERIAL PRIMARY KEY,
+    run_date DATE NOT NULL,
+    tier SMALLINT NOT NULL CHECK (tier BETWEEN 1 AND 5),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    character_id BIGINT NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+    total_floors SMALLINT NOT NULL CHECK (total_floors IN (10, 15, 20, 25, 30)),
+    current_floor SMALLINT NOT NULL DEFAULT 1,
+    current_node_id TEXT NOT NULL,
+    visited_nodes TEXT[] NOT NULL DEFAULT '{}',
+    turns_taken INT NOT NULL DEFAULT 0,
+    score INT NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'in_progress' CHECK (
+        status IN ('in_progress', 'in_combat', 'victory', 'defeat')
+    ),
+    current_enemy_id BIGINT REFERENCES enemies(id) ON DELETE SET NULL,
+    current_enemy_hp INT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    UNIQUE (run_date, tier, character_id)
+);
+
+CREATE TABLE IF NOT EXISTS daily_scores (
+    id BIGSERIAL PRIMARY KEY,
+    run_date DATE NOT NULL,
+    tier SMALLINT NOT NULL CHECK (tier BETWEEN 1 AND 5),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    character_id BIGINT NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+    character_name TEXT NOT NULL,
+    character_class TEXT NOT NULL,
+    character_level INT NOT NULL,
+    character_prestige INT NOT NULL DEFAULT 0,
+    score INT NOT NULL,
+    floors_cleared SMALLINT NOT NULL,
+    total_floors SMALLINT NOT NULL,
+    turns_taken INT NOT NULL,
+    hp_remaining INT NOT NULL,
+    completed BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    UNIQUE (run_date, tier, character_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_daily_scores_leaderboard
+    ON daily_scores (run_date, tier, score DESC, turns_taken ASC);

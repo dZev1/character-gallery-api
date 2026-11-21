@@ -5,10 +5,13 @@ import (
 	"dZev1/character-gallery/internal/characters"
 	"dZev1/character-gallery/internal/inventory"
 	"dZev1/character-gallery/internal/items"
+	"dZev1/character-gallery/internal/uuidv7"
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -37,6 +40,21 @@ func TestMain(m *testing.M) {
 	pool, err := pgxpool.New(ctx, dsn)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to connect: %v\n", err)
+		os.Exit(1)
+	}
+
+	if _, err := pool.Exec(ctx, `
+		DROP TABLE IF EXISTS daily_scores CASCADE;
+		DROP TABLE IF EXISTS daily_runs CASCADE;
+		DROP TABLE IF EXISTS enemies CASCADE;
+		DROP TABLE IF EXISTS customizations CASCADE;
+		DROP TABLE IF EXISTS stats CASCADE;
+		DROP TABLE IF EXISTS inventory CASCADE;
+		DROP TABLE IF EXISTS items CASCADE;
+		DROP TABLE IF EXISTS characters CASCADE;
+		DROP TABLE IF EXISTS users CASCADE;
+	`); err != nil {
+		fmt.Fprintf(os.Stderr, "failed to drop tables: %v\n", err)
 		os.Exit(1)
 	}
 
@@ -88,6 +106,7 @@ func createTestCharacter(t *testing.T, q *db.Queries) *db.Character {
 	t.Helper()
 	ctx := context.Background()
 	char, err := q.CreateCharacter(ctx, db.CreateCharacterParams{
+		OwnerID:  testOwnerID(t, q),
 		Name:     "Test Hero",
 		BodyType: "type_a",
 		Species:  "human",
@@ -97,6 +116,20 @@ func createTestCharacter(t *testing.T, q *db.Queries) *db.Character {
 		t.Fatal(err)
 	}
 	return char
+}
+
+func testOwnerID(t *testing.T, q *db.Queries) uuid.UUID {
+	t.Helper()
+	ctx := context.Background()
+	user, err := q.CreateUser(ctx, db.CreateUserParams{
+		ID:           uuidv7.Must(),
+		Username:     fmt.Sprintf("testuser_%d", time.Now().UnixNano()),
+		PasswordHash: "hash",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return user.ID
 }
 
 func createTestCharacterFull(t *testing.T, q *db.Queries) *db.Character {
@@ -188,15 +221,29 @@ func newInventoryRepo(t *testing.T) *inventoryRepo {
 	return NewInventoryRepo(globalDB.pool)
 }
 
+func newEnemyRepo(t *testing.T) *enemyRepo {
+	t.Helper()
+	return NewEnemyRepo(globalDB.pool)
+}
+
+func newDailyRunRepo(t *testing.T) *dailyRunRepo {
+	t.Helper()
+	return NewDailyRunRepo(globalDB.pool)
+}
+
 func domainCharacter(char *db.Character, stats *db.Stat, cust *db.Customization) *characters.Character {
 	return &characters.Character{
-		ID:       characters.CharacterID(char.ID),
-		Name:     char.Name,
-		BodyType: characters.BodyType(char.BodyType),
-		Species:  characters.Species(char.Species),
-		Class:    characters.Class(char.Class),
+		ID:        characters.ID(char.ID),
+		Name:      char.Name,
+		BodyType:  characters.BodyType(char.BodyType),
+		Species:   characters.Species(char.Species),
+		Class:     characters.Class(char.Class),
+		Level:     uint8(char.Level),
+		Xp:        uint64(char.Xp),
+		HpMax:     uint8(char.HpMax),
+		HpCurrent: uint8(char.HpCurrent),
 		Stats: &characters.Stats{
-			ID:           characters.CharacterID(stats.CharacterID),
+			ID:           characters.ID(stats.CharacterID),
 			Strength:     uint8(stats.Strength),
 			Dexterity:    uint8(stats.Dexterity),
 			Constitution: uint8(stats.Constitution),
@@ -205,7 +252,7 @@ func domainCharacter(char *db.Character, stats *db.Stat, cust *db.Customization)
 			Charisma:     uint8(stats.Charisma),
 		},
 		Customization: &characters.Customization{
-			ID:    characters.CharacterID(cust.CharacterID),
+			ID:    characters.ID(cust.CharacterID),
 			Hair:  uint8(cust.Hair),
 			Face:  uint8(cust.Face),
 			Shirt: uint8(cust.Shirt),
@@ -217,7 +264,7 @@ func domainCharacter(char *db.Character, stats *db.Stat, cust *db.Customization)
 
 func domainItem(it *db.Item) *items.Item {
 	return &items.Item{
-		ID:          items.ItemID(it.ID),
+		ID:          items.ID(it.ID),
 		Name:        it.Name,
 		Type:        items.Type(it.Type),
 		Description: it.Description,
@@ -235,8 +282,8 @@ func domainItem(it *db.Item) *items.Item {
 
 func domainInventoryParam(charID int64, itemID int64, quantity int32) inventory.RepositoryParam {
 	return inventory.RepositoryParam{
-		CharacterID: characters.CharacterID(charID),
-		ItemID:      items.ItemID(itemID),
+		CharacterID: characters.ID(charID),
+		ItemID:      items.ID(itemID),
 		Quantity:    uint8(quantity),
 	}
 }

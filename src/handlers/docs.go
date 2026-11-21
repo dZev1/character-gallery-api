@@ -1,9 +1,16 @@
 package handlers
 
-import "net/http"
+import (
+	_ "embed"
+	"net/http"
+)
+
+//go:embed openapi.yaml
+var openAPISpec []byte
 
 func OpenAPIHandler(w http.ResponseWriter, r *http.Request) {
-	http.ServeFile(w, r, "../openapi.yaml")
+	w.Header().Set("Content-Type", "application/x-yaml")
+	w.Write(openAPISpec)
 }
 
 func DocsHandler(w http.ResponseWriter, r *http.Request) {

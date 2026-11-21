@@ -19,7 +19,7 @@ func (s Species) String() string {
 	return string(s)
 }
 
-func (s Species) Validate() bool {
+func (s Species) IsValid() bool {
 	switch s {
 	case Aasimar, Dragonborn, Dwarf, Elf, Gnome, Goliath, Halfling, Human, Orc, Tiefling:
 		return true

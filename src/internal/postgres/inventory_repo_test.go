@@ -2,11 +2,14 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"dZev1/character-gallery/internal/characters"
+	"dZev1/character-gallery/internal/inventory"
 	"dZev1/character-gallery/internal/items"
 	"dZev1/character-gallery/internal/postgres/db"
 )
@@ -68,7 +71,7 @@ func TestInventoryRepo_GetCharacterInventory_Empty(t *testing.T) {
 
 	char := createTestCharacter(t, q)
 
-	items, err := repo.GetCharacterInventory(ctx, tt.Tx, characters.CharacterID(char.ID))
+	items, err := repo.GetCharacterInventory(ctx, tt.Tx, characters.ID(char.ID))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,7 +115,7 @@ func TestInventoryRepo_GetCharacterInventory(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	inventoryItems, err := repo.GetCharacterInventory(ctx, tt.Tx, characters.CharacterID(char.ID))
+	inventoryItems, err := repo.GetCharacterInventory(ctx, tt.Tx, characters.ID(char.ID))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -122,7 +125,7 @@ func TestInventoryRepo_GetCharacterInventory(t *testing.T) {
 
 	found := false
 	for _, it := range inventoryItems {
-		if it.Item.ID == items.ItemID(item1.ID) {
+		if it.Item.ID == items.ID(item1.ID) {
 			found = true
 			if it.Quantity != 1 {
 				t.Errorf("item %d: got quantity %d, want 1", item1.ID, it.Quantity)
@@ -151,7 +154,7 @@ func TestInventoryRepo_GetCharacterInventory_OtherCharacter(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	inventoryItems, err := repo.GetCharacterInventory(ctx, tt.Tx, characters.CharacterID(char2.ID))
+	inventoryItems, err := repo.GetCharacterInventory(ctx, tt.Tx, characters.ID(char2.ID))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -181,7 +184,7 @@ func TestInventoryRepo_RemoveItemFromCharacter_Partial(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	inventoryItems, err := repo.GetCharacterInventory(ctx, tt.Tx, characters.CharacterID(char.ID))
+	inventoryItems, err := repo.GetCharacterInventory(ctx, tt.Tx, characters.ID(char.ID))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -214,7 +217,7 @@ func TestInventoryRepo_RemoveItemFromCharacter_Full(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	inventoryItems, err := repo.GetCharacterInventory(ctx, tt.Tx, characters.CharacterID(char.ID))
+	inventoryItems, err := repo.GetCharacterInventory(ctx, tt.Tx, characters.ID(char.ID))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -244,7 +247,7 @@ func TestInventoryRepo_RemoveMoreThanOwned(t *testing.T) {
 		t.Fatal("expected error when removing more than owned, got nil")
 	}
 
-	inventoryItems, err := repo.GetCharacterInventory(ctx, tt.Tx, characters.CharacterID(char.ID))
+	inventoryItems, err := repo.GetCharacterInventory(ctx, tt.Tx, characters.ID(char.ID))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -272,17 +275,115 @@ func TestInventoryRepo_DeleteCharacter_CascadesToInventory(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = q.DeleteCharacter(ctx, char.ID)
+	_, err = q.DeleteCharacterOwned(ctx, db.DeleteCharacterOwnedParams{
+		ID:      char.ID,
+		OwnerID: char.OwnerID,
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	inventoryItems, err := repo.GetCharacterInventory(ctx, tt.Tx, characters.CharacterID(char.ID))
+	_, err = repo.GetCharacterInventory(ctx, tt.Tx, characters.ID(char.ID))
+	if err == nil || !errors.Is(err, characters.ErrNotFound) {
+		t.Errorf("expected ErrNotFound for deleted character inventory, got %v", err)
+	}
+}
+
+func TestInventoryRepo_OwnershipEnforcement(t *testing.T) {
+	tt := newTestTx(t)
+	repo := newInventoryRepo(t)
+	ctx := context.Background()
+	q := tt.Q
+
+	char := createTestCharacter(t, q)
+	item := createTestItem(t, q, IRON_SWORD)
+	otherOwner := testOwnerID(t, q)
+
+	// Other user cannot add item to character they don't own.
+	paramOther := inventory.RepositoryParam{
+		CharacterID: characters.ID(char.ID),
+		OwnerID:     otherOwner,
+		ItemID:      items.ID(item.ID),
+		Quantity:    2,
+	}
+	if _, err := repo.AddItemToCharacter(ctx, tt.Tx, paramOther); !errors.Is(err, characters.ErrNotFound) {
+		t.Fatalf("expected ErrNotFound when other user adds item, got %v", err)
+	}
+
+	// Owner can add item.
+	paramOwner := inventory.RepositoryParam{
+		CharacterID: characters.ID(char.ID),
+		OwnerID:     char.OwnerID,
+		ItemID:      items.ID(item.ID),
+		Quantity:    2,
+	}
+	if _, err := repo.AddItemToCharacter(ctx, tt.Tx, paramOwner); err != nil {
+		t.Fatalf("owner should be able to add item, got %v", err)
+	}
+
+	// Other user cannot remove item.
+	paramOther.Quantity = 1
+	if _, err := repo.RemoveItemFromCharacter(ctx, tt.Tx, paramOther); !errors.Is(err, characters.ErrNotFound) {
+		t.Fatalf("expected ErrNotFound when other user removes item, got %v", err)
+	}
+
+	// Admin (uuid.Nil) can remove item.
+	paramAdmin := inventory.RepositoryParam{
+		CharacterID: characters.ID(char.ID),
+		OwnerID:     uuid.Nil,
+		ItemID:      items.ID(item.ID),
+		Quantity:    1,
+	}
+	if _, err := repo.RemoveItemFromCharacter(ctx, tt.Tx, paramAdmin); err != nil {
+		t.Fatalf("admin should be able to remove item, got %v", err)
+	}
+}
+
+func TestInventoryRepo_EquipAndAutoUnequipSameSlot(t *testing.T) {
+	tt := newTestTx(t)
+	repo := newInventoryRepo(t)
+	ctx := context.Background()
+	q := tt.Q
+
+	char := createTestCharacter(t, q)
+	ironSword := createTestItem(t, q, IRON_SWORD)
+	woodenSword := createTestItem(t, q, WOODEN_SWORD)
+
+	for _, itID := range []int64{ironSword.ID, woodenSword.ID} {
+		if _, err := repo.AddItemToCharacter(ctx, tt.Tx, inventory.RepositoryParam{
+			CharacterID: characters.ID(char.ID),
+			OwnerID:     char.OwnerID,
+			ItemID:      items.ID(itID),
+			Quantity:    1,
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// Equip Iron Sword
+	eq1, err := repo.SetItemEquipped(ctx, tt.Tx, characters.ID(char.ID), char.OwnerID, items.ID(ironSword.ID), true)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(inventoryItems) != 0 {
-		t.Errorf("expected 0 inventory items after character delete, got %d", len(inventoryItems))
+	if !eq1.IsEquipped {
+		t.Fatal("expected Iron Sword to be equipped")
+	}
+
+	// Equip Wooden Sword (same type "weapon") -> should auto-unequip Iron Sword
+	eq2, err := repo.SetItemEquipped(ctx, tt.Tx, characters.ID(char.ID), char.OwnerID, items.ID(woodenSword.ID), true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !eq2.IsEquipped {
+		t.Fatal("expected Wooden Sword to be equipped")
+	}
+
+	equipped, err := repo.GetCharacterEquippedItems(ctx, tt.Tx, characters.ID(char.ID))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(equipped) != 1 || equipped[0].Item.ID != items.ID(woodenSword.ID) {
+		t.Fatalf("expected only Wooden Sword equipped, got %+v", equipped)
 	}
 }
 
