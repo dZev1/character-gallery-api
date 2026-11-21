@@ -35,6 +35,15 @@ func (s *Service) Create(ctx context.Context, character *Character, ownerID uuid
 	}
 	defer tx.Rollback(ctx)
 
+	count, err := s.repo.CountCharactersByOwner(ctx, tx, ownerID)
+	if err != nil {
+		log.Println("Error counting user characters:", err)
+		return nil, err
+	}
+	if count >= MaxCharactersPerOwner {
+		return nil, ErrCharacterLimitReached
+	}
+
 	character, err = s.repo.SaveCharacter(ctx, tx, character, ownerID)
 	if err != nil {
 		log.Println("Error creating character:", err)

@@ -12,6 +12,7 @@ type Repository interface {
 	FindCharacter(ctx context.Context, exec db.DBTX, id ID) (*Character, error)
 	FindAllCharacters(ctx context.Context, exec db.DBTX, limit, offset int) ([]Character, uint64, error)
 	FindCharactersByOwner(ctx context.Context, exec db.DBTX, ownerID uuid.UUID, limit, offset int) ([]Character, uint64, error)
+	CountCharactersByOwner(ctx context.Context, exec db.DBTX, ownerID uuid.UUID) (uint64, error)
 	UpdateCharacter(ctx context.Context, exec db.DBTX, character *Character, ownerID uuid.UUID) (*Character, error)
 	UpdateCharacterHP(ctx context.Context, exec db.DBTX, id ID, hpCurrent uint8) (*Character, error)
 	HealCharacter(ctx context.Context, exec db.DBTX, id ID, healAmount uint8) (*Character, error)

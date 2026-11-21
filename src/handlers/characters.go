@@ -42,6 +42,10 @@ func (g *Gallery) HandleCreateCharacter(w http.ResponseWriter, r *http.Request) 
 
 	character, err = g.characterService.Create(ctx, character, claims.UserID)
 	if err != nil {
+		if errors.Is(err, characters.ErrCharacterLimitReached) {
+			writeError(w, http.StatusConflict, "CHARACTER_LIMIT_REACHED", "Maximum of 6 characters per user reached")
+			return
+		}
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Error creating character")
 		return
 	}

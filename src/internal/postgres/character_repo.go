@@ -228,6 +228,15 @@ func (c *characterRepo) FindCharactersByOwner(ctx context.Context, exec db.DBTX,
 	return result, uint64(count), nil
 }
 
+func (c *characterRepo) CountCharactersByOwner(ctx context.Context, exec db.DBTX, ownerID uuid.UUID) (uint64, error) {
+	q := c.q(exec)
+	count, err := q.CountCharactersByOwner(ctx, ownerID)
+	if err != nil {
+		return 0, fmt.Errorf("count characters by owner %s: %w", ownerID, err)
+	}
+	return uint64(count), nil
+}
+
 func (c *characterRepo) UpdateCharacterHP(ctx context.Context, exec db.DBTX, id characters.ID, hpCurrent uint8) (*characters.Character, error) {
 	q := c.q(exec)
 

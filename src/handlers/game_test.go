@@ -139,3 +139,22 @@ func TestDailyRun_StartResumeAndAction(t *testing.T) {
 	// Check leaderboard endpoint.
 	doReq(t, http.MethodGet, apiBase()+"/daily/3/leaderboard", bearer(ownerToken), "", http.StatusOK)
 }
+
+func TestCreateCharacter_MaxSixPerOwner(t *testing.T) {
+	token := registerAndLogin(t, newUsername("limit6"))
+
+	var firstID uint64
+	for i := 0; i < 6; i++ {
+		id := createCharacter(t, token)
+		if i == 0 {
+			firstID = id
+		}
+	}
+
+	// 7th character is rejected with 409 Conflict.
+	doReq(t, http.MethodPost, apiBase()+"/characters", bearer(token), validCharacterJSON(), http.StatusConflict)
+
+	// Deleting one frees up a slot.
+	doReq(t, http.MethodDelete, fmt.Sprintf("%s/characters/%d", apiBase(), firstID), bearer(token), "", http.StatusOK)
+	createCharacter(t, token)
+}

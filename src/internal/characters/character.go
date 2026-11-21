@@ -8,8 +8,11 @@ import (
 	"github.com/google/uuid"
 )
 
+const MaxCharactersPerOwner = 6
+
 var ErrNotFound = errors.New("character not found")
 var ErrPrestigeRequirement = errors.New("character must be at least level 10 to prestige")
+var ErrCharacterLimitReached = errors.New("maximum number of characters per user reached (6)")
 
 type ID uint64
 
