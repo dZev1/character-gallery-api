@@ -16,6 +16,7 @@ import (
 	redislib "dZev1/character-gallery/internal/redis"
 
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"time"
@@ -143,6 +144,9 @@ func main() {
 
 	mux.Handle("GET /metrics", metrics.Handler())
 
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	slog.SetDefault(logger)
+
 	jwtMw := middleware.AuthMiddleware(jwtSecret,
 		"POST "+baseURL+"/auth/register",
 		"POST "+baseURL+"/auth/login",
@@ -150,7 +154,7 @@ func main() {
 		"GET /docs",
 		"GET /metrics",
 	)
-	handler := middleware.MetricsMiddleware(jwtMw(rl.Limit(mux)))
+	handler := middleware.LoggingMiddleware(logger)(middleware.MetricsMiddleware(jwtMw(rl.Limit(mux))))
 	handler = middleware.EnableCors(handler)
 
 	addr := os.Getenv("PORT")
@@ -158,6 +162,6 @@ func main() {
 		addr = ":8080"
 	}
 
-	log.Println("Server listening on " + addr)
+	logger.Info("server listening", "addr", addr)
 	log.Fatal(http.ListenAndServe(addr, handler))
 }
