@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"dZev1/character-gallery/internal/metrics"
 	"dZev1/character-gallery/internal/uuidv7"
 	"errors"
 	"fmt"
@@ -79,18 +80,22 @@ func (s *Service) Register(ctx context.Context, username, password string) (*Use
 func (s *Service) Login(ctx context.Context, username, password string) (*LoginResponse, error) {
 	user, err := s.repo.FindUserByUsername(ctx, s.pool, username)
 	if err != nil {
+		metrics.AuthLoginAttemptsTotal.WithLabelValues("invalid_credentials").Inc()
 		return nil, ErrInvalidCredentials
 	}
 
 	if !CheckPassword(password, user.PasswordHash) {
+		metrics.AuthLoginAttemptsTotal.WithLabelValues("invalid_credentials").Inc()
 		return nil, ErrInvalidCredentials
 	}
 
 	token, expiresAt, err := generateJWT(user, s.jwtSecret)
 	if err != nil {
+		metrics.AuthLoginAttemptsTotal.WithLabelValues("error").Inc()
 		log.Println("Error generating JWT:", err)
 		return nil, fmt.Errorf("generate token: %w", err)
 	}
 
+	metrics.AuthLoginAttemptsTotal.WithLabelValues("success").Inc()
 	return &LoginResponse{Token: token, ExpiresAt: expiresAt}, nil
 }

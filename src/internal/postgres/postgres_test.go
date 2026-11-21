@@ -221,6 +221,16 @@ func newInventoryRepo(t *testing.T) *inventoryRepo {
 	return NewInventoryRepo(globalDB.pool)
 }
 
+func newEnemyRepo(t *testing.T) *enemyRepo {
+	t.Helper()
+	return NewEnemyRepo(globalDB.pool)
+}
+
+func newDailyRunRepo(t *testing.T) *dailyRunRepo {
+	t.Helper()
+	return NewDailyRunRepo(globalDB.pool)
+}
+
 func domainCharacter(char *db.Character, stats *db.Stat, cust *db.Customization) *characters.Character {
 	return &characters.Character{
 		ID:        characters.ID(char.ID),

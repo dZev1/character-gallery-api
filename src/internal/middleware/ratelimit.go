@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"dZev1/character-gallery/internal/metrics"
 	"fmt"
 	"net/http"
 	"strings"
@@ -12,6 +13,7 @@ import (
 
 type rateLimitRule struct {
 	method   string
+	pattern  string
 	segments []string
 	max      int
 }
@@ -55,6 +57,7 @@ func (rl *RateLimiter) SetLimit(method, path string, max int) {
 	defer rl.mu.Unlock()
 	rl.rules = append(rl.rules, rateLimitRule{
 		method:   method,
+		pattern:  method + " " + strings.TrimSuffix(path, "/"),
 		segments: strings.Split(strings.Trim(path, "/"), "/"),
 		max:      max,
 	})
@@ -66,10 +69,12 @@ func (rl *RateLimiter) Limit(next http.Handler) http.Handler {
 
 		rl.mu.RLock()
 		var max int
+		var matchedPattern string
 		var ok bool
 		for _, rule := range rl.rules {
 			max, ok = rule.match(r.Method, path)
 			if ok {
+				matchedPattern = rule.pattern
 				break
 			}
 		}
@@ -105,6 +110,7 @@ func (rl *RateLimiter) Limit(next http.Handler) http.Handler {
 		w.Header().Set("X-RateLimit-Remaining", fmt.Sprintf("%d", remaining))
 
 		if count > int64(max) {
+			metrics.RateLimitExceededTotal.WithLabelValues(matchedPattern).Inc()
 			w.Header().Set("Retry-After", fmt.Sprintf("%.0f", rl.window.Seconds()))
 			http.Error(w, "429 too many requests", http.StatusTooManyRequests)
 			return

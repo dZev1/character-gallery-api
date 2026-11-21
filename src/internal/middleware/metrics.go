@@ -30,7 +30,7 @@ func MetricsMiddleware(next http.Handler) http.Handler {
 
 		path := req.Pattern
 		if path == "" {
-			path = req.URL.Path
+			path = "unmatched"
 		}
 
 		metrics.RequestsTotal.WithLabelValues(req.Method, path, strconv.Itoa(sr.status)).Inc()

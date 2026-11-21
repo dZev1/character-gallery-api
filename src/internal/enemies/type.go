@@ -3,10 +3,10 @@ package enemies
 type Type string
 
 const (
-	Normal   Type = "Normal"
-	Elite         = "Elite"
-	MiniBoss      = "MiniBoss"
-	Boss          = "Boss"
+	Normal   Type = "normal"
+	Elite    Type = "elite"
+	MiniBoss Type = "mini_boss"
+	Boss     Type = "boss"
 )
 
 func (t Type) String() string {

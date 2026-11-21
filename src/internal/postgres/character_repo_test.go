@@ -366,3 +366,72 @@ func TestCharacterRepo_DeleteCharacter_Cascades(t *testing.T) {
 		t.Error("expected error when selecting customization for deleted character")
 	}
 }
+
+func TestCharacterRepo_HealProgressAndPrestige(t *testing.T) {
+	tt := newTestTx(t)
+	repo := newCharacterRepo(t)
+	ctx := context.Background()
+
+	owner := testOwnerID(t, tt.Q)
+	char := &characters.Character{
+		Name:          "PaladinHero",
+		BodyType:      "type_a",
+		Species:       "human",
+		Class:         "paladin",
+		Level:         9,
+		Xp:            900,
+		HpMax:         40,
+		HpCurrent:     10,
+		Stats:         &characters.Stats{Strength: 15, Dexterity: 12, Constitution: 14, Intelligence: 10, Wisdom: 13, Charisma: 16},
+		Customization: &characters.Customization{Hair: 1, Face: 1, Shirt: 1, Pants: 1, Shoes: 1},
+	}
+
+	saved, err := repo.SaveCharacter(ctx, tt.Tx, char, owner)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Heal +15 -> 25 HP
+	healed, err := repo.HealCharacter(ctx, tt.Tx, saved.ID, 15)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if healed.HpCurrent != 25 {
+		t.Fatalf("got hp_current %d, want 25", healed.HpCurrent)
+	}
+
+	// Heal beyond HpMax clamps to 40
+	healed, err = repo.HealCharacter(ctx, tt.Tx, saved.ID, 50)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if healed.HpCurrent != 40 {
+		t.Fatalf("got hp_current %d, want 40 (clamped to HpMax)", healed.HpCurrent)
+	}
+
+	// Prestige before level 10 fails
+	if _, err := repo.PrestigeCharacter(ctx, tt.Tx, saved.ID, owner, 20); !errors.Is(err, characters.ErrPrestigeRequirement) {
+		t.Fatalf("expected ErrPrestigeRequirement at level 9, got %v", err)
+	}
+
+	// Level up to 10 via UpdateCharacterProgress
+	lvl10, err := repo.UpdateCharacterProgress(ctx, tt.Tx, saved.ID, 10, 1200, 45, 30)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if lvl10.Level != 10 || lvl10.HpMax != 45 || lvl10.HpCurrent != 30 {
+		t.Fatalf("unexpected progress state: %+v", lvl10)
+	}
+
+	// Prestige at level 10 resets level to 1, increments prestige, and boosts all stats by +1
+	prestiged, err := repo.PrestigeCharacter(ctx, tt.Tx, saved.ID, owner, 22)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if prestiged.Level != 1 || prestiged.Prestige != 1 || prestiged.HpMax != 22 || prestiged.HpCurrent != 22 {
+		t.Fatalf("unexpected prestiged character: %+v", prestiged)
+	}
+	if prestiged.Stats.Strength != 16 || prestiged.Stats.Charisma != 17 {
+		t.Fatalf("expected stats boosted by +1, got %+v", prestiged.Stats)
+	}
+}

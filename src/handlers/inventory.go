@@ -5,6 +5,7 @@ import (
 	"dZev1/character-gallery/internal/characters"
 	"dZev1/character-gallery/internal/inventory"
 	"dZev1/character-gallery/internal/items"
+	"encoding/json"
 	"errors"
 	"net/http"
 )
@@ -122,4 +123,97 @@ func (g *Gallery) HandleRemoveItemFromCharacter(w http.ResponseWriter, r *http.R
 	}
 
 	writeJSON(w, http.StatusOK, map[string]string{"result": "success"})
+}
+
+type equipRequest struct {
+	Equip bool `json:"equip"`
+}
+
+func (g *Gallery) HandleEquipItem(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	claims, ok := auth.ClaimsFromContext(ctx)
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
+		return
+	}
+
+	charID, err := parseID(r, "characterId")
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "Invalid character id")
+		return
+	}
+
+	itemID, err := parseID(r, "itemId")
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "Invalid item id")
+		return
+	}
+
+	var req equipRequest
+	limitBody(w, r)
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "Error parsing request body")
+		return
+	}
+
+	result, err := g.inventoryService.EquipItem(ctx, characters.ID(charID), ownerIDForRequest(claims), items.ID(itemID), req.Equip)
+	if err != nil {
+		switch {
+		case isCharacterNotFound(err):
+			writeError(w, http.StatusNotFound, "NOT_FOUND", "Character not found")
+		case isItemNotFound(err):
+			writeError(w, http.StatusNotFound, "NOT_FOUND", "Item not found")
+		case errors.Is(err, inventory.ErrItemNotInInventory):
+			writeError(w, http.StatusNotFound, "NOT_FOUND", "Item not in character inventory")
+		case errors.Is(err, inventory.ErrItemNotEquippable):
+			writeError(w, http.StatusBadRequest, "BAD_REQUEST", "Item is not equippable")
+		default:
+			writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Error equipping item")
+		}
+		return
+	}
+
+	writeJSON(w, http.StatusOK, result)
+}
+
+func (g *Gallery) HandleUseItem(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	claims, ok := auth.ClaimsFromContext(ctx)
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
+		return
+	}
+
+	charID, err := parseID(r, "characterId")
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "Invalid character id")
+		return
+	}
+
+	itemID, err := parseID(r, "itemId")
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "Invalid item id")
+		return
+	}
+
+	char, err := g.inventoryService.UseItem(ctx, characters.ID(charID), ownerIDForRequest(claims), items.ID(itemID))
+	if err != nil {
+		switch {
+		case isCharacterNotFound(err):
+			writeError(w, http.StatusNotFound, "NOT_FOUND", "Character not found")
+		case isItemNotFound(err):
+			writeError(w, http.StatusNotFound, "NOT_FOUND", "Item not found")
+		case errors.Is(err, inventory.ErrInsufficientQuantity):
+			writeError(w, http.StatusBadRequest, "BAD_REQUEST", "Item not in character inventory")
+		case errors.Is(err, inventory.ErrItemNotConsumable):
+			writeError(w, http.StatusBadRequest, "BAD_REQUEST", "Item cannot be consumed for healing")
+		default:
+			writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Error using item")
+		}
+		return
+	}
+
+	writeJSON(w, http.StatusOK, char)
 }

@@ -6,16 +6,23 @@ RUN go mod download
 
 COPY src/ .
 
-RUN CGO_ENABLED=0 GOOS=linux go build -o main ./cmd/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o main ./cmd
 
-FROM alpine:latest
-RUN apk --no-cache add ca-certificates
-WORKDIR /root/
+FROM alpine:3.21
+RUN apk --no-cache add ca-certificates tzdata \
+    && adduser -D -H -u 10001 appuser
 
+WORKDIR /app
 COPY --from=builder /app/main .
+RUN chown appuser:appuser /app/main
+
+USER appuser
 
 ENV DATABASE_URL=""
 ENV REDIS_URL="redis://localhost:6379/0"
+ENV JWT_SECRET=""
+ENV CORS_ALLOW_ORIGIN=""
+ENV PORT=":8080"
 
 EXPOSE 8080
 CMD ["./main"]

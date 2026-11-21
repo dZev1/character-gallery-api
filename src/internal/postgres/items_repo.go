@@ -89,6 +89,66 @@ func (i *itemRepo) FindItem(ctx context.Context, exec db.DBTX, itemID items.ID) 
 	}, nil
 }
 
+func (i *itemRepo) FindItemsByRarityRange(ctx context.Context, exec db.DBTX, minRarity, maxRarity uint8) ([]items.Item, error) {
+	q := i.q(exec)
+
+	rows, err := q.FindItemsByRarityRange(ctx, db.FindItemsByRarityRangeParams{
+		Rarity:   int32(minRarity),
+		Rarity_2: int32(maxRarity),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("find items by rarity %d..%d: %w", minRarity, maxRarity, err)
+	}
+
+	result := make([]items.Item, len(rows))
+	for idx, it := range rows {
+		result[idx] = items.Item{
+			ID:          items.ID(it.ID),
+			Name:        it.Name,
+			Type:        items.Type(it.Type),
+			Description: it.Description,
+			Equippable:  it.Equippable,
+			Rarity:      uint8(it.Rarity),
+			Damage:      toU64ptr(it.Damage),
+			Defense:     toU64ptr(it.Defense),
+			HealAmount:  toU64ptr(it.HealAmount),
+			ManaCost:    toU64ptr(it.ManaCost),
+			Duration:    toU64ptr(it.Duration),
+			Cooldown:    toU64ptr(it.Cooldown),
+			Capacity:    toU64ptr(it.Capacity),
+		}
+	}
+	return result, nil
+}
+
+func (i *itemRepo) FindRandomItemByRarityRange(ctx context.Context, exec db.DBTX, minRarity, maxRarity uint8) (*items.Item, error) {
+	q := i.q(exec)
+
+	itm, err := q.FindRandomItemByRarityRange(ctx, db.FindRandomItemByRarityRangeParams{
+		Rarity:   int32(minRarity),
+		Rarity_2: int32(maxRarity),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("random item by rarity %d..%d: %w", minRarity, maxRarity, items.ErrNotFound)
+	}
+
+	return &items.Item{
+		ID:          items.ID(itm.ID),
+		Name:        itm.Name,
+		Type:        items.Type(itm.Type),
+		Description: itm.Description,
+		Equippable:  itm.Equippable,
+		Rarity:      uint8(itm.Rarity),
+		Damage:      toU64ptr(itm.Damage),
+		Defense:     toU64ptr(itm.Defense),
+		HealAmount:  toU64ptr(itm.HealAmount),
+		ManaCost:    toU64ptr(itm.ManaCost),
+		Duration:    toU64ptr(itm.Duration),
+		Cooldown:    toU64ptr(itm.Cooldown),
+		Capacity:    toU64ptr(itm.Capacity),
+	}, nil
+}
+
 func (i *itemRepo) SaveItem(ctx context.Context, exec db.DBTX, item *items.Item) (*items.Item, error) {
 	q := i.q(exec)
 

@@ -339,6 +339,54 @@ func TestInventoryRepo_OwnershipEnforcement(t *testing.T) {
 	}
 }
 
+func TestInventoryRepo_EquipAndAutoUnequipSameSlot(t *testing.T) {
+	tt := newTestTx(t)
+	repo := newInventoryRepo(t)
+	ctx := context.Background()
+	q := tt.Q
+
+	char := createTestCharacter(t, q)
+	ironSword := createTestItem(t, q, IRON_SWORD)
+	woodenSword := createTestItem(t, q, WOODEN_SWORD)
+
+	for _, itID := range []int64{ironSword.ID, woodenSword.ID} {
+		if _, err := repo.AddItemToCharacter(ctx, tt.Tx, inventory.RepositoryParam{
+			CharacterID: characters.ID(char.ID),
+			OwnerID:     char.OwnerID,
+			ItemID:      items.ID(itID),
+			Quantity:    1,
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// Equip Iron Sword
+	eq1, err := repo.SetItemEquipped(ctx, tt.Tx, characters.ID(char.ID), char.OwnerID, items.ID(ironSword.ID), true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !eq1.IsEquipped {
+		t.Fatal("expected Iron Sword to be equipped")
+	}
+
+	// Equip Wooden Sword (same type "weapon") -> should auto-unequip Iron Sword
+	eq2, err := repo.SetItemEquipped(ctx, tt.Tx, characters.ID(char.ID), char.OwnerID, items.ID(woodenSword.ID), true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !eq2.IsEquipped {
+		t.Fatal("expected Wooden Sword to be equipped")
+	}
+
+	equipped, err := repo.GetCharacterEquippedItems(ctx, tt.Tx, characters.ID(char.ID))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(equipped) != 1 || equipped[0].Item.ID != items.ID(woodenSword.ID) {
+		t.Fatalf("expected only Wooden Sword equipped, got %+v", equipped)
+	}
+}
+
 func defaultInt4(n int32) pgtype.Int4 {
 	return pgtype.Int4{Int32: n, Valid: true}
 }

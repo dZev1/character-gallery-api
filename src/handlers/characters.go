@@ -4,6 +4,7 @@ import (
 	"dZev1/character-gallery/internal/auth"
 	"dZev1/character-gallery/internal/characters"
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -162,4 +163,35 @@ func (g *Gallery) HandleDeleteCharacter(w http.ResponseWriter, r *http.Request) 
 	}
 
 	writeJSON(w, http.StatusOK, map[string]string{"result": "success"})
+}
+
+func (g *Gallery) HandlePrestigeCharacter(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	id, err := parseID(r, "characterId")
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "Invalid character id")
+		return
+	}
+
+	claims, ok := auth.ClaimsFromContext(ctx)
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
+		return
+	}
+
+	char, err := g.characterService.Prestige(ctx, characters.ID(id), ownerIDForRequest(claims))
+	if err != nil {
+		switch {
+		case isCharacterNotFound(err):
+			writeError(w, http.StatusNotFound, "NOT_FOUND", "Character not found")
+		case errors.Is(err, characters.ErrPrestigeRequirement):
+			writeError(w, http.StatusBadRequest, "BAD_REQUEST", "Character must be at least level 10 to prestige")
+		default:
+			writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Error prestiging character")
+		}
+		return
+	}
+
+	writeJSON(w, http.StatusOK, char)
 }

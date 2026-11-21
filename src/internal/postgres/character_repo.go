@@ -48,6 +48,7 @@ func (c *characterRepo) SaveCharacter(ctx context.Context, exec db.DBTX, charact
 
 	character.ID = characters.ID(char.ID)
 	character.OwnerID = char.OwnerID
+	character.Prestige = uint(char.Prestige)
 
 	createCustomizationParams := db.CreateCustomizationParams{
 		CharacterID: char.ID,
@@ -114,6 +115,7 @@ func (c *characterRepo) FindCharacter(ctx context.Context, exec db.DBTX, id char
 		Xp:        uint64(dbChar.Xp),
 		HpMax:     uint8(dbChar.HpMax),
 		HpCurrent: uint8(dbChar.HpCurrent),
+		Prestige:  uint(dbChar.Prestige),
 		Stats: &characters.Stats{
 			ID:           characters.ID(dbStats.CharacterID),
 			Strength:     uint8(dbStats.Strength),
@@ -173,6 +175,7 @@ func (c *characterRepo) FindAllCharacters(ctx context.Context, exec db.DBTX, lim
 			Xp:        uint64(dbChar.Xp),
 			HpMax:     uint8(dbChar.HpMax),
 			HpCurrent: uint8(dbChar.HpCurrent),
+			Prestige:  uint(dbChar.Prestige),
 			Stats: &characters.Stats{
 				ID:           characters.ID(dbStats.CharacterID),
 				Strength:     uint8(dbStats.Strength),
@@ -194,6 +197,119 @@ func (c *characterRepo) FindAllCharacters(ctx context.Context, exec db.DBTX, lim
 	}
 
 	return result, uint64(count), nil
+}
+
+func (c *characterRepo) FindCharactersByOwner(ctx context.Context, exec db.DBTX, ownerID uuid.UUID, limit, offset int) ([]characters.Character, uint64, error) {
+	q := c.q(exec)
+
+	dbChars, err := q.SelectCharactersByOwner(ctx, db.SelectCharactersByOwnerParams{
+		OwnerID: ownerID,
+		Limit:   int32(limit),
+		Offset:  int32(offset),
+	})
+	if err != nil {
+		return nil, 0, fmt.Errorf("list characters by owner %s: %w", ownerID, err)
+	}
+
+	count, err := q.CountCharactersByOwner(ctx, ownerID)
+	if err != nil {
+		return nil, 0, fmt.Errorf("count characters by owner %s: %w", ownerID, err)
+	}
+
+	result := make([]characters.Character, len(dbChars))
+	for i, dbChar := range dbChars {
+		char, err := c.FindCharacter(ctx, exec, characters.ID(dbChar.ID))
+		if err != nil {
+			return nil, 0, err
+		}
+		result[i] = *char
+	}
+
+	return result, uint64(count), nil
+}
+
+func (c *characterRepo) UpdateCharacterHP(ctx context.Context, exec db.DBTX, id characters.ID, hpCurrent uint8) (*characters.Character, error) {
+	q := c.q(exec)
+
+	_, err := q.UpdateCharacterHP(ctx, db.UpdateCharacterHPParams{
+		ID:        int64(id),
+		HpCurrent: int32(hpCurrent),
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("update character hp %d: %w", id, characters.ErrNotFound)
+		}
+		return nil, fmt.Errorf("update character hp %d: %w", id, err)
+	}
+
+	return c.FindCharacter(ctx, exec, id)
+}
+
+func (c *characterRepo) HealCharacter(ctx context.Context, exec db.DBTX, id characters.ID, healAmount uint8) (*characters.Character, error) {
+	q := c.q(exec)
+
+	_, err := q.HealCharacter(ctx, db.HealCharacterParams{
+		ID:        int64(id),
+		HpCurrent: int32(healAmount),
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("heal character %d: %w", id, characters.ErrNotFound)
+		}
+		return nil, fmt.Errorf("heal character %d: %w", id, err)
+	}
+
+	return c.FindCharacter(ctx, exec, id)
+}
+
+func (c *characterRepo) UpdateCharacterProgress(ctx context.Context, exec db.DBTX, id characters.ID, level uint8, xp uint64, hpMax, hpCurrent uint8) (*characters.Character, error) {
+	q := c.q(exec)
+
+	_, err := q.UpdateCharacterProgress(ctx, db.UpdateCharacterProgressParams{
+		ID:        int64(id),
+		Level:     int32(level),
+		Xp:        int32(xp),
+		HpMax:     int32(hpMax),
+		HpCurrent: int32(hpCurrent),
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("update character progress %d: %w", id, characters.ErrNotFound)
+		}
+		return nil, fmt.Errorf("update character progress %d: %w", id, err)
+	}
+
+	return c.FindCharacter(ctx, exec, id)
+}
+
+func (c *characterRepo) PrestigeCharacter(ctx context.Context, exec db.DBTX, id characters.ID, ownerID uuid.UUID, newHpMax uint8) (*characters.Character, error) {
+	q := c.q(exec)
+
+	dbChar, err := q.SelectCharacter(ctx, int64(id))
+	if err != nil {
+		return nil, fmt.Errorf("character %d: %w", id, characters.ErrNotFound)
+	}
+	if ownerID != uuid.Nil && dbChar.OwnerID != ownerID {
+		return nil, fmt.Errorf("character %d: %w", id, characters.ErrNotFound)
+	}
+	if dbChar.Level < 10 {
+		return nil, characters.ErrPrestigeRequirement
+	}
+
+	_, err = q.PrestigeCharacter(ctx, db.PrestigeCharacterParams{
+		ID:      int64(id),
+		HpMax:   int32(newHpMax),
+		OwnerID: dbChar.OwnerID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("prestige character %d: %w", id, err)
+	}
+
+	if _, err := q.BoostAllStatsOnPrestige(ctx, int64(id)); err != nil {
+		return nil, fmt.Errorf("boost stats on prestige for character %d: %w", id, err)
+	}
+
+	return c.FindCharacter(ctx, exec, id)
 }
 
 func (c *characterRepo) UpdateCharacter(ctx context.Context, exec db.DBTX, character *characters.Character, ownerID uuid.UUID) (*characters.Character, error) {

@@ -15,6 +15,8 @@ import (
 	"dZev1/character-gallery/internal/auth"
 	"dZev1/character-gallery/internal/cache"
 	"dZev1/character-gallery/internal/characters"
+	"dZev1/character-gallery/internal/daily_run"
+	"dZev1/character-gallery/internal/enemies"
 	"dZev1/character-gallery/internal/inventory"
 	"dZev1/character-gallery/internal/items"
 	"dZev1/character-gallery/internal/middleware"
@@ -100,21 +102,30 @@ func TestMain(m *testing.M) {
 	charCache := cache.NewRedisCache(rdb, 5*time.Minute, "character")
 	itemCache := cache.NewRedisCache(rdb, 5*time.Minute, "item")
 	invCache := cache.NewRedisCache(rdb, 5*time.Minute, "inventory")
+	enemyCache := cache.NewRedisCache(rdb, 5*time.Minute, "enemy")
 
 	charRepo := postgres.NewCharacterRepo(pool)
 	itemRepo := postgres.NewItemRepo(pool)
 	invRepo := postgres.NewInventoryRepo(pool)
+	enemyRepo := postgres.NewEnemyRepo(pool)
+	dailyRepo := postgres.NewDailyRunRepo(pool)
 
 	testCharSvc = characters.NewService(charRepo, pool, charCache)
 	testItemSvc = items.NewService(itemRepo, pool, itemCache)
-	invService := inventory.NewService(invRepo, pool, invCache)
+	invService := inventory.NewService(invRepo, pool, invCache).WithCharacterStore(charRepo, charCache)
+	enemyService := enemies.NewService(enemyRepo, pool, enemyCache)
+	dailyService := daily_run.NewService(dailyRepo, charRepo, enemyRepo, invRepo, itemRepo, pool, charCache, invCache)
 
 	if err := testItemSvc.SeedItems(ctx); err != nil {
 		fmt.Fprintf(os.Stderr, "failed to seed items: %v\n", err)
 		os.Exit(1)
 	}
+	if err := enemyService.SeedEnemies(ctx); err != nil {
+		fmt.Fprintf(os.Stderr, "failed to seed enemies: %v\n", err)
+		os.Exit(1)
+	}
 
-	gallery := NewGallery(testCharSvc, testItemSvc, invService)
+	gallery := NewGallery(testCharSvc, testItemSvc, invService).WithGameServices(enemyService, dailyService)
 
 	base := "/api/v2"
 	mux := http.NewServeMux()
@@ -126,12 +137,26 @@ func TestMain(m *testing.M) {
 	mux.HandleFunc("GET "+base+"/characters/{characterId}", gallery.HandleGetCharacter)
 	mux.HandleFunc("PUT "+base+"/characters/{characterId}", gallery.HandleUpdateCharacter)
 	mux.HandleFunc("DELETE "+base+"/characters/{characterId}", gallery.HandleDeleteCharacter)
+	mux.HandleFunc("POST "+base+"/characters/{characterId}/prestige", gallery.HandlePrestigeCharacter)
+	mux.HandleFunc("PUT "+base+"/characters/{characterId}/equip/{itemId}", gallery.HandleEquipItem)
+	mux.HandleFunc("POST "+base+"/characters/{characterId}/use/{itemId}", gallery.HandleUseItem)
 	mux.HandleFunc("POST "+base+"/items", gallery.HandleCreateItem)
 	mux.HandleFunc("GET "+base+"/items", gallery.HandleGetAllItems)
 	mux.HandleFunc("GET "+base+"/items/{itemId}", gallery.HandleGetItem)
 	mux.HandleFunc("GET "+base+"/characters/{characterId}/inventory", gallery.HandleGetCharacterInventory)
 	mux.HandleFunc("POST "+base+"/characters/{characterId}/inventory/{itemId}", gallery.HandleAddItemToCharacter)
 	mux.HandleFunc("DELETE "+base+"/characters/{characterId}/inventory/{itemId}", gallery.HandleRemoveItemFromCharacter)
+	mux.HandleFunc("POST "+base+"/roll", gallery.HandleRollDice)
+	mux.HandleFunc("GET "+base+"/enemies", gallery.HandleGetAllEnemies)
+	mux.HandleFunc("GET "+base+"/enemies/{enemyId}", gallery.HandleGetEnemy)
+	mux.HandleFunc("POST "+base+"/enemies", gallery.HandleCreateEnemy)
+	mux.HandleFunc("PUT "+base+"/enemies/{enemyId}", gallery.HandleUpdateEnemy)
+	mux.HandleFunc("DELETE "+base+"/enemies/{enemyId}", gallery.HandleDeleteEnemy)
+	mux.HandleFunc("GET "+base+"/daily/{tier}", gallery.HandleGetDaily)
+	mux.HandleFunc("GET "+base+"/daily/{tier}/leaderboard", gallery.HandleGetDailyLeaderboard)
+	mux.HandleFunc("POST "+base+"/daily/start", gallery.HandleStartDailyRun)
+	mux.HandleFunc("POST "+base+"/daily/move", gallery.HandleMoveDailyRun)
+	mux.HandleFunc("POST "+base+"/daily/action", gallery.HandleDailyCombatAction)
 
 	_ = os.Setenv("CORS_ALLOW_ORIGIN", "http://192.168.1.32:3000")
 
@@ -156,7 +181,7 @@ func apiBase() string { return testServer.URL + "/api/v2" }
 
 func newUsername(prefix string) string {
 	userCounter++
-	return fmt.Sprintf("%s_%d_%d", prefix, userCounter, time.Now().UnixNano())
+	return fmt.Sprintf("%s_%d_%d", prefix, userCounter, time.Now().Unix()%100000)
 }
 
 // registerAndLogin creates a user through the real HTTP endpoints and returns

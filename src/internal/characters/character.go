@@ -9,6 +9,7 @@ import (
 )
 
 var ErrNotFound = errors.New("character not found")
+var ErrPrestigeRequirement = errors.New("character must be at least level 10 to prestige")
 
 type ID uint64
 
@@ -16,7 +17,7 @@ func (id ID) String() string {
 	return fmt.Sprintf("Nº%d", id)
 }
 
-const formatString = "\nName: %v\nSpecies: %v\nBody Type: %v\nClass: %v\nLevel: %v\nXP: %v\nHP: %v/%v\n\n-STATS-\n%v\n\nCustomization: %v\n\n"
+const formatString = "\nName: %v\nSpecies: %v\nBody Type: %v\nClass: %v\nLevel: %v\nXP: %v\nHP: %v/%v\nPrestige: %v\n\n-STATS-\n%v\n\nCustomization: %v\n\n"
 
 type Character struct {
 	ID            ID             `db:"id" json:"id" redis:"id"`
@@ -25,10 +26,11 @@ type Character struct {
 	BodyType      BodyType       `db:"body_type" json:"body_type" redis:"body_type"`
 	Species       Species        `db:"species" json:"species" redis:"species"`
 	Class         Class          `db:"class" json:"class" redis:"class"`
-	Level         uint8          `json:"level"`
-	Xp            uint64         `json:"xp"`
-	HpMax         uint8          `json:"hp_max"`
-	HpCurrent     uint8          `json:"hp_current"`
+	Level         uint8          `db:"level" json:"level" redis:"level"`
+	Xp            uint64         `db:"xp" json:"xp" redis:"xp"`
+	HpMax         uint8          `db:"hp_max" json:"hp_max" redis:"hp_max"`
+	HpCurrent     uint8          `db:"hp_current" json:"hp_current" redis:"hp_current"`
+	Prestige      uint           `db:"prestige" json:"prestige" redis:"prestige"`
 	Stats         *Stats         `json:"stats" redis:"stats"`
 	Customization *Customization `json:"customization" redis:"customization"`
 }
@@ -43,6 +45,7 @@ func (char *Character) String() string {
 		char.Xp,
 		char.HpMax,
 		char.HpCurrent,
+		char.Prestige,
 		char.Stats,
 		char.Customization,
 	)

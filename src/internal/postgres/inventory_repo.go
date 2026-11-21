@@ -133,6 +133,87 @@ func (i *inventoryRepo) GetCharacterInventory(ctx context.Context, exec db.DBTX,
 	return itemSlice, nil
 }
 
+func (i *inventoryRepo) GetCharacterEquippedItems(ctx context.Context, exec db.DBTX, characterID characters.ID) ([]inventory.InventoryItem, error) {
+	q := i.q(exec)
+
+	if err := checkCharacter(ctx, q, characterID, uuid.Nil); err != nil {
+		return nil, err
+	}
+
+	rows, err := q.GetCharacterEquippedItems(ctx, int64(characterID))
+	if err != nil {
+		return nil, fmt.Errorf("get equipped items for character %d: %w", characterID, err)
+	}
+
+	itemSlice := make([]inventory.InventoryItem, len(rows))
+	for idx, row := range rows {
+		itemSlice[idx] = inventory.InventoryItem{
+			Item: &items.Item{
+				ID:          items.ID(row.ItemID),
+				Name:        row.Name,
+				Type:        items.Type(row.Type),
+				Description: row.Description,
+				Equippable:  row.Equippable,
+				Rarity:      uint8(row.Rarity),
+				Damage:      toU64ptr(row.Damage),
+				Defense:     toU64ptr(row.Defense),
+				HealAmount:  toU64ptr(row.HealAmount),
+				ManaCost:    toU64ptr(row.ManaCost),
+				Duration:    toU64ptr(row.Duration),
+				Cooldown:    toU64ptr(row.Cooldown),
+				Capacity:    toU64ptr(row.Capacity),
+			},
+			Quantity:   uint8(row.Quantity),
+			IsEquipped: row.IsEquipped,
+		}
+	}
+	return itemSlice, nil
+}
+
+func (i *inventoryRepo) SetItemEquipped(ctx context.Context, exec db.DBTX, characterID characters.ID, ownerID uuid.UUID, itemID items.ID, equip bool) (*inventory.InventoryItem, error) {
+	q := i.q(exec)
+
+	if err := checkCharacter(ctx, q, characterID, ownerID); err != nil {
+		return nil, err
+	}
+
+	item, err := checkItem(ctx, q, itemID)
+	if err != nil {
+		return nil, err
+	}
+	if equip && !item.Equippable {
+		return nil, inventory.ErrItemNotEquippable
+	}
+
+	if equip {
+		if err := q.UnequipItemsByType(ctx, db.UnequipItemsByTypeParams{
+			CharacterID: int64(characterID),
+			Type:        string(item.Type),
+			ItemID:      int64(itemID),
+		}); err != nil {
+			return nil, fmt.Errorf("unequip items of type %s for character %d: %w", item.Type, characterID, err)
+		}
+	}
+
+	row, err := q.SetInventoryItemEquipped(ctx, db.SetInventoryItemEquippedParams{
+		CharacterID: int64(characterID),
+		ItemID:      int64(itemID),
+		IsEquipped:  equip,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, inventory.ErrItemNotInInventory
+		}
+		return nil, fmt.Errorf("set item %d equipped=%v for character %d: %w", itemID, equip, characterID, err)
+	}
+
+	return &inventory.InventoryItem{
+		Item:       item,
+		Quantity:   uint8(row.Quantity),
+		IsEquipped: row.IsEquipped,
+	}, nil
+}
+
 func checkCharacter(ctx context.Context, q *db.Queries, charID characters.ID, ownerID uuid.UUID) error {
 	char, err := q.SelectCharacter(ctx, int64(charID))
 	if err != nil {

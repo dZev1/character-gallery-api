@@ -31,6 +31,11 @@ func NewService(repo Repository, pool *pgxpool.Pool, cache cache.Cache) *Service
 }
 
 func (s *Service) SeedItems(ctx context.Context) error {
+	_, existingCount, err := s.repo.FindAllItems(ctx, s.pool, 1, 0)
+	if err == nil && existingCount > 0 {
+		return nil
+	}
+
 	var items []Item
 	if err := json.Unmarshal(itemPoolData, &items); err != nil {
 		return fmt.Errorf("unmarshal item pool: %w", err)
