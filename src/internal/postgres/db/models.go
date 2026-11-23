@@ -26,10 +26,11 @@ type Character struct {
 type Customization struct {
 	CharacterID int64
 	Hair        int16
-	Face        int16
-	Shirt       int16
-	Pants       int16
-	Shoes       int16
+	Beard       int16
+	SkinTone    int16
+	HairColor   int16
+	Cloak       int16
+	AccentColor int16
 }
 
 type DailyRun struct {

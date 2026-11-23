@@ -194,8 +194,9 @@ func registerAndLogin(t *testing.T, username string) string {
 
 	var created map[string]any
 	decodeJSON(t, raw, &created)
-	if _, ok := created["id"]; !ok {
-		t.Fatalf("register response missing id: %v", created)
+	idVal, ok := created["id"].(string)
+	if !ok || len(idVal) != 36 {
+		t.Fatalf("register response id is not a UUID string: %v", created["id"])
 	}
 	return loginOnly(t, username)
 }
@@ -291,7 +292,7 @@ func validCharacterJSON() string {
 		"hp_max": 20,
 		"hp_current": 18,
 		"stats": {"strength":15,"dexterity":14,"constitution":13,"intelligence":12,"wisdom":11,"charisma":10},
-		"customization": {"hair":5,"face":3,"shirt":12,"pants":8,"shoes":2}
+		"customization": {"hair":5,"beard":3,"skin_tone":4,"hair_color":8,"cloak":2,"accent_color":6}
 	}`
 }
 

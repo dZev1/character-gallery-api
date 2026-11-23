@@ -16,9 +16,9 @@ RETURNING *;
 
 -- name: CreateCustomization :one
 INSERT INTO customizations (
-    character_id, hair, face, shirt, pants, shoes
+    character_id, hair, beard, skin_tone, hair_color, cloak, accent_color
 ) VALUES (
-    $1, $2, $3, $4, $5, $6
+    $1, $2, $3, $4, $5, $6, $7
 )
 RETURNING *;
 
@@ -65,7 +65,7 @@ RETURNING *;
 
 -- name: UpdateCustomization :one
 UPDATE customizations
-SET hair = $2, face = $3, shirt = $4, pants = $5, shoes = $6
+SET hair = $2, beard = $3, skin_tone = $4, hair_color = $5, cloak = $6, accent_color = $7
 WHERE character_id = $1
 RETURNING *;
 

@@ -29,11 +29,12 @@ func TestCharacterRepo_SaveAndFindCharacter(t *testing.T) {
 			Charisma:     10,
 		},
 		Customization: &characters.Customization{
-			Hair:  5,
-			Face:  3,
-			Shirt: 12,
-			Pants: 8,
-			Shoes: 2,
+			Hair:        5,
+			Beard:       3,
+			SkinTone:    4,
+			HairColor:   8,
+			Cloak:       2,
+			AccentColor: 6,
 		},
 	}
 
@@ -91,7 +92,7 @@ func TestCharacterRepo_FindAllCharacters(t *testing.T) {
 		Species:       "human",
 		Class:         "fighter",
 		Stats:         &characters.Stats{Strength: 10, Dexterity: 10, Constitution: 10, Intelligence: 10, Wisdom: 10, Charisma: 10},
-		Customization: &characters.Customization{Hair: 1, Face: 1, Shirt: 1, Pants: 1, Shoes: 1},
+		Customization: &characters.Customization{Hair: 1, Beard: 1, SkinTone: 1, HairColor: 1, Cloak: 1, AccentColor: 1},
 	}
 	base.Name = "Hero One"
 	if _, err := repo.SaveCharacter(ctx, tt.Tx, base, owner); err != nil {
@@ -125,7 +126,7 @@ func TestCharacterRepo_FindAllCharacters_Pagination(t *testing.T) {
 		Species:       "human",
 		Class:         "fighter",
 		Stats:         &characters.Stats{Strength: 10, Dexterity: 10, Constitution: 10, Intelligence: 10, Wisdom: 10, Charisma: 10},
-		Customization: &characters.Customization{Hair: 1, Face: 1, Shirt: 1, Pants: 1, Shoes: 1},
+		Customization: &characters.Customization{Hair: 1, Beard: 1, SkinTone: 1, HairColor: 1, Cloak: 1, AccentColor: 1},
 	}
 
 	for i := 0; i < 5; i++ {
@@ -183,7 +184,7 @@ func TestCharacterRepo_UpdateCharacter(t *testing.T) {
 		Species:       "human",
 		Class:         "ranger",
 		Stats:         &characters.Stats{Strength: 15, Dexterity: 14, Constitution: 13, Intelligence: 12, Wisdom: 11, Charisma: 10},
-		Customization: &characters.Customization{Hair: 5, Face: 3, Shirt: 12, Pants: 8, Shoes: 2},
+		Customization: &characters.Customization{Hair: 5, Beard: 3, SkinTone: 4, HairColor: 8, Cloak: 2, AccentColor: 6},
 	}
 	saved, err := repo.SaveCharacter(ctx, tt.Tx, base, testOwnerID(t, tt.Q))
 	if err != nil {
@@ -217,7 +218,7 @@ func TestCharacterRepo_DeleteCharacter(t *testing.T) {
 		Species:       "human",
 		Class:         "fighter",
 		Stats:         &characters.Stats{Strength: 10, Dexterity: 10, Constitution: 10, Intelligence: 10, Wisdom: 10, Charisma: 10},
-		Customization: &characters.Customization{Hair: 1, Face: 1, Shirt: 1, Pants: 1, Shoes: 1},
+		Customization: &characters.Customization{Hair: 1, Beard: 1, SkinTone: 1, HairColor: 1, Cloak: 1, AccentColor: 1},
 	}
 	owner := testOwnerID(t, tt.Q)
 	saved, err := repo.SaveCharacter(ctx, tt.Tx, char, owner)
@@ -250,7 +251,7 @@ func TestCharacterRepo_DeleteCharacter_ForbiddenOwner(t *testing.T) {
 		Species:       "human",
 		Class:         "fighter",
 		Stats:         &characters.Stats{Strength: 10, Dexterity: 10, Constitution: 10, Intelligence: 10, Wisdom: 10, Charisma: 10},
-		Customization: &characters.Customization{Hair: 1, Face: 1, Shirt: 1, Pants: 1, Shoes: 1},
+		Customization: &characters.Customization{Hair: 1, Beard: 1, SkinTone: 1, HairColor: 1, Cloak: 1, AccentColor: 1},
 	}
 	saved, err := repo.SaveCharacter(ctx, tt.Tx, char, owner)
 	if err != nil {
@@ -281,7 +282,7 @@ func TestCharacterRepo_UpdateCharacter_ForbiddenOwner(t *testing.T) {
 		Species:       "human",
 		Class:         "fighter",
 		Stats:         &characters.Stats{Strength: 10, Dexterity: 10, Constitution: 10, Intelligence: 10, Wisdom: 10, Charisma: 10},
-		Customization: &characters.Customization{Hair: 1, Face: 1, Shirt: 1, Pants: 1, Shoes: 1},
+		Customization: &characters.Customization{Hair: 1, Beard: 1, SkinTone: 1, HairColor: 1, Cloak: 1, AccentColor: 1},
 	}
 	saved, err := repo.SaveCharacter(ctx, tt.Tx, char, owner)
 	if err != nil {
@@ -309,7 +310,7 @@ func TestCharacterRepo_AdminBypassesOwnership(t *testing.T) {
 		Species:       "human",
 		Class:         "fighter",
 		Stats:         &characters.Stats{Strength: 10, Dexterity: 10, Constitution: 10, Intelligence: 10, Wisdom: 10, Charisma: 10},
-		Customization: &characters.Customization{Hair: 1, Face: 1, Shirt: 1, Pants: 1, Shoes: 1},
+		Customization: &characters.Customization{Hair: 1, Beard: 1, SkinTone: 1, HairColor: 1, Cloak: 1, AccentColor: 1},
 	}
 	saved, err := repo.SaveCharacter(ctx, tt.Tx, char, owner)
 	if err != nil {
@@ -345,7 +346,7 @@ func TestCharacterRepo_DeleteCharacter_Cascades(t *testing.T) {
 		Species:       "human",
 		Class:         "fighter",
 		Stats:         &characters.Stats{Strength: 10, Dexterity: 10, Constitution: 10, Intelligence: 10, Wisdom: 10, Charisma: 10},
-		Customization: &characters.Customization{Hair: 1, Face: 1, Shirt: 1, Pants: 1, Shoes: 1},
+		Customization: &characters.Customization{Hair: 1, Beard: 1, SkinTone: 1, HairColor: 1, Cloak: 1, AccentColor: 1},
 	}
 	owner := testOwnerID(t, tt.Q)
 	saved, err := repo.SaveCharacter(ctx, tt.Tx, char, owner)
@@ -383,7 +384,7 @@ func TestCharacterRepo_HealProgressAndPrestige(t *testing.T) {
 		HpMax:         40,
 		HpCurrent:     10,
 		Stats:         &characters.Stats{Strength: 15, Dexterity: 12, Constitution: 14, Intelligence: 10, Wisdom: 13, Charisma: 16},
-		Customization: &characters.Customization{Hair: 1, Face: 1, Shirt: 1, Pants: 1, Shoes: 1},
+		Customization: &characters.Customization{Hair: 1, Beard: 1, SkinTone: 1, HairColor: 1, Cloak: 1, AccentColor: 1},
 	}
 
 	saved, err := repo.SaveCharacter(ctx, tt.Tx, char, owner)

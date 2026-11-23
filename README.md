@@ -164,7 +164,7 @@ Each user can own up to **6 characters**.
 
 ### Stats & Customization
 
-Each character has six stats (1–99) and five customization fields (0–30).
+Each character has six stats (1–99) and six Ashen-style appearance customization fields (silhouette & color palette indices, no facial features).
 
 | Stat         | JSON Tag        |
 |--------------|-----------------|
@@ -175,13 +175,14 @@ Each character has six stats (1–99) and five customization fields (0–30).
 | Wisdom       | `wisdom`        |
 | Charisma     | `charisma`      |
 
-| Customization | JSON Tag |
-|---------------|----------|
-| Hair          | `hair`   |
-| Face          | `face`   |
-| Shirt         | `shirt`  |
-| Pants         | `pants`  |
-| Shoes         | `shoes`  |
+| Customization | JSON Tag       | Range  |
+|---------------|----------------|--------|
+| Hair          | `hair`         | 0 – 20 |
+| Beard         | `beard`        | 0 – 15 |
+| Skin Tone     | `skin_tone`    | 0 – 15 |
+| Hair Color    | `hair_color`   | 0 – 15 |
+| Cloak         | `cloak`        | 0 – 15 |
+| Accent Color  | `accent_color` | 0 – 15 |
 
 ---
 
@@ -331,10 +332,11 @@ erDiagram
     customizations {
         BIGINT character_id PK, FK
         SMALLINT hair
-        SMALLINT face
-        SMALLINT shirt
-        SMALLINT pants
-        SMALLINT shoes
+        SMALLINT beard
+        SMALLINT skin_tone
+        SMALLINT hair_color
+        SMALLINT cloak
+        SMALLINT accent_color
     }
 
     items {

@@ -53,10 +53,11 @@ func (c *characterRepo) SaveCharacter(ctx context.Context, exec db.DBTX, charact
 	createCustomizationParams := db.CreateCustomizationParams{
 		CharacterID: char.ID,
 		Hair:        int16(character.Customization.Hair),
-		Face:        int16(character.Customization.Face),
-		Shirt:       int16(character.Customization.Shirt),
-		Pants:       int16(character.Customization.Pants),
-		Shoes:       int16(character.Customization.Shoes),
+		Beard:       int16(character.Customization.Beard),
+		SkinTone:    int16(character.Customization.SkinTone),
+		HairColor:   int16(character.Customization.HairColor),
+		Cloak:       int16(character.Customization.Cloak),
+		AccentColor: int16(character.Customization.AccentColor),
 	}
 
 	_, err = q.CreateCustomization(ctx, createCustomizationParams)
@@ -126,12 +127,13 @@ func (c *characterRepo) FindCharacter(ctx context.Context, exec db.DBTX, id char
 			Charisma:     uint8(dbStats.Charisma),
 		},
 		Customization: &characters.Customization{
-			ID:    characters.ID(dbCust.CharacterID),
-			Hair:  uint8(dbCust.Hair),
-			Face:  uint8(dbCust.Face),
-			Shirt: uint8(dbCust.Shirt),
-			Pants: uint8(dbCust.Pants),
-			Shoes: uint8(dbCust.Shoes),
+			ID:          characters.ID(dbCust.CharacterID),
+			Hair:        uint8(dbCust.Hair),
+			Beard:       uint8(dbCust.Beard),
+			SkinTone:    uint8(dbCust.SkinTone),
+			HairColor:   uint8(dbCust.HairColor),
+			Cloak:       uint8(dbCust.Cloak),
+			AccentColor: uint8(dbCust.AccentColor),
 		},
 	}, nil
 }
@@ -186,12 +188,13 @@ func (c *characterRepo) FindAllCharacters(ctx context.Context, exec db.DBTX, lim
 				Charisma:     uint8(dbStats.Charisma),
 			},
 			Customization: &characters.Customization{
-				ID:    characters.ID(dbCust.CharacterID),
-				Hair:  uint8(dbCust.Hair),
-				Face:  uint8(dbCust.Face),
-				Shirt: uint8(dbCust.Shirt),
-				Pants: uint8(dbCust.Pants),
-				Shoes: uint8(dbCust.Shoes),
+				ID:          characters.ID(dbCust.CharacterID),
+				Hair:        uint8(dbCust.Hair),
+				Beard:       uint8(dbCust.Beard),
+				SkinTone:    uint8(dbCust.SkinTone),
+				HairColor:   uint8(dbCust.HairColor),
+				Cloak:       uint8(dbCust.Cloak),
+				AccentColor: uint8(dbCust.AccentColor),
 			},
 		}
 	}
@@ -374,10 +377,11 @@ func (c *characterRepo) UpdateCharacter(ctx context.Context, exec db.DBTX, chara
 	_, err = q.UpdateCustomization(ctx, db.UpdateCustomizationParams{
 		CharacterID: int64(character.ID),
 		Hair:        int16(character.Customization.Hair),
-		Face:        int16(character.Customization.Face),
-		Shirt:       int16(character.Customization.Shirt),
-		Pants:       int16(character.Customization.Pants),
-		Shoes:       int16(character.Customization.Shoes),
+		Beard:       int16(character.Customization.Beard),
+		SkinTone:    int16(character.Customization.SkinTone),
+		HairColor:   int16(character.Customization.HairColor),
+		Cloak:       int16(character.Customization.Cloak),
+		AccentColor: int16(character.Customization.AccentColor),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("update customization for character %d: %w", character.ID, err)

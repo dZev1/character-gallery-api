@@ -16,6 +16,23 @@ type User struct {
 
 type UserID uuid.UUID
 
+func (id UserID) String() string {
+	return uuid.UUID(id).String()
+}
+
+func (id UserID) MarshalText() ([]byte, error) {
+	return uuid.UUID(id).MarshalText()
+}
+
+func (id *UserID) UnmarshalText(data []byte) error {
+	var parsed uuid.UUID
+	if err := parsed.UnmarshalText(data); err != nil {
+		return err
+	}
+	*id = UserID(parsed)
+	return nil
+}
+
 type LoginResponse struct {
 	Token     string    `json:"token"`
 	ExpiresAt time.Time `json:"expires_at"`

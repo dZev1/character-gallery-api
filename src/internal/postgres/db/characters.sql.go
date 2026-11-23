@@ -113,39 +113,42 @@ func (q *Queries) CreateCharacter(ctx context.Context, arg CreateCharacterParams
 
 const createCustomization = `-- name: CreateCustomization :one
 INSERT INTO customizations (
-    character_id, hair, face, shirt, pants, shoes
+    character_id, hair, beard, skin_tone, hair_color, cloak, accent_color
 ) VALUES (
-    $1, $2, $3, $4, $5, $6
+    $1, $2, $3, $4, $5, $6, $7
 )
-RETURNING character_id, hair, face, shirt, pants, shoes
+RETURNING character_id, hair, beard, skin_tone, hair_color, cloak, accent_color
 `
 
 type CreateCustomizationParams struct {
 	CharacterID int64
 	Hair        int16
-	Face        int16
-	Shirt       int16
-	Pants       int16
-	Shoes       int16
+	Beard       int16
+	SkinTone    int16
+	HairColor   int16
+	Cloak       int16
+	AccentColor int16
 }
 
 func (q *Queries) CreateCustomization(ctx context.Context, arg CreateCustomizationParams) (*Customization, error) {
 	row := q.db.QueryRow(ctx, createCustomization,
 		arg.CharacterID,
 		arg.Hair,
-		arg.Face,
-		arg.Shirt,
-		arg.Pants,
-		arg.Shoes,
+		arg.Beard,
+		arg.SkinTone,
+		arg.HairColor,
+		arg.Cloak,
+		arg.AccentColor,
 	)
 	var i Customization
 	err := row.Scan(
 		&i.CharacterID,
 		&i.Hair,
-		&i.Face,
-		&i.Shirt,
-		&i.Pants,
-		&i.Shoes,
+		&i.Beard,
+		&i.SkinTone,
+		&i.HairColor,
+		&i.Cloak,
+		&i.AccentColor,
 	)
 	return &i, err
 }
@@ -358,7 +361,7 @@ func (q *Queries) SelectCharacter(ctx context.Context, id int64) (*Character, er
 }
 
 const selectCharacterCustomization = `-- name: SelectCharacterCustomization :one
-SELECT character_id, hair, face, shirt, pants, shoes FROM customizations
+SELECT character_id, hair, beard, skin_tone, hair_color, cloak, accent_color FROM customizations
 WHERE character_id = $1
 `
 
@@ -368,10 +371,11 @@ func (q *Queries) SelectCharacterCustomization(ctx context.Context, characterID 
 	err := row.Scan(
 		&i.CharacterID,
 		&i.Hair,
-		&i.Face,
-		&i.Shirt,
-		&i.Pants,
-		&i.Shoes,
+		&i.Beard,
+		&i.SkinTone,
+		&i.HairColor,
+		&i.Cloak,
+		&i.AccentColor,
 	)
 	return &i, err
 }
@@ -617,37 +621,40 @@ func (q *Queries) UpdateCharacterProgress(ctx context.Context, arg UpdateCharact
 
 const updateCustomization = `-- name: UpdateCustomization :one
 UPDATE customizations
-SET hair = $2, face = $3, shirt = $4, pants = $5, shoes = $6
+SET hair = $2, beard = $3, skin_tone = $4, hair_color = $5, cloak = $6, accent_color = $7
 WHERE character_id = $1
-RETURNING character_id, hair, face, shirt, pants, shoes
+RETURNING character_id, hair, beard, skin_tone, hair_color, cloak, accent_color
 `
 
 type UpdateCustomizationParams struct {
 	CharacterID int64
 	Hair        int16
-	Face        int16
-	Shirt       int16
-	Pants       int16
-	Shoes       int16
+	Beard       int16
+	SkinTone    int16
+	HairColor   int16
+	Cloak       int16
+	AccentColor int16
 }
 
 func (q *Queries) UpdateCustomization(ctx context.Context, arg UpdateCustomizationParams) (*Customization, error) {
 	row := q.db.QueryRow(ctx, updateCustomization,
 		arg.CharacterID,
 		arg.Hair,
-		arg.Face,
-		arg.Shirt,
-		arg.Pants,
-		arg.Shoes,
+		arg.Beard,
+		arg.SkinTone,
+		arg.HairColor,
+		arg.Cloak,
+		arg.AccentColor,
 	)
 	var i Customization
 	err := row.Scan(
 		&i.CharacterID,
 		&i.Hair,
-		&i.Face,
-		&i.Shirt,
-		&i.Pants,
-		&i.Shoes,
+		&i.Beard,
+		&i.SkinTone,
+		&i.HairColor,
+		&i.Cloak,
+		&i.AccentColor,
 	)
 	return &i, err
 }
