@@ -1317,7 +1317,7 @@ components:
     RegisterRequest:
       type: object
       description: Payload for creating a new user account.
-      required: [username, password]
+      required: [username, email, password]
       properties:
         username:
           type: string
@@ -1325,22 +1325,33 @@ components:
           maxLength: 30
           pattern: "^[a-zA-Z0-9_]+$"
           example: "player1"
+        email:
+          type: string
+          format: email
+          maxLength: 254
+          example: "player1@example.com"
         password:
           type: string
           minLength: 8
-          maxLength: 128
+          maxLength: 72
           example: "secret123"
 
     LoginRequest:
       type: object
-      description: Payload for user authentication.
-      required: [username, password]
+      description: Payload for user authentication. Provide either `username` or `email` along with `password`.
+      required: [password]
       properties:
         username:
           type: string
           example: "player1"
+        email:
+          type: string
+          format: email
+          example: "player1@example.com"
         password:
           type: string
+          minLength: 8
+          maxLength: 72
           example: "secret123"
 
     AuthResponse:
@@ -1359,7 +1370,7 @@ components:
     UserResponse:
       type: object
       description: Public user profile (no password hash).
-      required: [id, username, created_at]
+      required: [id, username, email, created_at]
       properties:
         id:
           type: string
@@ -1373,6 +1384,10 @@ components:
         username:
           type: string
           example: "player1"
+        email:
+          type: string
+          format: email
+          example: "player1@example.com"
         created_at:
           type: string
           format: date-time

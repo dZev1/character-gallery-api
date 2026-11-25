@@ -120,6 +120,7 @@ type Stat struct {
 type User struct {
 	ID           uuid.UUID
 	Username     string
+	Email        string
 	PasswordHash string
 	Role         string
 	CreatedAt    pgtype.Timestamptz

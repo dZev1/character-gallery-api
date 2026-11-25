@@ -300,6 +300,7 @@ erDiagram
     users {
         UUID id PK
         TEXT username UK
+        TEXT email UK
         TEXT password_hash
         TEXT role
         TIMESTAMPTZ created_at

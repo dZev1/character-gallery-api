@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -17,8 +18,8 @@ const (
 )
 
 var (
-	ErrInvalidCredentials = errors.New("invalid username or password")
-	ErrDuplicateUsername  = errors.New("username already taken")
+	ErrInvalidCredentials = errors.New("invalid credentials")
+	ErrDuplicateUser      = errors.New("username or email already in use")
 )
 
 type Service struct {
@@ -35,7 +36,9 @@ func NewService(repo Repository, pool *pgxpool.Pool, jwtSecret string) *Service 
 	}
 }
 
-func (s *Service) Register(ctx context.Context, username, password string) (*UserResponse, error) {
+func (s *Service) Register(ctx context.Context, username, email, password string) (*UserResponse, error) {
+	email = strings.ToLower(strings.TrimSpace(email))
+
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		log.Println("Error starting transaction:", err)
@@ -55,10 +58,10 @@ func (s *Service) Register(ctx context.Context, username, password string) (*Use
 		return nil, fmt.Errorf("generate user id: %w", err)
 	}
 
-	user, err := s.repo.SaveUser(ctx, tx, id, username, hash)
+	user, err := s.repo.SaveUser(ctx, tx, id, username, email, hash)
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) && pgErr.Code == PGErrUniqueViolation {
-		return nil, ErrDuplicateUsername
+		return nil, ErrDuplicateUser
 	}
 	if err != nil {
 		return nil, fmt.Errorf("save user: %w", err)
@@ -72,13 +75,22 @@ func (s *Service) Register(ctx context.Context, username, password string) (*Use
 	return &UserResponse{
 		ID:        user.ID,
 		Username:  user.Username,
+		Email:     user.Email,
 		Role:      user.Role,
 		CreatedAt: *user.CreatedAt,
 	}, nil
 }
 
-func (s *Service) Login(ctx context.Context, username, password string) (*LoginResponse, error) {
-	user, err := s.repo.FindUserByUsername(ctx, s.pool, username)
+func (s *Service) Login(ctx context.Context, identifier, password string) (*LoginResponse, error) {
+	var (
+		user *User
+		err  error
+	)
+	if strings.Contains(identifier, "@") {
+		user, err = s.repo.FindUserByEmail(ctx, s.pool, strings.ToLower(strings.TrimSpace(identifier)))
+	} else {
+		user, err = s.repo.FindUserByUsername(ctx, s.pool, identifier)
+	}
 	if err != nil {
 		metrics.AuthLoginAttemptsTotal.WithLabelValues("invalid_credentials").Inc()
 		return nil, ErrInvalidCredentials

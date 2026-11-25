@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/mail"
 	"strconv"
+	"strings"
 	"unicode"
 
 	"dZev1/character-gallery/internal/characters"
@@ -52,7 +54,8 @@ func paginationParams(r *http.Request) (page, limit int) {
 
 var (
 	ErrInvalidUsername = errors.New("username must be 3-30 alphanumeric characters or underscores")
-	ErrInvalidPassword = errors.New("password must be 8-128 characters")
+	ErrInvalidEmail    = errors.New("invalid email address")
+	ErrInvalidPassword = errors.New("password must be 8-72 bytes")
 )
 
 func isCharacterNotFound(err error) bool {
@@ -117,15 +120,17 @@ func parseQueryInt(r *http.Request, name string, defaultVal int) int {
 
 type registerRequest struct {
 	Username string `json:"username"`
+	Email    string `json:"email"`
 	Password string `json:"password"`
 }
 
 type loginRequest struct {
 	Username string `json:"username"`
+	Email    string `json:"email"`
 	Password string `json:"password"`
 }
 
-func validateCredentials(username, password string) error {
+func validateUsername(username string) error {
 	if len(username) < 3 || len(username) > 30 {
 		return ErrInvalidUsername
 	}
@@ -134,8 +139,64 @@ func validateCredentials(username, password string) error {
 			return ErrInvalidUsername
 		}
 	}
-	if len(password) < 8 || len(password) > 128 {
+	return nil
+}
+
+func validateEmail(email string) error {
+	email = strings.TrimSpace(email)
+	if len(email) < 5 || len(email) > 254 {
+		return ErrInvalidEmail
+	}
+	addr, err := mail.ParseAddress(email)
+	if err != nil || addr.Address != email {
+		return ErrInvalidEmail
+	}
+	at := strings.LastIndex(email, "@")
+	if at <= 0 || at >= len(email)-1 {
+		return ErrInvalidEmail
+	}
+	domain := email[at+1:]
+	if !strings.Contains(domain, ".") || strings.HasPrefix(domain, ".") || strings.HasSuffix(domain, ".") {
+		return ErrInvalidEmail
+	}
+	return nil
+}
+
+func validatePassword(password string) error {
+	if len(password) < 8 || len(password) > 72 {
 		return ErrInvalidPassword
 	}
 	return nil
+}
+
+func validateRegistration(username, email, password string) error {
+	if err := validateUsername(username); err != nil {
+		return err
+	}
+	if err := validateEmail(email); err != nil {
+		return err
+	}
+	return validatePassword(password)
+}
+
+func validateLogin(req loginRequest) (string, error) {
+	if err := validatePassword(req.Password); err != nil {
+		return "", err
+	}
+	if strings.TrimSpace(req.Email) != "" {
+		if err := validateEmail(req.Email); err != nil {
+			return "", err
+		}
+		return strings.TrimSpace(req.Email), nil
+	}
+	if strings.Contains(req.Username, "@") {
+		if err := validateEmail(req.Username); err != nil {
+			return "", err
+		}
+		return strings.TrimSpace(req.Username), nil
+	}
+	if err := validateUsername(req.Username); err != nil {
+		return "", err
+	}
+	return req.Username, nil
 }

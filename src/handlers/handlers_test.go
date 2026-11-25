@@ -189,7 +189,7 @@ func newUsername(prefix string) string {
 func registerAndLogin(t *testing.T, username string) string {
 	t.Helper()
 
-	regBody := fmt.Sprintf(`{"username":%q,"password":"supersecret1"}`, username)
+	regBody := fmt.Sprintf(`{"username":%q,"email":%q,"password":"supersecret1"}`, username, username+"@example.com")
 	raw := doReq(t, http.MethodPost, apiBase()+"/auth/register", nil, regBody, http.StatusCreated)
 
 	var created map[string]any

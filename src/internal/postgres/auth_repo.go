@@ -24,27 +24,20 @@ func (c *authRepo) q(exec db.DBTX) *db.Queries {
 	return db.New(exec)
 }
 
-func (a *authRepo) SaveUser(ctx context.Context, exec db.DBTX, id uuid.UUID, username, passwordHash string) (*auth.User, error) {
+func (a *authRepo) SaveUser(ctx context.Context, exec db.DBTX, id uuid.UUID, username, email, passwordHash string) (*auth.User, error) {
 	q := a.q(exec)
 
-	createParams := db.CreateUserParams{
+	usr, err := q.CreateUser(ctx, db.CreateUserParams{
 		ID:           id,
 		Username:     username,
+		Email:        email,
 		PasswordHash: passwordHash,
-	}
-
-	usr, err := q.CreateUser(ctx, createParams)
+	})
 	if err != nil {
 		return nil, fmt.Errorf("create user: %w", err)
 	}
 
-	return &auth.User{
-		ID:           auth.UserID(usr.ID),
-		Username:     usr.Username,
-		PasswordHash: usr.PasswordHash,
-		Role:         usr.Role,
-		CreatedAt:    &usr.CreatedAt.Time,
-	}, nil
+	return toDomainUser(usr), nil
 }
 
 func (a *authRepo) FindUserByUsername(ctx context.Context, exec db.DBTX, username string) (*auth.User, error) {
@@ -55,11 +48,27 @@ func (a *authRepo) FindUserByUsername(ctx context.Context, exec db.DBTX, usernam
 		return nil, fmt.Errorf("cannot find user '%s': %w", username, err)
 	}
 
+	return toDomainUser(usr), nil
+}
+
+func (a *authRepo) FindUserByEmail(ctx context.Context, exec db.DBTX, email string) (*auth.User, error) {
+	q := a.q(exec)
+
+	usr, err := q.SelectUserByEmail(ctx, email)
+	if err != nil {
+		return nil, fmt.Errorf("cannot find user by email: %w", err)
+	}
+
+	return toDomainUser(usr), nil
+}
+
+func toDomainUser(usr *db.User) *auth.User {
 	return &auth.User{
 		ID:           auth.UserID(usr.ID),
-		Username:     username,
+		Username:     usr.Username,
+		Email:        usr.Email,
 		PasswordHash: usr.PasswordHash,
 		Role:         usr.Role,
 		CreatedAt:    &usr.CreatedAt.Time,
-	}, nil
+	}
 }

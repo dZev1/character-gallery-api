@@ -121,9 +121,11 @@ func createTestCharacter(t *testing.T, q *db.Queries) *db.Character {
 func testOwnerID(t *testing.T, q *db.Queries) uuid.UUID {
 	t.Helper()
 	ctx := context.Background()
+	uname := fmt.Sprintf("testuser_%d", time.Now().UnixNano())
 	user, err := q.CreateUser(ctx, db.CreateUserParams{
 		ID:           uuidv7.Must(),
-		Username:     fmt.Sprintf("testuser_%d", time.Now().UnixNano()),
+		Username:     uname,
+		Email:        uname + "@example.com",
 		PasswordHash: "hash",
 	})
 	if err != nil {
