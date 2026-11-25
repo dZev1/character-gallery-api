@@ -19,6 +19,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"dZev1/character-gallery/handlers"
@@ -104,12 +105,17 @@ func main() {
 	rl.SetLimit("POST", baseURL+"/auth/register", 5)
 	rl.SetLimit("POST", baseURL+"/auth/login", 10)
 
+	enableDocs := strings.EqualFold(os.Getenv("ENABLE_DOCS"), "true")
+	metricsAddr := strings.TrimSpace(os.Getenv("METRICS_ADDR"))
+
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("POST "+baseURL+"/auth/register", authHandler.HandleRegister)
 	mux.HandleFunc("POST "+baseURL+"/auth/login", authHandler.HandleLogin)
-	mux.HandleFunc("GET /openapi.yaml", handlers.OpenAPIHandler)
-	mux.HandleFunc("GET /docs", handlers.DocsHandler)
+	if enableDocs {
+		mux.HandleFunc("GET /openapi.yaml", handlers.OpenAPIHandler)
+		mux.HandleFunc("GET /docs", handlers.DocsHandler)
+	}
 
 	mux.HandleFunc("POST "+baseURL+"/characters", gallery.HandleCreateCharacter)
 	mux.HandleFunc("GET "+baseURL+"/characters", gallery.HandleGetAllCharacters)
@@ -142,18 +148,32 @@ func main() {
 	mux.HandleFunc("POST "+baseURL+"/daily/move", gallery.HandleMoveDailyRun)
 	mux.HandleFunc("POST "+baseURL+"/daily/action", gallery.HandleDailyCombatAction)
 
-	mux.Handle("GET /metrics", metrics.Handler())
-
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	slog.SetDefault(logger)
 
-	jwtMw := middleware.AuthMiddleware(jwtSecret,
-		"POST "+baseURL+"/auth/register",
-		"POST "+baseURL+"/auth/login",
-		"GET /openapi.yaml",
-		"GET /docs",
-		"GET /metrics",
-	)
+	publicRoutes := []string{
+		"POST " + baseURL + "/auth/register",
+		"POST " + baseURL + "/auth/login",
+	}
+	if enableDocs {
+		publicRoutes = append(publicRoutes, "GET /openapi.yaml", "GET /docs")
+	}
+
+	if metricsAddr != "" {
+		metricsMux := http.NewServeMux()
+		metricsMux.Handle("GET /metrics", metrics.Handler())
+		go func() {
+			logger.Info("metrics server listening", "addr", metricsAddr)
+			if err := http.ListenAndServe(metricsAddr, metricsMux); err != nil {
+				logger.Error("metrics server stopped", "err", err)
+			}
+		}()
+	} else {
+		mux.Handle("GET /metrics", metrics.Handler())
+		publicRoutes = append(publicRoutes, "GET /metrics")
+	}
+
+	jwtMw := middleware.AuthMiddleware(jwtSecret, publicRoutes...)
 	handler := middleware.LoggingMiddleware(logger)(middleware.MetricsMiddleware(jwtMw(rl.Limit(mux))))
 	handler = middleware.EnableCors(handler)
 
