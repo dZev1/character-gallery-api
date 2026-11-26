@@ -102,16 +102,20 @@ func main() {
 	rl.SetLimit("DELETE", baseURL+"/characters/{characterId}", 30)
 	rl.SetLimit("POST", baseURL+"/items", 10)
 	rl.SetLimit("POST", baseURL+"/enemies", 10)
+	rl.SetLimit("POST", baseURL+"/uploads", 20)
 	rl.SetLimit("POST", baseURL+"/auth/register", 5)
 	rl.SetLimit("POST", baseURL+"/auth/login", 10)
 
 	enableDocs := strings.EqualFold(os.Getenv("ENABLE_DOCS"), "true")
 	metricsAddr := strings.TrimSpace(os.Getenv("METRICS_ADDR"))
+	uploadHandler := handlers.NewUploadHandler(os.Getenv("UPLOADS_DIR"))
 
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("POST "+baseURL+"/auth/register", authHandler.HandleRegister)
 	mux.HandleFunc("POST "+baseURL+"/auth/login", authHandler.HandleLogin)
+	mux.HandleFunc("POST "+baseURL+"/uploads", uploadHandler.HandleUpload)
+	mux.HandleFunc("GET /uploads/{category}/{filename}", uploadHandler.HandleServeUpload)
 	if enableDocs {
 		mux.HandleFunc("GET /openapi.yaml", handlers.OpenAPIHandler)
 		mux.HandleFunc("GET /docs", handlers.DocsHandler)
@@ -129,6 +133,8 @@ func main() {
 	mux.HandleFunc("POST "+baseURL+"/items", gallery.HandleCreateItem)
 	mux.HandleFunc("GET "+baseURL+"/items", gallery.HandleGetAllItems)
 	mux.HandleFunc("GET "+baseURL+"/items/{itemId}", gallery.HandleGetItem)
+	mux.HandleFunc("PUT "+baseURL+"/items/{itemId}", gallery.HandleUpdateItem)
+	mux.HandleFunc("DELETE "+baseURL+"/items/{itemId}", gallery.HandleDeleteItem)
 
 	mux.HandleFunc("GET "+baseURL+"/characters/{characterId}/inventory", gallery.HandleGetCharacterInventory)
 	mux.HandleFunc("POST "+baseURL+"/characters/{characterId}/inventory/{itemId}", gallery.HandleAddItemToCharacter)
@@ -154,6 +160,7 @@ func main() {
 	publicRoutes := []string{
 		"POST " + baseURL + "/auth/register",
 		"POST " + baseURL + "/auth/login",
+		"GET /uploads/*",
 	}
 	if enableDocs {
 		publicRoutes = append(publicRoutes, "GET /openapi.yaml", "GET /docs")

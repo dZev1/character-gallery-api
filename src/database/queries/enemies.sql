@@ -30,9 +30,10 @@ INSERT INTO enemies (
     ac,
     damage,
     xp_reward,
-    score_reward
+    score_reward,
+    image_url
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
 )
 RETURNING *;
 
@@ -46,7 +47,8 @@ SET name         = $2,
     ac           = $7,
     damage       = $8,
     xp_reward    = $9,
-    score_reward = $10
+    score_reward = $10,
+    image_url    = $11
 WHERE id = $1
 RETURNING *;
 
@@ -64,7 +66,8 @@ INSERT INTO enemies (
     ac,
     damage,
     xp_reward,
-    score_reward
+    score_reward,
+    image_url
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
 );

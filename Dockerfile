@@ -14,7 +14,7 @@ RUN apk --no-cache add ca-certificates tzdata \
 
 WORKDIR /app
 COPY --from=builder /app/main .
-RUN chown appuser:appuser /app/main
+RUN mkdir -p /app/uploads && chown -R appuser:appuser /app/main /app/uploads
 
 USER appuser
 
@@ -24,6 +24,7 @@ ENV JWT_SECRET=""
 ENV CORS_ALLOW_ORIGIN=""
 ENV ENABLE_DOCS="false"
 ENV METRICS_ADDR=""
+ENV UPLOADS_DIR="/app/uploads"
 ENV PORT=":8080"
 
 EXPOSE 8080

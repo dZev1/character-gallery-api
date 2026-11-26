@@ -26,13 +26,13 @@ const createItem = `-- name: CreateItem :one
 INSERT INTO items (
     name, type, description, equippable, rarity,
     damage, defense, heal_amount, mana_cost, duration,
-    cooldown, capacity
+    cooldown, capacity, image_url
 ) VALUES (
     $1, $2, $3, $4, $5,
     $6, $7, $8, $9, $10,
-    $11, $12
+    $11, $12, $13
 )
-RETURNING id, name, type, description, equippable, rarity, damage, defense, heal_amount, mana_cost, duration, cooldown, capacity
+RETURNING id, name, type, description, equippable, rarity, damage, defense, heal_amount, mana_cost, duration, cooldown, capacity, image_url
 `
 
 type CreateItemParams struct {
@@ -48,6 +48,7 @@ type CreateItemParams struct {
 	Duration    pgtype.Int4
 	Cooldown    pgtype.Int4
 	Capacity    pgtype.Int4
+	ImageUrl    pgtype.Text
 }
 
 func (q *Queries) CreateItem(ctx context.Context, arg CreateItemParams) (*Item, error) {
@@ -64,6 +65,7 @@ func (q *Queries) CreateItem(ctx context.Context, arg CreateItemParams) (*Item, 
 		arg.Duration,
 		arg.Cooldown,
 		arg.Capacity,
+		arg.ImageUrl,
 	)
 	var i Item
 	err := row.Scan(
@@ -80,12 +82,26 @@ func (q *Queries) CreateItem(ctx context.Context, arg CreateItemParams) (*Item, 
 		&i.Duration,
 		&i.Cooldown,
 		&i.Capacity,
+		&i.ImageUrl,
 	)
 	return &i, err
 }
 
+const deleteItem = `-- name: DeleteItem :execrows
+DELETE FROM items
+WHERE id = $1
+`
+
+func (q *Queries) DeleteItem(ctx context.Context, id int64) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteItem, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const findAllItems = `-- name: FindAllItems :many
-SELECT id, name, type, description, equippable, rarity, damage, defense, heal_amount, mana_cost, duration, cooldown, capacity FROM items
+SELECT id, name, type, description, equippable, rarity, damage, defense, heal_amount, mana_cost, duration, cooldown, capacity, image_url FROM items
 ORDER BY id
 LIMIT $1 OFFSET $2
 `
@@ -118,6 +134,7 @@ func (q *Queries) FindAllItems(ctx context.Context, arg FindAllItemsParams) ([]*
 			&i.Duration,
 			&i.Cooldown,
 			&i.Capacity,
+			&i.ImageUrl,
 		); err != nil {
 			return nil, err
 		}
@@ -130,7 +147,7 @@ func (q *Queries) FindAllItems(ctx context.Context, arg FindAllItemsParams) ([]*
 }
 
 const findItem = `-- name: FindItem :one
-SELECT id, name, type, description, equippable, rarity, damage, defense, heal_amount, mana_cost, duration, cooldown, capacity FROM items
+SELECT id, name, type, description, equippable, rarity, damage, defense, heal_amount, mana_cost, duration, cooldown, capacity, image_url FROM items
 WHERE id = $1
 `
 
@@ -151,12 +168,13 @@ func (q *Queries) FindItem(ctx context.Context, id int64) (*Item, error) {
 		&i.Duration,
 		&i.Cooldown,
 		&i.Capacity,
+		&i.ImageUrl,
 	)
 	return &i, err
 }
 
 const findItemsByRarityRange = `-- name: FindItemsByRarityRange :many
-SELECT id, name, type, description, equippable, rarity, damage, defense, heal_amount, mana_cost, duration, cooldown, capacity FROM items
+SELECT id, name, type, description, equippable, rarity, damage, defense, heal_amount, mana_cost, duration, cooldown, capacity, image_url FROM items
 WHERE rarity BETWEEN $1 AND $2
 ORDER BY id
 `
@@ -189,6 +207,7 @@ func (q *Queries) FindItemsByRarityRange(ctx context.Context, arg FindItemsByRar
 			&i.Duration,
 			&i.Cooldown,
 			&i.Capacity,
+			&i.ImageUrl,
 		); err != nil {
 			return nil, err
 		}
@@ -201,7 +220,7 @@ func (q *Queries) FindItemsByRarityRange(ctx context.Context, arg FindItemsByRar
 }
 
 const findRandomItemByRarityRange = `-- name: FindRandomItemByRarityRange :one
-SELECT id, name, type, description, equippable, rarity, damage, defense, heal_amount, mana_cost, duration, cooldown, capacity FROM items
+SELECT id, name, type, description, equippable, rarity, damage, defense, heal_amount, mana_cost, duration, cooldown, capacity, image_url FROM items
 WHERE rarity BETWEEN $1 AND $2
 ORDER BY RANDOM()
 LIMIT 1
@@ -229,6 +248,7 @@ func (q *Queries) FindRandomItemByRarityRange(ctx context.Context, arg FindRando
 		&i.Duration,
 		&i.Cooldown,
 		&i.Capacity,
+		&i.ImageUrl,
 	)
 	return &i, err
 }
@@ -246,4 +266,78 @@ type SeedItemsParams struct {
 	Duration    pgtype.Int4
 	Cooldown    pgtype.Int4
 	Capacity    pgtype.Int4
+	ImageUrl    pgtype.Text
+}
+
+const updateItem = `-- name: UpdateItem :one
+UPDATE items
+SET name        = $2,
+    type        = $3,
+    description = $4,
+    equippable  = $5,
+    rarity      = $6,
+    damage      = $7,
+    defense     = $8,
+    heal_amount = $9,
+    mana_cost   = $10,
+    duration    = $11,
+    cooldown    = $12,
+    capacity    = $13,
+    image_url   = $14
+WHERE id = $1
+RETURNING id, name, type, description, equippable, rarity, damage, defense, heal_amount, mana_cost, duration, cooldown, capacity, image_url
+`
+
+type UpdateItemParams struct {
+	ID          int64
+	Name        string
+	Type        string
+	Description string
+	Equippable  bool
+	Rarity      int32
+	Damage      pgtype.Int4
+	Defense     pgtype.Int4
+	HealAmount  pgtype.Int4
+	ManaCost    pgtype.Int4
+	Duration    pgtype.Int4
+	Cooldown    pgtype.Int4
+	Capacity    pgtype.Int4
+	ImageUrl    pgtype.Text
+}
+
+func (q *Queries) UpdateItem(ctx context.Context, arg UpdateItemParams) (*Item, error) {
+	row := q.db.QueryRow(ctx, updateItem,
+		arg.ID,
+		arg.Name,
+		arg.Type,
+		arg.Description,
+		arg.Equippable,
+		arg.Rarity,
+		arg.Damage,
+		arg.Defense,
+		arg.HealAmount,
+		arg.ManaCost,
+		arg.Duration,
+		arg.Cooldown,
+		arg.Capacity,
+		arg.ImageUrl,
+	)
+	var i Item
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Type,
+		&i.Description,
+		&i.Equippable,
+		&i.Rarity,
+		&i.Damage,
+		&i.Defense,
+		&i.HealAmount,
+		&i.ManaCost,
+		&i.Duration,
+		&i.Cooldown,
+		&i.Capacity,
+		&i.ImageUrl,
+	)
+	return &i, err
 }

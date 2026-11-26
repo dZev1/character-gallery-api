@@ -122,6 +122,7 @@ func (i *inventoryRepo) GetCharacterInventory(ctx context.Context, exec db.DBTX,
 			Duration:    toU64ptr(row.Duration),
 			Cooldown:    toU64ptr(row.Cooldown),
 			Capacity:    toU64ptr(row.Capacity),
+			ImageURL:    fromText(row.ImageUrl),
 		}
 
 		itemSlice = append(itemSlice, inventory.InventoryItem{
@@ -162,6 +163,7 @@ func (i *inventoryRepo) GetCharacterEquippedItems(ctx context.Context, exec db.D
 				Duration:    toU64ptr(row.Duration),
 				Cooldown:    toU64ptr(row.Cooldown),
 				Capacity:    toU64ptr(row.Capacity),
+				ImageURL:    fromText(row.ImageUrl),
 			},
 			Quantity:   uint8(row.Quantity),
 			IsEquipped: row.IsEquipped,
@@ -244,6 +246,7 @@ func checkItem(ctx context.Context, q *db.Queries, itemID items.ID) (*items.Item
 		Duration:    toU64ptr(itemRow.Duration),
 		Cooldown:    toU64ptr(itemRow.Cooldown),
 		Capacity:    toU64ptr(itemRow.Capacity),
+		ImageURL:    fromText(itemRow.ImageUrl),
 	}
 	return item, nil
 }

@@ -579,6 +579,72 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+    put:
+      operationId: updateItem
+      summary: Update an item
+      description: Updates an existing item in the item pool. **Admin only**.
+      tags: [Items]
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateItemRequest"
+      responses:
+        "200":
+          description: Item updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Item"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    delete:
+      operationId: deleteItem
+      summary: Delete an item
+      description: Deletes an item by ID from the item pool. **Admin only**.
+      tags: [Items]
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: Item deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   # ─── Dice Rolling ──────────────────────────────────────────────────
 
   /roll:
@@ -1281,6 +1347,54 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  # ─── Uploads ───────────────────────────────────────────────────────
+
+  /uploads:
+    post:
+      operationId: uploadImage
+      summary: Upload an image sprite (Admin only)
+      description: |
+        Uploads an image (PNG, WebP, JPEG, or GIF up to 2 MiB) to local server
+        storage and returns its public `image_url`. **Admin only**.
+      tags: [Uploads]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                category:
+                  type: string
+                  enum: [items, enemies, misc]
+                  default: misc
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "201":
+          description: Image uploaded successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [image_url]
+                properties:
+                  image_url:
+                    type: string
+                    example: "/uploads/enemies/0194f8c0-0000-7000-8000-000000000000.png"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   # ─── System ────────────────────────────────────────────────────────
 
   /metrics:
@@ -1653,6 +1767,10 @@ components:
           type: integer
           minimum: 0
           example: 3
+        image_url:
+          type: string
+          maxLength: 500
+          example: "/uploads/items/0194f8c0-0000-7000-8000-000000000000.png"
 
     CreateItemRequest:
       type: object
@@ -1711,6 +1829,10 @@ components:
           type: integer
           minimum: 0
           example: 3
+        image_url:
+          type: string
+          maxLength: 500
+          example: "/uploads/items/0194f8c0-0000-7000-8000-000000000000.png"
 
     InventoryItem:
       type: object
@@ -2155,6 +2277,10 @@ components:
           type: integer
           minimum: 1
           example: 50
+        image_url:
+          type: string
+          maxLength: 500
+          example: "/uploads/enemies/0194f8c0-0000-7000-8000-000000000000.png"
 
     CreateEnemyRequest:
       type: object
@@ -2189,6 +2315,10 @@ components:
         score_reward:
           type: integer
           minimum: 1
+        image_url:
+          type: string
+          maxLength: 500
+          example: "/uploads/enemies/0194f8c0-0000-7000-8000-000000000000.png"
 
     GraphNode:
       type: object

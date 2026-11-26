@@ -109,6 +109,7 @@ func (r *enemyRepo) SaveEnemy(ctx context.Context, exec db.DBTX, enemy *enemies.
 		Damage:      int32(enemy.Damage),
 		XpReward:    int32(enemy.XPReward),
 		ScoreReward: int32(enemy.ScoreReward),
+		ImageUrl:    toText(enemy.ImageURL),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("create enemy: %w", err)
@@ -132,6 +133,7 @@ func (r *enemyRepo) UpdateEnemy(ctx context.Context, exec db.DBTX, enemy *enemie
 		Damage:      int32(enemy.Damage),
 		XpReward:    int32(enemy.XPReward),
 		ScoreReward: int32(enemy.ScoreReward),
+		ImageUrl:    toText(enemy.ImageURL),
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -171,6 +173,7 @@ func (r *enemyRepo) SeedEnemies(ctx context.Context, exec db.DBTX, list []enemie
 			Damage:      int32(e.Damage),
 			XpReward:    int32(e.XPReward),
 			ScoreReward: int32(e.ScoreReward),
+			ImageUrl:    toText(e.ImageURL),
 		}
 	}
 
@@ -192,5 +195,6 @@ func toDomainEnemy(row *db.Enemy) *enemies.Enemy {
 		Damage:      uint(row.Damage),
 		XPReward:    uint(row.XpReward),
 		ScoreReward: uint(row.ScoreReward),
+		ImageURL:    fromText(row.ImageUrl),
 	}
 }

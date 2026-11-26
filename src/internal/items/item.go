@@ -3,6 +3,7 @@ package items
 import (
 	"errors"
 	"fmt"
+	"strings"
 )
 
 var ErrNotFound = errors.New("item not found")
@@ -28,6 +29,7 @@ type Item struct {
 	Duration   *uint64 `db:"duration" json:"duration,omitempty" redis:"duration"`
 	Cooldown   *uint64 `db:"cooldown" json:"cooldown,omitempty" redis:"cooldown"`
 	Capacity   *uint64 `db:"capacity" json:"capacity,omitempty" redis:"capacity"`
+	ImageURL   string  `db:"image_url" json:"image_url,omitempty" redis:"image_url"`
 }
 
 func (i *Item) IsValid() bool {
@@ -45,6 +47,16 @@ func (i *Item) IsValid() bool {
 	}
 	if !HasValidStats(i) && i.Equippable {
 		return false
+	}
+	if i.ImageURL != "" {
+		if len(i.ImageURL) > 500 {
+			return false
+		}
+		if !strings.HasPrefix(i.ImageURL, "/uploads/") &&
+			!strings.HasPrefix(i.ImageURL, "http://") &&
+			!strings.HasPrefix(i.ImageURL, "https://") {
+			return false
+		}
 	}
 	return true
 }

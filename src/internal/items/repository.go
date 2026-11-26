@@ -11,5 +11,7 @@ type Repository interface {
 	FindItemsByRarityRange(ctx context.Context, exec db.DBTX, minRarity, maxRarity uint8) ([]Item, error)
 	FindRandomItemByRarityRange(ctx context.Context, exec db.DBTX, minRarity, maxRarity uint8) (*Item, error)
 	SaveItem(ctx context.Context, exec db.DBTX, item *Item) (*Item, error)
+	UpdateItem(ctx context.Context, exec db.DBTX, item *Item) (*Item, error)
+	DeleteItem(ctx context.Context, exec db.DBTX, itemID ID) error
 	SeedItems(ctx context.Context, exec db.DBTX, items []Item) error
 }

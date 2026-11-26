@@ -14,11 +14,11 @@ SELECT COUNT(*) FROM items;
 INSERT INTO items (
     name, type, description, equippable, rarity,
     damage, defense, heal_amount, mana_cost, duration,
-    cooldown, capacity
+    cooldown, capacity, image_url
 ) VALUES (
     $1, $2, $3, $4, $5,
     $6, $7, $8, $9, $10,
-    $11, $12
+    $11, $12, $13
 )
 RETURNING *;
 
@@ -26,11 +26,11 @@ RETURNING *;
 INSERT INTO items (
     name, type, description, equippable, rarity,
     damage, defense, heal_amount, mana_cost, duration,
-    cooldown, capacity
+    cooldown, capacity, image_url
 ) VALUES (
     $1, $2, $3, $4, $5,
     $6, $7, $8, $9, $10,
-    $11, $12
+    $11, $12, $13
 );
 
 -- name: FindItemsByRarityRange :many
@@ -43,3 +43,25 @@ SELECT * FROM items
 WHERE rarity BETWEEN $1 AND $2
 ORDER BY RANDOM()
 LIMIT 1;
+
+-- name: UpdateItem :one
+UPDATE items
+SET name        = $2,
+    type        = $3,
+    description = $4,
+    equippable  = $5,
+    rarity      = $6,
+    damage      = $7,
+    defense     = $8,
+    heal_amount = $9,
+    mana_cost   = $10,
+    duration    = $11,
+    cooldown    = $12,
+    capacity    = $13,
+    image_url   = $14
+WHERE id = $1
+RETURNING *;
+
+-- name: DeleteItem :execrows
+DELETE FROM items
+WHERE id = $1;

@@ -82,6 +82,7 @@ type Enemy struct {
 	Damage      int32
 	XpReward    int32
 	ScoreReward int32
+	ImageUrl    pgtype.Text
 }
 
 type Inventory struct {
@@ -105,6 +106,7 @@ type Item struct {
 	Duration    pgtype.Int4
 	Cooldown    pgtype.Int4
 	Capacity    pgtype.Int4
+	ImageUrl    pgtype.Text
 }
 
 type Stat struct {

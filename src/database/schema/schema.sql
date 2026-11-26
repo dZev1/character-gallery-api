@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS items (
     duration INT,
     cooldown INT,
     capacity INT,
+    image_url TEXT,
 
     CONSTRAINT items_name_rarity_unique UNIQUE (name, rarity)
 );
@@ -99,6 +100,7 @@ CREATE TABLE IF NOT EXISTS enemies (
     damage INT NOT NULL CHECK (damage > 0),
     xp_reward INT NOT NULL DEFAULT 0,
     score_reward INT NOT NULL DEFAULT 0,
+    image_url TEXT,
 
     CONSTRAINT enemies_name_tier_unique UNIQUE (name, tier)
 );
@@ -149,3 +151,6 @@ CREATE TABLE IF NOT EXISTS daily_scores (
 
 CREATE INDEX IF NOT EXISTS idx_daily_scores_leaderboard
     ON daily_scores (run_date, tier, score DESC, turns_taken ASC);
+
+ALTER TABLE items ADD COLUMN IF NOT EXISTS image_url TEXT;
+ALTER TABLE enemies ADD COLUMN IF NOT EXISTS image_url TEXT;

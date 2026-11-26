@@ -7,6 +7,8 @@ package db
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const countAllEnemies = `-- name: CountAllEnemies :one
@@ -30,11 +32,12 @@ INSERT INTO enemies (
     ac,
     damage,
     xp_reward,
-    score_reward
+    score_reward,
+    image_url
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
 )
-RETURNING id, name, type, tier, description, hp_max, ac, damage, xp_reward, score_reward
+RETURNING id, name, type, tier, description, hp_max, ac, damage, xp_reward, score_reward, image_url
 `
 
 type CreateEnemyParams struct {
@@ -47,6 +50,7 @@ type CreateEnemyParams struct {
 	Damage      int32
 	XpReward    int32
 	ScoreReward int32
+	ImageUrl    pgtype.Text
 }
 
 func (q *Queries) CreateEnemy(ctx context.Context, arg CreateEnemyParams) (*Enemy, error) {
@@ -60,6 +64,7 @@ func (q *Queries) CreateEnemy(ctx context.Context, arg CreateEnemyParams) (*Enem
 		arg.Damage,
 		arg.XpReward,
 		arg.ScoreReward,
+		arg.ImageUrl,
 	)
 	var i Enemy
 	err := row.Scan(
@@ -73,6 +78,7 @@ func (q *Queries) CreateEnemy(ctx context.Context, arg CreateEnemyParams) (*Enem
 		&i.Damage,
 		&i.XpReward,
 		&i.ScoreReward,
+		&i.ImageUrl,
 	)
 	return &i, err
 }
@@ -91,7 +97,7 @@ func (q *Queries) DeleteEnemy(ctx context.Context, id int64) (int64, error) {
 }
 
 const findAllEnemies = `-- name: FindAllEnemies :many
-SELECT id, name, type, tier, description, hp_max, ac, damage, xp_reward, score_reward FROM enemies
+SELECT id, name, type, tier, description, hp_max, ac, damage, xp_reward, score_reward, image_url FROM enemies
 ORDER BY tier ASC, id ASC
 LIMIT $1 OFFSET $2
 `
@@ -121,6 +127,7 @@ func (q *Queries) FindAllEnemies(ctx context.Context, arg FindAllEnemiesParams) 
 			&i.Damage,
 			&i.XpReward,
 			&i.ScoreReward,
+			&i.ImageUrl,
 		); err != nil {
 			return nil, err
 		}
@@ -133,7 +140,7 @@ func (q *Queries) FindAllEnemies(ctx context.Context, arg FindAllEnemiesParams) 
 }
 
 const findEnemiesByTier = `-- name: FindEnemiesByTier :many
-SELECT id, name, type, tier, description, hp_max, ac, damage, xp_reward, score_reward FROM enemies
+SELECT id, name, type, tier, description, hp_max, ac, damage, xp_reward, score_reward, image_url FROM enemies
 WHERE tier = $1
 ORDER BY id ASC
 `
@@ -158,6 +165,7 @@ func (q *Queries) FindEnemiesByTier(ctx context.Context, tier int16) ([]*Enemy, 
 			&i.Damage,
 			&i.XpReward,
 			&i.ScoreReward,
+			&i.ImageUrl,
 		); err != nil {
 			return nil, err
 		}
@@ -170,7 +178,7 @@ func (q *Queries) FindEnemiesByTier(ctx context.Context, tier int16) ([]*Enemy, 
 }
 
 const findEnemiesByTierAndType = `-- name: FindEnemiesByTierAndType :many
-SELECT id, name, type, tier, description, hp_max, ac, damage, xp_reward, score_reward FROM enemies
+SELECT id, name, type, tier, description, hp_max, ac, damage, xp_reward, score_reward, image_url FROM enemies
 WHERE tier = $1 AND type = $2
 ORDER BY id ASC
 `
@@ -200,6 +208,7 @@ func (q *Queries) FindEnemiesByTierAndType(ctx context.Context, arg FindEnemiesB
 			&i.Damage,
 			&i.XpReward,
 			&i.ScoreReward,
+			&i.ImageUrl,
 		); err != nil {
 			return nil, err
 		}
@@ -212,7 +221,7 @@ func (q *Queries) FindEnemiesByTierAndType(ctx context.Context, arg FindEnemiesB
 }
 
 const findEnemy = `-- name: FindEnemy :one
-SELECT id, name, type, tier, description, hp_max, ac, damage, xp_reward, score_reward FROM enemies
+SELECT id, name, type, tier, description, hp_max, ac, damage, xp_reward, score_reward, image_url FROM enemies
 WHERE id = $1
 `
 
@@ -230,6 +239,7 @@ func (q *Queries) FindEnemy(ctx context.Context, id int64) (*Enemy, error) {
 		&i.Damage,
 		&i.XpReward,
 		&i.ScoreReward,
+		&i.ImageUrl,
 	)
 	return &i, err
 }
@@ -244,6 +254,7 @@ type SeedEnemiesParams struct {
 	Damage      int32
 	XpReward    int32
 	ScoreReward int32
+	ImageUrl    pgtype.Text
 }
 
 const updateEnemy = `-- name: UpdateEnemy :one
@@ -256,9 +267,10 @@ SET name         = $2,
     ac           = $7,
     damage       = $8,
     xp_reward    = $9,
-    score_reward = $10
+    score_reward = $10,
+    image_url    = $11
 WHERE id = $1
-RETURNING id, name, type, tier, description, hp_max, ac, damage, xp_reward, score_reward
+RETURNING id, name, type, tier, description, hp_max, ac, damage, xp_reward, score_reward, image_url
 `
 
 type UpdateEnemyParams struct {
@@ -272,6 +284,7 @@ type UpdateEnemyParams struct {
 	Damage      int32
 	XpReward    int32
 	ScoreReward int32
+	ImageUrl    pgtype.Text
 }
 
 func (q *Queries) UpdateEnemy(ctx context.Context, arg UpdateEnemyParams) (*Enemy, error) {
@@ -286,6 +299,7 @@ func (q *Queries) UpdateEnemy(ctx context.Context, arg UpdateEnemyParams) (*Enem
 		arg.Damage,
 		arg.XpReward,
 		arg.ScoreReward,
+		arg.ImageUrl,
 	)
 	var i Enemy
 	err := row.Scan(
@@ -299,6 +313,7 @@ func (q *Queries) UpdateEnemy(ctx context.Context, arg UpdateEnemyParams) (*Enem
 		&i.Damage,
 		&i.XpReward,
 		&i.ScoreReward,
+		&i.ImageUrl,
 	)
 	return &i, err
 }

@@ -9,8 +9,13 @@ import (
 
 func AuthMiddleware(jwtSecret string, skippedPaths ...string) func(http.Handler) http.Handler {
 	skip := make(map[string]struct{})
+	var skipPrefixes []string
 	for _, p := range skippedPaths {
-		skip[p] = struct{}{}
+		if strings.HasSuffix(p, "*") {
+			skipPrefixes = append(skipPrefixes, strings.TrimSuffix(p, "*"))
+		} else {
+			skip[p] = struct{}{}
+		}
 	}
 
 	return func(next http.Handler) http.Handler {
@@ -19,6 +24,12 @@ func AuthMiddleware(jwtSecret string, skippedPaths ...string) func(http.Handler)
 			if _, ok := skip[key]; ok {
 				next.ServeHTTP(w, r)
 				return
+			}
+			for _, prefix := range skipPrefixes {
+				if strings.HasPrefix(key, prefix) {
+					next.ServeHTTP(w, r)
+					return
+				}
 			}
 
 			header := r.Header.Get("Authorization")

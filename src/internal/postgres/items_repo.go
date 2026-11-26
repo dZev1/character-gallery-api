@@ -4,8 +4,10 @@ import (
 	"context"
 	"dZev1/character-gallery/internal/items"
 	"dZev1/character-gallery/internal/postgres/db"
+	"errors"
 	"fmt"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -58,6 +60,7 @@ func (i *itemRepo) FindAllItems(ctx context.Context, exec db.DBTX, limit, offset
 			Duration:    toU64ptr(it.Duration),
 			Cooldown:    toU64ptr(it.Cooldown),
 			Capacity:    toU64ptr(it.Capacity),
+			ImageURL:    fromText(it.ImageUrl),
 		}
 	}
 
@@ -86,6 +89,7 @@ func (i *itemRepo) FindItem(ctx context.Context, exec db.DBTX, itemID items.ID) 
 		Duration:    toU64ptr(itm.Duration),
 		Cooldown:    toU64ptr(itm.Cooldown),
 		Capacity:    toU64ptr(itm.Capacity),
+		ImageURL:    fromText(itm.ImageUrl),
 	}, nil
 }
 
@@ -116,6 +120,7 @@ func (i *itemRepo) FindItemsByRarityRange(ctx context.Context, exec db.DBTX, min
 			Duration:    toU64ptr(it.Duration),
 			Cooldown:    toU64ptr(it.Cooldown),
 			Capacity:    toU64ptr(it.Capacity),
+			ImageURL:    fromText(it.ImageUrl),
 		}
 	}
 	return result, nil
@@ -146,6 +151,7 @@ func (i *itemRepo) FindRandomItemByRarityRange(ctx context.Context, exec db.DBTX
 		Duration:    toU64ptr(itm.Duration),
 		Cooldown:    toU64ptr(itm.Cooldown),
 		Capacity:    toU64ptr(itm.Capacity),
+		ImageURL:    fromText(itm.ImageUrl),
 	}, nil
 }
 
@@ -165,6 +171,7 @@ func (i *itemRepo) SaveItem(ctx context.Context, exec db.DBTX, item *items.Item)
 		Duration:    toInt4(item.Duration),
 		Cooldown:    toInt4(item.Cooldown),
 		Capacity:    toInt4(item.Capacity),
+		ImageUrl:    toText(item.ImageURL),
 	}
 
 	saveItem, err := q.CreateItem(ctx, saveItemParams)
@@ -175,6 +182,63 @@ func (i *itemRepo) SaveItem(ctx context.Context, exec db.DBTX, item *items.Item)
 	item.ID = items.ID(saveItem.ID)
 
 	return item, nil
+}
+
+func (i *itemRepo) UpdateItem(ctx context.Context, exec db.DBTX, item *items.Item) (*items.Item, error) {
+	q := i.q(exec)
+
+	updated, err := q.UpdateItem(ctx, db.UpdateItemParams{
+		ID:          int64(item.ID),
+		Name:        item.Name,
+		Type:        string(item.Type),
+		Description: item.Description,
+		Equippable:  item.Equippable,
+		Rarity:      int32(item.Rarity),
+		Damage:      toInt4(item.Damage),
+		Defense:     toInt4(item.Defense),
+		HealAmount:  toInt4(item.HealAmount),
+		ManaCost:    toInt4(item.ManaCost),
+		Duration:    toInt4(item.Duration),
+		Cooldown:    toInt4(item.Cooldown),
+		Capacity:    toInt4(item.Capacity),
+		ImageUrl:    toText(item.ImageURL),
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("update item %d: %w", item.ID, items.ErrNotFound)
+		}
+		return nil, fmt.Errorf("update item %d: %w", item.ID, err)
+	}
+
+	return &items.Item{
+		ID:          items.ID(updated.ID),
+		Name:        updated.Name,
+		Type:        items.Type(updated.Type),
+		Description: updated.Description,
+		Equippable:  updated.Equippable,
+		Rarity:      uint8(updated.Rarity),
+		Damage:      toU64ptr(updated.Damage),
+		Defense:     toU64ptr(updated.Defense),
+		HealAmount:  toU64ptr(updated.HealAmount),
+		ManaCost:    toU64ptr(updated.ManaCost),
+		Duration:    toU64ptr(updated.Duration),
+		Cooldown:    toU64ptr(updated.Cooldown),
+		Capacity:    toU64ptr(updated.Capacity),
+		ImageURL:    fromText(updated.ImageUrl),
+	}, nil
+}
+
+func (i *itemRepo) DeleteItem(ctx context.Context, exec db.DBTX, itemID items.ID) error {
+	q := i.q(exec)
+
+	rows, err := q.DeleteItem(ctx, int64(itemID))
+	if err != nil {
+		return fmt.Errorf("delete item %d: %w", itemID, err)
+	}
+	if rows == 0 {
+		return fmt.Errorf("delete item %d: %w", itemID, items.ErrNotFound)
+	}
+	return nil
 }
 
 func (i *itemRepo) SeedItems(ctx context.Context, exec db.DBTX, items []items.Item) error {
@@ -195,6 +259,7 @@ func (i *itemRepo) SeedItems(ctx context.Context, exec db.DBTX, items []items.It
 			Duration:    toInt4(item.Duration),
 			Cooldown:    toInt4(item.Cooldown),
 			Capacity:    toInt4(item.Capacity),
+			ImageUrl:    toText(item.ImageURL),
 		}
 	}
 
@@ -219,4 +284,18 @@ func toU64ptr(field pgtype.Int4) *uint64 {
 		return &v
 	}
 	return nil
+}
+
+func toText(s string) pgtype.Text {
+	if s == "" {
+		return pgtype.Text{}
+	}
+	return pgtype.Text{String: s, Valid: true}
+}
+
+func fromText(field pgtype.Text) string {
+	if field.Valid {
+		return field.String
+	}
+	return ""
 }
