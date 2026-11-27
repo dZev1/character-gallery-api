@@ -109,6 +109,7 @@ func (r *enemyRepo) SaveEnemy(ctx context.Context, exec db.DBTX, enemy *enemies.
 		Damage:      int32(enemy.Damage),
 		XpReward:    int32(enemy.XPReward),
 		ScoreReward: int32(enemy.ScoreReward),
+		ImageUrl:    toText(enemy.ImageURL),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("create enemy: %w", err)
@@ -116,6 +117,31 @@ func (r *enemyRepo) SaveEnemy(ctx context.Context, exec db.DBTX, enemy *enemies.
 
 	enemy.ID = enemies.ID(saved.ID)
 	return enemy, nil
+}
+
+func (r *enemyRepo) SaveEnemyIfNotExists(ctx context.Context, exec db.DBTX, enemy *enemies.Enemy) (*enemies.Enemy, bool, error) {
+	q := r.q(exec)
+
+	saved, err := q.CreateEnemyIfNotExists(ctx, db.CreateEnemyIfNotExistsParams{
+		Name:        enemy.Name,
+		Type:        string(enemy.Type),
+		Tier:        int16(enemy.Tier),
+		Description: enemy.Description,
+		HpMax:       int32(enemy.HpMax),
+		Ac:          int32(enemy.ArmorClass),
+		Damage:      int32(enemy.Damage),
+		XpReward:    int32(enemy.XPReward),
+		ScoreReward: int32(enemy.ScoreReward),
+		ImageUrl:    toText(enemy.ImageURL),
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, false, nil
+		}
+		return nil, false, fmt.Errorf("create enemy %q: %w", enemy.Name, err)
+	}
+
+	return toDomainEnemy(saved), true, nil
 }
 
 func (r *enemyRepo) UpdateEnemy(ctx context.Context, exec db.DBTX, enemy *enemies.Enemy) (*enemies.Enemy, error) {
@@ -132,6 +158,7 @@ func (r *enemyRepo) UpdateEnemy(ctx context.Context, exec db.DBTX, enemy *enemie
 		Damage:      int32(enemy.Damage),
 		XpReward:    int32(enemy.XPReward),
 		ScoreReward: int32(enemy.ScoreReward),
+		ImageUrl:    toText(enemy.ImageURL),
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -171,6 +198,7 @@ func (r *enemyRepo) SeedEnemies(ctx context.Context, exec db.DBTX, list []enemie
 			Damage:      int32(e.Damage),
 			XpReward:    int32(e.XPReward),
 			ScoreReward: int32(e.ScoreReward),
+			ImageUrl:    toText(e.ImageURL),
 		}
 	}
 
@@ -192,5 +220,6 @@ func toDomainEnemy(row *db.Enemy) *enemies.Enemy {
 		Damage:      uint(row.Damage),
 		XPReward:    uint(row.XpReward),
 		ScoreReward: uint(row.ScoreReward),
+		ImageURL:    fromText(row.ImageUrl),
 	}
 }

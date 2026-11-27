@@ -19,4 +19,7 @@ type Repository interface {
 	UpdateCharacterProgress(ctx context.Context, exec db.DBTX, id ID, level uint8, xp uint64, hpMax, hpCurrent uint8) (*Character, error)
 	PrestigeCharacter(ctx context.Context, exec db.DBTX, id ID, ownerID uuid.UUID, newHpMax uint8) (*Character, error)
 	DeleteCharacter(ctx context.Context, exec db.DBTX, id ID, ownerID uuid.UUID) error
+	GetUserStatRoll(ctx context.Context, exec db.DBTX, userID uuid.UUID) (*UserStatRoll, error)
+	UpsertUserStatRoll(ctx context.Context, exec db.DBTX, userID uuid.UUID, roll *UserStatRoll) (*UserStatRoll, error)
+	ConsumeUserStatRoll(ctx context.Context, exec db.DBTX, userID uuid.UUID) error
 }

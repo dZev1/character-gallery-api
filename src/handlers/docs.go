@@ -10,6 +10,7 @@ var openAPISpec []byte
 
 func OpenAPIHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/x-yaml")
+	w.Header().Set("Cache-Control", "no-cache")
 	w.Write(openAPISpec)
 }
 

@@ -113,39 +113,42 @@ func (q *Queries) CreateCharacter(ctx context.Context, arg CreateCharacterParams
 
 const createCustomization = `-- name: CreateCustomization :one
 INSERT INTO customizations (
-    character_id, hair, face, shirt, pants, shoes
+    character_id, hair, beard, skin_tone, hair_color, cloak, accent_color
 ) VALUES (
-    $1, $2, $3, $4, $5, $6
+    $1, $2, $3, $4, $5, $6, $7
 )
-RETURNING character_id, hair, face, shirt, pants, shoes
+RETURNING character_id, hair, beard, skin_tone, hair_color, cloak, accent_color
 `
 
 type CreateCustomizationParams struct {
 	CharacterID int64
 	Hair        int16
-	Face        int16
-	Shirt       int16
-	Pants       int16
-	Shoes       int16
+	Beard       int16
+	SkinTone    int16
+	HairColor   int16
+	Cloak       int16
+	AccentColor int16
 }
 
 func (q *Queries) CreateCustomization(ctx context.Context, arg CreateCustomizationParams) (*Customization, error) {
 	row := q.db.QueryRow(ctx, createCustomization,
 		arg.CharacterID,
 		arg.Hair,
-		arg.Face,
-		arg.Shirt,
-		arg.Pants,
-		arg.Shoes,
+		arg.Beard,
+		arg.SkinTone,
+		arg.HairColor,
+		arg.Cloak,
+		arg.AccentColor,
 	)
 	var i Customization
 	err := row.Scan(
 		&i.CharacterID,
 		&i.Hair,
-		&i.Face,
-		&i.Shirt,
-		&i.Pants,
-		&i.Shoes,
+		&i.Beard,
+		&i.SkinTone,
+		&i.HairColor,
+		&i.Cloak,
+		&i.AccentColor,
 	)
 	return &i, err
 }
@@ -290,29 +293,64 @@ func (q *Queries) PrestigeCharacter(ctx context.Context, arg PrestigeCharacterPa
 	return &i, err
 }
 
-const selectAllCharacters = `-- name: SelectAllCharacters :many
-SELECT id, owner_id, name, body_type, species, class, level, xp, hp_max, hp_current, prestige FROM characters
-ORDER BY id
+const selectAllCharactersFull = `-- name: SelectAllCharactersFull :many
+SELECT c.id, c.owner_id, u.username AS owner_username, c.name, c.body_type, c.species, c.class,
+       c.level, c.xp, c.hp_max, c.hp_current, c.prestige,
+       s.strength, s.dexterity, s.constitution, s.intelligence, s.wisdom, s.charisma,
+       cu.hair, cu.beard, cu.skin_tone, cu.hair_color, cu.cloak, cu.accent_color
+FROM characters c
+JOIN users u ON u.id = c.owner_id
+JOIN stats s ON s.character_id = c.id
+JOIN customizations cu ON cu.character_id = c.id
+ORDER BY c.id
 LIMIT $1 OFFSET $2
 `
 
-type SelectAllCharactersParams struct {
+type SelectAllCharactersFullParams struct {
 	Limit  int32
 	Offset int32
 }
 
-func (q *Queries) SelectAllCharacters(ctx context.Context, arg SelectAllCharactersParams) ([]*Character, error) {
-	rows, err := q.db.Query(ctx, selectAllCharacters, arg.Limit, arg.Offset)
+type SelectAllCharactersFullRow struct {
+	ID            int64
+	OwnerID       uuid.UUID
+	OwnerUsername string
+	Name          string
+	BodyType      string
+	Species       string
+	Class         string
+	Level         int32
+	Xp            int32
+	HpMax         int32
+	HpCurrent     int32
+	Prestige      int32
+	Strength      int16
+	Dexterity     int16
+	Constitution  int16
+	Intelligence  int16
+	Wisdom        int16
+	Charisma      int16
+	Hair          int16
+	Beard         int16
+	SkinTone      int16
+	HairColor     int16
+	Cloak         int16
+	AccentColor   int16
+}
+
+func (q *Queries) SelectAllCharactersFull(ctx context.Context, arg SelectAllCharactersFullParams) ([]*SelectAllCharactersFullRow, error) {
+	rows, err := q.db.Query(ctx, selectAllCharactersFull, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []*Character
+	var items []*SelectAllCharactersFullRow
 	for rows.Next() {
-		var i Character
+		var i SelectAllCharactersFullRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.OwnerID,
+			&i.OwnerUsername,
 			&i.Name,
 			&i.BodyType,
 			&i.Species,
@@ -322,6 +360,18 @@ func (q *Queries) SelectAllCharacters(ctx context.Context, arg SelectAllCharacte
 			&i.HpMax,
 			&i.HpCurrent,
 			&i.Prestige,
+			&i.Strength,
+			&i.Dexterity,
+			&i.Constitution,
+			&i.Intelligence,
+			&i.Wisdom,
+			&i.Charisma,
+			&i.Hair,
+			&i.Beard,
+			&i.SkinTone,
+			&i.HairColor,
+			&i.Cloak,
+			&i.AccentColor,
 		); err != nil {
 			return nil, err
 		}
@@ -358,7 +408,7 @@ func (q *Queries) SelectCharacter(ctx context.Context, id int64) (*Character, er
 }
 
 const selectCharacterCustomization = `-- name: SelectCharacterCustomization :one
-SELECT character_id, hair, face, shirt, pants, shoes FROM customizations
+SELECT character_id, hair, beard, skin_tone, hair_color, cloak, accent_color FROM customizations
 WHERE character_id = $1
 `
 
@@ -368,10 +418,82 @@ func (q *Queries) SelectCharacterCustomization(ctx context.Context, characterID 
 	err := row.Scan(
 		&i.CharacterID,
 		&i.Hair,
-		&i.Face,
-		&i.Shirt,
-		&i.Pants,
-		&i.Shoes,
+		&i.Beard,
+		&i.SkinTone,
+		&i.HairColor,
+		&i.Cloak,
+		&i.AccentColor,
+	)
+	return &i, err
+}
+
+const selectCharacterFull = `-- name: SelectCharacterFull :one
+SELECT c.id, c.owner_id, u.username AS owner_username, c.name, c.body_type, c.species, c.class,
+       c.level, c.xp, c.hp_max, c.hp_current, c.prestige,
+       s.strength, s.dexterity, s.constitution, s.intelligence, s.wisdom, s.charisma,
+       cu.hair, cu.beard, cu.skin_tone, cu.hair_color, cu.cloak, cu.accent_color
+FROM characters c
+JOIN users u ON u.id = c.owner_id
+JOIN stats s ON s.character_id = c.id
+JOIN customizations cu ON cu.character_id = c.id
+WHERE c.id = $1
+`
+
+type SelectCharacterFullRow struct {
+	ID            int64
+	OwnerID       uuid.UUID
+	OwnerUsername string
+	Name          string
+	BodyType      string
+	Species       string
+	Class         string
+	Level         int32
+	Xp            int32
+	HpMax         int32
+	HpCurrent     int32
+	Prestige      int32
+	Strength      int16
+	Dexterity     int16
+	Constitution  int16
+	Intelligence  int16
+	Wisdom        int16
+	Charisma      int16
+	Hair          int16
+	Beard         int16
+	SkinTone      int16
+	HairColor     int16
+	Cloak         int16
+	AccentColor   int16
+}
+
+func (q *Queries) SelectCharacterFull(ctx context.Context, id int64) (*SelectCharacterFullRow, error) {
+	row := q.db.QueryRow(ctx, selectCharacterFull, id)
+	var i SelectCharacterFullRow
+	err := row.Scan(
+		&i.ID,
+		&i.OwnerID,
+		&i.OwnerUsername,
+		&i.Name,
+		&i.BodyType,
+		&i.Species,
+		&i.Class,
+		&i.Level,
+		&i.Xp,
+		&i.HpMax,
+		&i.HpCurrent,
+		&i.Prestige,
+		&i.Strength,
+		&i.Dexterity,
+		&i.Constitution,
+		&i.Intelligence,
+		&i.Wisdom,
+		&i.Charisma,
+		&i.Hair,
+		&i.Beard,
+		&i.SkinTone,
+		&i.HairColor,
+		&i.Cloak,
+		&i.AccentColor,
 	)
 	return &i, err
 }
@@ -396,31 +518,66 @@ func (q *Queries) SelectCharacterStats(ctx context.Context, characterID int64) (
 	return &i, err
 }
 
-const selectCharactersByOwner = `-- name: SelectCharactersByOwner :many
-SELECT id, owner_id, name, body_type, species, class, level, xp, hp_max, hp_current, prestige FROM characters
-WHERE owner_id = $1
-ORDER BY id
+const selectCharactersByOwnerFull = `-- name: SelectCharactersByOwnerFull :many
+SELECT c.id, c.owner_id, u.username AS owner_username, c.name, c.body_type, c.species, c.class,
+       c.level, c.xp, c.hp_max, c.hp_current, c.prestige,
+       s.strength, s.dexterity, s.constitution, s.intelligence, s.wisdom, s.charisma,
+       cu.hair, cu.beard, cu.skin_tone, cu.hair_color, cu.cloak, cu.accent_color
+FROM characters c
+JOIN users u ON u.id = c.owner_id
+JOIN stats s ON s.character_id = c.id
+JOIN customizations cu ON cu.character_id = c.id
+WHERE c.owner_id = $1
+ORDER BY c.id
 LIMIT $2 OFFSET $3
 `
 
-type SelectCharactersByOwnerParams struct {
+type SelectCharactersByOwnerFullParams struct {
 	OwnerID uuid.UUID
 	Limit   int32
 	Offset  int32
 }
 
-func (q *Queries) SelectCharactersByOwner(ctx context.Context, arg SelectCharactersByOwnerParams) ([]*Character, error) {
-	rows, err := q.db.Query(ctx, selectCharactersByOwner, arg.OwnerID, arg.Limit, arg.Offset)
+type SelectCharactersByOwnerFullRow struct {
+	ID            int64
+	OwnerID       uuid.UUID
+	OwnerUsername string
+	Name          string
+	BodyType      string
+	Species       string
+	Class         string
+	Level         int32
+	Xp            int32
+	HpMax         int32
+	HpCurrent     int32
+	Prestige      int32
+	Strength      int16
+	Dexterity     int16
+	Constitution  int16
+	Intelligence  int16
+	Wisdom        int16
+	Charisma      int16
+	Hair          int16
+	Beard         int16
+	SkinTone      int16
+	HairColor     int16
+	Cloak         int16
+	AccentColor   int16
+}
+
+func (q *Queries) SelectCharactersByOwnerFull(ctx context.Context, arg SelectCharactersByOwnerFullParams) ([]*SelectCharactersByOwnerFullRow, error) {
+	rows, err := q.db.Query(ctx, selectCharactersByOwnerFull, arg.OwnerID, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []*Character
+	var items []*SelectCharactersByOwnerFullRow
 	for rows.Next() {
-		var i Character
+		var i SelectCharactersByOwnerFullRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.OwnerID,
+			&i.OwnerUsername,
 			&i.Name,
 			&i.BodyType,
 			&i.Species,
@@ -430,6 +587,18 @@ func (q *Queries) SelectCharactersByOwner(ctx context.Context, arg SelectCharact
 			&i.HpMax,
 			&i.HpCurrent,
 			&i.Prestige,
+			&i.Strength,
+			&i.Dexterity,
+			&i.Constitution,
+			&i.Intelligence,
+			&i.Wisdom,
+			&i.Charisma,
+			&i.Hair,
+			&i.Beard,
+			&i.SkinTone,
+			&i.HairColor,
+			&i.Cloak,
+			&i.AccentColor,
 		); err != nil {
 			return nil, err
 		}
@@ -617,37 +786,40 @@ func (q *Queries) UpdateCharacterProgress(ctx context.Context, arg UpdateCharact
 
 const updateCustomization = `-- name: UpdateCustomization :one
 UPDATE customizations
-SET hair = $2, face = $3, shirt = $4, pants = $5, shoes = $6
+SET hair = $2, beard = $3, skin_tone = $4, hair_color = $5, cloak = $6, accent_color = $7
 WHERE character_id = $1
-RETURNING character_id, hair, face, shirt, pants, shoes
+RETURNING character_id, hair, beard, skin_tone, hair_color, cloak, accent_color
 `
 
 type UpdateCustomizationParams struct {
 	CharacterID int64
 	Hair        int16
-	Face        int16
-	Shirt       int16
-	Pants       int16
-	Shoes       int16
+	Beard       int16
+	SkinTone    int16
+	HairColor   int16
+	Cloak       int16
+	AccentColor int16
 }
 
 func (q *Queries) UpdateCustomization(ctx context.Context, arg UpdateCustomizationParams) (*Customization, error) {
 	row := q.db.QueryRow(ctx, updateCustomization,
 		arg.CharacterID,
 		arg.Hair,
-		arg.Face,
-		arg.Shirt,
-		arg.Pants,
-		arg.Shoes,
+		arg.Beard,
+		arg.SkinTone,
+		arg.HairColor,
+		arg.Cloak,
+		arg.AccentColor,
 	)
 	var i Customization
 	err := row.Scan(
 		&i.CharacterID,
 		&i.Hair,
-		&i.Face,
-		&i.Shirt,
-		&i.Pants,
-		&i.Shoes,
+		&i.Beard,
+		&i.SkinTone,
+		&i.HairColor,
+		&i.Cloak,
+		&i.AccentColor,
 	)
 	return &i, err
 }

@@ -166,3 +166,31 @@ func TestCORSPreflight_UnknownOrigin(t *testing.T) {
 		t.Fatalf("unexpected Allow-Origin %q for unknown origin", got)
 	}
 }
+
+func TestAuth_RegisterEmailValidationAndEmailLogin(t *testing.T) {
+	u := newUsername("mail")
+	email := u + "@Example.COM"
+
+	// Invalid email rejected.
+	doReq(t, http.MethodPost, apiBase()+"/auth/register", nil, fmt.Sprintf(`{"username":%q,"email":"not-an-email","password":"supersecret1"}`, u), http.StatusBadRequest)
+
+	// Password over 72 bytes rejected (prevents bcrypt ErrPasswordTooLong 500).
+	longPass := strings.Repeat("a", 73)
+	doReq(t, http.MethodPost, apiBase()+"/auth/register", nil, fmt.Sprintf(`{"username":%q,"email":%q,"password":%q}`, u, email, longPass), http.StatusBadRequest)
+
+	// Valid registration normalizes email to lowercase.
+	raw := doReq(t, http.MethodPost, apiBase()+"/auth/register", nil, fmt.Sprintf(`{"username":%q,"email":%q,"password":"supersecret1"}`, u, email), http.StatusCreated)
+	var reg struct {
+		Email string `json:"email"`
+	}
+	decodeJSON(t, raw, &reg)
+	if reg.Email != strings.ToLower(email) {
+		t.Fatalf("got email %q, want normalized %q", reg.Email, strings.ToLower(email))
+	}
+
+	// Duplicate email (different casing, different username) returns 409.
+	doReq(t, http.MethodPost, apiBase()+"/auth/register", nil, fmt.Sprintf(`{"username":%q,"email":%q,"password":"supersecret1"}`, newUsername("mail2"), strings.ToLower(email)), http.StatusConflict)
+
+	// Login using email field works.
+	doReq(t, http.MethodPost, apiBase()+"/auth/login", nil, fmt.Sprintf(`{"email":%q,"password":"supersecret1"}`, email), http.StatusOK)
+}

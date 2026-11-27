@@ -121,9 +121,11 @@ func createTestCharacter(t *testing.T, q *db.Queries) *db.Character {
 func testOwnerID(t *testing.T, q *db.Queries) uuid.UUID {
 	t.Helper()
 	ctx := context.Background()
+	uname := fmt.Sprintf("testuser_%d", time.Now().UnixNano())
 	user, err := q.CreateUser(ctx, db.CreateUserParams{
 		ID:           uuidv7.Must(),
-		Username:     fmt.Sprintf("testuser_%d", time.Now().UnixNano()),
+		Username:     uname,
+		Email:        uname + "@example.com",
 		PasswordHash: "hash",
 	})
 	if err != nil {
@@ -153,10 +155,11 @@ func createTestCharacterFull(t *testing.T, q *db.Queries) *db.Character {
 	_, err = q.CreateCustomization(ctx, db.CreateCustomizationParams{
 		CharacterID: char.ID,
 		Hair:        5,
-		Face:        3,
-		Shirt:       12,
-		Pants:       8,
-		Shoes:       2,
+		Beard:       3,
+		SkinTone:    4,
+		HairColor:   8,
+		Cloak:       2,
+		AccentColor: 6,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -252,12 +255,13 @@ func domainCharacter(char *db.Character, stats *db.Stat, cust *db.Customization)
 			Charisma:     uint8(stats.Charisma),
 		},
 		Customization: &characters.Customization{
-			ID:    characters.ID(cust.CharacterID),
-			Hair:  uint8(cust.Hair),
-			Face:  uint8(cust.Face),
-			Shirt: uint8(cust.Shirt),
-			Pants: uint8(cust.Pants),
-			Shoes: uint8(cust.Shoes),
+			ID:          characters.ID(cust.CharacterID),
+			Hair:        uint8(cust.Hair),
+			Beard:       uint8(cust.Beard),
+			SkinTone:    uint8(cust.SkinTone),
+			HairColor:   uint8(cust.HairColor),
+			Cloak:       uint8(cust.Cloak),
+			AccentColor: uint8(cust.AccentColor),
 		},
 	}
 }

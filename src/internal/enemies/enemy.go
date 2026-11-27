@@ -27,6 +27,7 @@ type Enemy struct {
 	Damage      uint   `db:"damage" json:"damage" redis:"damage"`
 	XPReward    uint   `db:"xp_reward" json:"xp_reward" redis:"xp_reward"`
 	ScoreReward uint   `db:"score_reward" json:"score_reward" redis:"score_reward"`
+	ImageURL    string `db:"image_url" json:"image_url,omitempty" redis:"image_url"`
 }
 
 func (e *Enemy) String() string {
@@ -55,6 +56,10 @@ func (e *Enemy) IsValid() bool {
 	validDamage := e.Damage > 0
 	validXPReward := e.XPReward > 0
 	validScoreReward := e.ScoreReward > 0
+	validImageURL := e.ImageURL == "" || (len(e.ImageURL) <= 500 &&
+		(strings.HasPrefix(e.ImageURL, "/uploads/") ||
+			strings.HasPrefix(e.ImageURL, "http://") ||
+			strings.HasPrefix(e.ImageURL, "https://")))
 
 	return validName &&
 		validType &&
@@ -64,5 +69,6 @@ func (e *Enemy) IsValid() bool {
 		validArmorClass &&
 		validDamage &&
 		validXPReward &&
-		validScoreReward
+		validScoreReward &&
+		validImageURL
 }

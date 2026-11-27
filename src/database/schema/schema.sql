@@ -1,6 +1,7 @@
 CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY,
     username TEXT NOT NULL UNIQUE,
+    email TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
     role TEXT NOT NULL DEFAULT 'user',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -27,6 +28,7 @@ CREATE TABLE IF NOT EXISTS items (
     duration INT,
     cooldown INT,
     capacity INT,
+    image_url TEXT,
 
     CONSTRAINT items_name_rarity_unique UNIQUE (name, rarity)
 );
@@ -77,11 +79,12 @@ CREATE TABLE IF NOT EXISTS stats (
 
 CREATE TABLE IF NOT EXISTS customizations (
     character_id BIGINT PRIMARY KEY REFERENCES characters (id) ON DELETE CASCADE,
-    hair SMALLINT NOT NULL CHECK (hair BETWEEN 0 AND 30),
-    face SMALLINT NOT NULL CHECK (face BETWEEN 0 AND 30),
-    shirt SMALLINT NOT NULL CHECK (shirt BETWEEN 0 AND 30),
-    pants SMALLINT NOT NULL CHECK (pants BETWEEN 0 AND 30),
-    shoes SMALLINT NOT NULL CHECK (shoes BETWEEN 0 AND 30)
+    hair SMALLINT NOT NULL CHECK (hair BETWEEN 0 AND 20),
+    beard SMALLINT NOT NULL CHECK (beard BETWEEN 0 AND 15),
+    skin_tone SMALLINT NOT NULL CHECK (skin_tone BETWEEN 0 AND 15),
+    hair_color SMALLINT NOT NULL CHECK (hair_color BETWEEN 0 AND 15),
+    cloak SMALLINT NOT NULL CHECK (cloak BETWEEN 0 AND 15),
+    accent_color SMALLINT NOT NULL CHECK (accent_color BETWEEN 0 AND 15)
 );
 
 CREATE TABLE IF NOT EXISTS enemies (
@@ -97,6 +100,7 @@ CREATE TABLE IF NOT EXISTS enemies (
     damage INT NOT NULL CHECK (damage > 0),
     xp_reward INT NOT NULL DEFAULT 0,
     score_reward INT NOT NULL DEFAULT 0,
+    image_url TEXT,
 
     CONSTRAINT enemies_name_tier_unique UNIQUE (name, tier)
 );
@@ -147,3 +151,14 @@ CREATE TABLE IF NOT EXISTS daily_scores (
 
 CREATE INDEX IF NOT EXISTS idx_daily_scores_leaderboard
     ON daily_scores (run_date, tier, score DESC, turns_taken ASC);
+
+ALTER TABLE items ADD COLUMN IF NOT EXISTS image_url TEXT;
+ALTER TABLE enemies ADD COLUMN IF NOT EXISTS image_url TEXT;
+
+CREATE TABLE IF NOT EXISTS user_stat_rolls (
+    user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    rolls INT[] NOT NULL DEFAULT '{}',
+    last_reroll_at TIMESTAMPTZ,
+    last_character_created_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);

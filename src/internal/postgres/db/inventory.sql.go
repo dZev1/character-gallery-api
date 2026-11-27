@@ -51,6 +51,7 @@ SELECT i.id             AS item_id,
        i.duration,
        i.cooldown,
        i.capacity,
+       i.image_url,
        inv.quantity,
        inv.is_equipped
 FROM inventory inv
@@ -72,6 +73,7 @@ type GetCharacterEquippedItemsRow struct {
 	Duration    pgtype.Int4
 	Cooldown    pgtype.Int4
 	Capacity    pgtype.Int4
+	ImageUrl    pgtype.Text
 	Quantity    int32
 	IsEquipped  bool
 }
@@ -99,6 +101,7 @@ func (q *Queries) GetCharacterEquippedItems(ctx context.Context, characterID int
 			&i.Duration,
 			&i.Cooldown,
 			&i.Capacity,
+			&i.ImageUrl,
 			&i.Quantity,
 			&i.IsEquipped,
 		); err != nil {
@@ -126,6 +129,7 @@ SELECT i.id             AS item_id,
        i.duration,
        i.cooldown,
        i.capacity,
+       i.image_url,
        inv.quantity,
        inv.is_equipped
 FROM inventory inv
@@ -147,6 +151,7 @@ type GetCharacterInventoryRow struct {
 	Duration    pgtype.Int4
 	Cooldown    pgtype.Int4
 	Capacity    pgtype.Int4
+	ImageUrl    pgtype.Text
 	Quantity    int32
 	IsEquipped  bool
 }
@@ -174,6 +179,7 @@ func (q *Queries) GetCharacterInventory(ctx context.Context, characterID int64) 
 			&i.Duration,
 			&i.Cooldown,
 			&i.Capacity,
+			&i.ImageUrl,
 			&i.Quantity,
 			&i.IsEquipped,
 		); err != nil {

@@ -35,6 +35,7 @@ SELECT i.id             AS item_id,
        i.duration,
        i.cooldown,
        i.capacity,
+       i.image_url,
        inv.quantity,
        inv.is_equipped
 FROM inventory inv
@@ -55,6 +56,7 @@ SELECT i.id             AS item_id,
        i.duration,
        i.cooldown,
        i.capacity,
+       i.image_url,
        inv.quantity,
        inv.is_equipped
 FROM inventory inv

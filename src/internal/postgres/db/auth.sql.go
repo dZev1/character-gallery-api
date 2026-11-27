@@ -12,23 +12,48 @@ import (
 )
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO users (id, username, password_hash)
-VALUES ($1, $2, $3)
-RETURNING id, username, password_hash, role, created_at
+INSERT INTO users (id, username, email, password_hash)
+VALUES ($1, $2, $3, $4)
+RETURNING id, username, email, password_hash, role, created_at
 `
 
 type CreateUserParams struct {
 	ID           uuid.UUID
 	Username     string
+	Email        string
 	PasswordHash string
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (*User, error) {
-	row := q.db.QueryRow(ctx, createUser, arg.ID, arg.Username, arg.PasswordHash)
+	row := q.db.QueryRow(ctx, createUser,
+		arg.ID,
+		arg.Username,
+		arg.Email,
+		arg.PasswordHash,
+	)
 	var i User
 	err := row.Scan(
 		&i.ID,
 		&i.Username,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Role,
+		&i.CreatedAt,
+	)
+	return &i, err
+}
+
+const selectUserByEmail = `-- name: SelectUserByEmail :one
+SELECT id, username, email, password_hash, role, created_at FROM users WHERE email = $1
+`
+
+func (q *Queries) SelectUserByEmail(ctx context.Context, email string) (*User, error) {
+	row := q.db.QueryRow(ctx, selectUserByEmail, email)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.Email,
 		&i.PasswordHash,
 		&i.Role,
 		&i.CreatedAt,
@@ -37,7 +62,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (*User, 
 }
 
 const selectUserByID = `-- name: SelectUserByID :one
-SELECT id, username, password_hash, role, created_at FROM users WHERE id = $1
+SELECT id, username, email, password_hash, role, created_at FROM users WHERE id = $1
 `
 
 func (q *Queries) SelectUserByID(ctx context.Context, id uuid.UUID) (*User, error) {
@@ -46,6 +71,7 @@ func (q *Queries) SelectUserByID(ctx context.Context, id uuid.UUID) (*User, erro
 	err := row.Scan(
 		&i.ID,
 		&i.Username,
+		&i.Email,
 		&i.PasswordHash,
 		&i.Role,
 		&i.CreatedAt,
@@ -54,7 +80,7 @@ func (q *Queries) SelectUserByID(ctx context.Context, id uuid.UUID) (*User, erro
 }
 
 const selectUserByUsername = `-- name: SelectUserByUsername :one
-SELECT id, username, password_hash, role, created_at FROM users WHERE username = $1
+SELECT id, username, email, password_hash, role, created_at FROM users WHERE username = $1
 `
 
 func (q *Queries) SelectUserByUsername(ctx context.Context, username string) (*User, error) {
@@ -63,6 +89,7 @@ func (q *Queries) SelectUserByUsername(ctx context.Context, username string) (*U
 	err := row.Scan(
 		&i.ID,
 		&i.Username,
+		&i.Email,
 		&i.PasswordHash,
 		&i.Role,
 		&i.CreatedAt,

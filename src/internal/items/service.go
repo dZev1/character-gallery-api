@@ -123,3 +123,99 @@ func (s *Service) CreateItem(ctx context.Context, item *Item) (*Item, error) {
 	}
 	return item, nil
 }
+
+type BulkCreateResult struct {
+	Created      []Item   `json:"created"`
+	Skipped      []string `json:"skipped"`
+	CreatedCount int      `json:"created_count"`
+	SkippedCount int      `json:"skipped_count"`
+}
+
+func (s *Service) BulkCreate(ctx context.Context, list []Item) (*BulkCreateResult, error) {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		log.Println("Error starting transaction:", err)
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+
+	result := &BulkCreateResult{
+		Created: make([]Item, 0, len(list)),
+		Skipped: make([]string, 0),
+	}
+
+	for i := range list {
+		it := list[i]
+		it.ID = 0
+		saved, inserted, err := s.repo.SaveItemIfNotExists(ctx, tx, &it)
+		if err != nil {
+			log.Println("Error bulk saving item:", err)
+			return nil, err
+		}
+		if inserted {
+			result.Created = append(result.Created, *saved)
+		} else {
+			result.Skipped = append(result.Skipped, fmt.Sprintf("%s (Rareza %d)", it.Name, it.Rarity))
+		}
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		log.Println("Error committing transaction:", err)
+		return nil, err
+	}
+
+	result.CreatedCount = len(result.Created)
+	result.SkippedCount = len(result.Skipped)
+	return result, nil
+}
+
+func (s *Service) UpdateItem(ctx context.Context, item *Item) (*Item, error) {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		log.Println("Error starting transaction:", err)
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+
+	updated, err := s.repo.UpdateItem(ctx, tx, item)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		log.Println("Error committing transaction:", err)
+		return nil, err
+	}
+
+	if s.cache != nil {
+		if err = s.cache.Set(ctx, fmt.Sprintf("%d", updated.ID), updated, 0); err != nil {
+			log.Printf("cache set item %d: %v", updated.ID, err)
+		}
+	}
+	return updated, nil
+}
+
+func (s *Service) DeleteItem(ctx context.Context, id ID) error {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		log.Println("Error starting transaction:", err)
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	if err = s.repo.DeleteItem(ctx, tx, id); err != nil {
+		return err
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		log.Println("Error committing transaction:", err)
+		return err
+	}
+
+	if s.cache != nil {
+		if err = s.cache.Delete(ctx, fmt.Sprintf("%d", id)); err != nil {
+			log.Printf("cache delete item %d: %v", id, err)
+		}
+	}
+	return nil
+}

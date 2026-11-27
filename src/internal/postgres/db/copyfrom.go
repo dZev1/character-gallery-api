@@ -38,6 +38,7 @@ func (r iteratorForSeedEnemies) Values() ([]interface{}, error) {
 		r.rows[0].Damage,
 		r.rows[0].XpReward,
 		r.rows[0].ScoreReward,
+		r.rows[0].ImageUrl,
 	}, nil
 }
 
@@ -46,7 +47,7 @@ func (r iteratorForSeedEnemies) Err() error {
 }
 
 func (q *Queries) SeedEnemies(ctx context.Context, arg []SeedEnemiesParams) (int64, error) {
-	return q.db.CopyFrom(ctx, []string{"enemies"}, []string{"name", "type", "tier", "description", "hp_max", "ac", "damage", "xp_reward", "score_reward"}, &iteratorForSeedEnemies{rows: arg})
+	return q.db.CopyFrom(ctx, []string{"enemies"}, []string{"name", "type", "tier", "description", "hp_max", "ac", "damage", "xp_reward", "score_reward", "image_url"}, &iteratorForSeedEnemies{rows: arg})
 }
 
 // iteratorForSeedItems implements pgx.CopyFromSource.
@@ -81,6 +82,7 @@ func (r iteratorForSeedItems) Values() ([]interface{}, error) {
 		r.rows[0].Duration,
 		r.rows[0].Cooldown,
 		r.rows[0].Capacity,
+		r.rows[0].ImageUrl,
 	}, nil
 }
 
@@ -89,5 +91,5 @@ func (r iteratorForSeedItems) Err() error {
 }
 
 func (q *Queries) SeedItems(ctx context.Context, arg []SeedItemsParams) (int64, error) {
-	return q.db.CopyFrom(ctx, []string{"items"}, []string{"name", "type", "description", "equippable", "rarity", "damage", "defense", "heal_amount", "mana_cost", "duration", "cooldown", "capacity"}, &iteratorForSeedItems{rows: arg})
+	return q.db.CopyFrom(ctx, []string{"items"}, []string{"name", "type", "description", "equippable", "rarity", "damage", "defense", "heal_amount", "mana_cost", "duration", "cooldown", "capacity", "image_url"}, &iteratorForSeedItems{rows: arg})
 }

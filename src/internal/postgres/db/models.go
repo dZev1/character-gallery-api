@@ -26,10 +26,11 @@ type Character struct {
 type Customization struct {
 	CharacterID int64
 	Hair        int16
-	Face        int16
-	Shirt       int16
-	Pants       int16
-	Shoes       int16
+	Beard       int16
+	SkinTone    int16
+	HairColor   int16
+	Cloak       int16
+	AccentColor int16
 }
 
 type DailyRun struct {
@@ -81,6 +82,7 @@ type Enemy struct {
 	Damage      int32
 	XpReward    int32
 	ScoreReward int32
+	ImageUrl    pgtype.Text
 }
 
 type Inventory struct {
@@ -104,6 +106,7 @@ type Item struct {
 	Duration    pgtype.Int4
 	Cooldown    pgtype.Int4
 	Capacity    pgtype.Int4
+	ImageUrl    pgtype.Text
 }
 
 type Stat struct {
@@ -119,7 +122,16 @@ type Stat struct {
 type User struct {
 	ID           uuid.UUID
 	Username     string
+	Email        string
 	PasswordHash string
 	Role         string
 	CreatedAt    pgtype.Timestamptz
+}
+
+type UserStatRoll struct {
+	UserID                 uuid.UUID
+	Rolls                  []int32
+	LastRerollAt           pgtype.Timestamptz
+	LastCharacterCreatedAt pgtype.Timestamptz
+	UpdatedAt              pgtype.Timestamptz
 }
