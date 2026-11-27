@@ -158,7 +158,12 @@ ALTER TABLE enemies ADD COLUMN IF NOT EXISTS image_url TEXT;
 CREATE TABLE IF NOT EXISTS user_stat_rolls (
     user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     rolls INT[] NOT NULL DEFAULT '{}',
+    rerolls_used INT NOT NULL DEFAULT 0,
     last_reroll_at TIMESTAMPTZ,
     last_character_created_at TIMESTAMPTZ,
+    last_character_deleted_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE user_stat_rolls ADD COLUMN IF NOT EXISTS rerolls_used INT NOT NULL DEFAULT 0;
+ALTER TABLE user_stat_rolls ADD COLUMN IF NOT EXISTS last_character_deleted_at TIMESTAMPTZ;

@@ -6,11 +6,9 @@ import (
 	"dZev1/character-gallery/internal/postgres/db"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -335,10 +333,9 @@ func (c *characterRepo) UpsertUserStatRoll(ctx context.Context, exec db.DBTX, us
 	}
 
 	row, err := c.q(exec).UpsertUserStatRoll(ctx, db.UpsertUserStatRollParams{
-		UserID:                 userID,
-		Rolls:                  rolls32,
-		LastRerollAt:           toTimestamptz(roll.LastRerollAt),
-		LastCharacterCreatedAt: toTimestamptz(roll.LastCharacterCreatedAt),
+		UserID:      userID,
+		Rolls:       rolls32,
+		RerollsUsed: int32(roll.RerollsUsed),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("upsert user stat roll %s: %w", userID, err)
@@ -353,11 +350,11 @@ func (c *characterRepo) ConsumeUserStatRoll(ctx context.Context, exec db.DBTX, u
 	return nil
 }
 
-func toTimestamptz(t *time.Time) pgtype.Timestamptz {
-	if t == nil {
-		return pgtype.Timestamptz{}
+func (c *characterRepo) RecordUserCharacterDelete(ctx context.Context, exec db.DBTX, userID uuid.UUID) error {
+	if _, err := c.q(exec).RecordUserCharacterDelete(ctx, userID); err != nil {
+		return fmt.Errorf("record character delete %s: %w", userID, err)
 	}
-	return pgtype.Timestamptz{Time: *t, Valid: true}
+	return nil
 }
 
 func toDomainStatRoll(row *db.UserStatRoll) *characters.UserStatRoll {
@@ -365,14 +362,13 @@ func toDomainStatRoll(row *db.UserStatRoll) *characters.UserStatRoll {
 	for i, v := range row.Rolls {
 		rolls[i] = int(v)
 	}
-	res := &characters.UserStatRoll{Rolls: rolls}
-	if row.LastRerollAt.Valid {
-		t := row.LastRerollAt.Time
-		res.LastRerollAt = &t
+	res := &characters.UserStatRoll{
+		Rolls:       rolls,
+		RerollsUsed: int(row.RerollsUsed),
 	}
-	if row.LastCharacterCreatedAt.Valid {
-		t := row.LastCharacterCreatedAt.Time
-		res.LastCharacterCreatedAt = &t
+	if row.LastCharacterDeletedAt.Valid {
+		t := row.LastCharacterDeletedAt.Time
+		res.LastCharacterDeletedAt = &t
 	}
 	return res
 }

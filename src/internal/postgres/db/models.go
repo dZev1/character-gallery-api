@@ -131,7 +131,9 @@ type User struct {
 type UserStatRoll struct {
 	UserID                 uuid.UUID
 	Rolls                  []int32
+	RerollsUsed            int32
 	LastRerollAt           pgtype.Timestamptz
 	LastCharacterCreatedAt pgtype.Timestamptz
+	LastCharacterDeletedAt pgtype.Timestamptz
 	UpdatedAt              pgtype.Timestamptz
 }

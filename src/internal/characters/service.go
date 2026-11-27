@@ -202,6 +202,8 @@ func (s *Service) Update(ctx context.Context, character *Character, ownerID uuid
 }
 
 func (s *Service) Delete(ctx context.Context, id ID, ownerID uuid.UUID) error {
+	now := time.Now().UTC()
+
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		log.Println("Error beginning transaction:", err)
@@ -209,9 +211,32 @@ func (s *Service) Delete(ctx context.Context, id ID, ownerID uuid.UUID) error {
 	}
 	defer tx.Rollback(ctx)
 
-	err = s.repo.DeleteCharacter(ctx, tx, id, ownerID)
-	if err != nil {
+	if ownerID != uuid.Nil {
+		count, err := s.repo.CountCharactersByOwner(ctx, tx, ownerID)
+		if err != nil {
+			return err
+		}
+		if count < MaxCharactersPerOwner {
+			return ErrDeleteRequiresFullRoster
+		}
+
+		state, err := s.repo.GetUserStatRoll(ctx, tx, ownerID)
+		if err != nil {
+			return err
+		}
+		if state != nil && state.LastCharacterDeletedAt != nil && now.Before(state.LastCharacterDeletedAt.Add(WeeklyCooldown)) {
+			return ErrDeleteCooldown
+		}
+	}
+
+	if err = s.repo.DeleteCharacter(ctx, tx, id, ownerID); err != nil {
 		return err
+	}
+
+	if ownerID != uuid.Nil {
+		if err = s.repo.RecordUserCharacterDelete(ctx, tx, ownerID); err != nil {
+			return err
+		}
 	}
 
 	if err = tx.Commit(ctx); err != nil {
@@ -226,53 +251,36 @@ func (s *Service) Delete(ctx context.Context, id ID, ownerID uuid.UUID) error {
 	return nil
 }
 
-func buildStatRollView(state *UserStatRoll, now time.Time) *StatRollView {
-	view := &StatRollView{
-		Rolls:          []int{},
-		CanReroll:      true,
-		CanCreate:      true,
-		ClassModifiers: ClassModifiers,
-	}
-	if state == nil {
-		return view
-	}
-	if len(state.Rolls) > 0 {
-		view.Rolls = state.Rolls
-	}
-	if state.LastCharacterCreatedAt != nil {
-		next := state.LastCharacterCreatedAt.Add(WeeklyCooldown)
-		if now.Before(next) {
-			view.CanCreate = false
-			view.NextCreateAt = &next
-			view.CanReroll = false
+func buildStatRollView(state *UserStatRoll) *StatRollView {
+	rolls := []int{}
+	rerollsUsed := 0
+	if state != nil {
+		if len(state.Rolls) > 0 {
+			rolls = state.Rolls
 		}
+		rerollsUsed = state.RerollsUsed
 	}
-	if state.LastRerollAt != nil {
-		next := state.LastRerollAt.Add(WeeklyCooldown)
-		if now.Before(next) {
-			view.CanReroll = false
-			view.NextRerollAt = &next
-		}
+	remaining := MaxRerollsPerCharacter - rerollsUsed
+	if remaining < 0 {
+		remaining = 0
 	}
-	return view
+	return &StatRollView{
+		Rolls:            rolls,
+		RerollsRemaining: remaining,
+		MaxRerolls:       MaxRerollsPerCharacter,
+		CanReroll:        remaining > 0,
+		ClassModifiers:   ClassModifiers,
+	}
 }
 
 func (s *Service) GetOrCreateStatRoll(ctx context.Context, userID uuid.UUID) (*StatRollView, error) {
-	now := time.Now().UTC()
-
 	state, err := s.repo.GetUserStatRoll(ctx, s.pool, userID)
 	if err != nil {
 		return nil, err
 	}
 
-	// If user is on weekly character creation cooldown, don't generate new rolls yet.
-	if state != nil && state.LastCharacterCreatedAt != nil && now.Before(state.LastCharacterCreatedAt.Add(WeeklyCooldown)) {
-		return buildStatRollView(state, now), nil
-	}
-
-	// If user already has an active 6-stat roll, return it unchanged.
 	if state != nil && len(state.Rolls) == 6 {
-		return buildStatRollView(state, now), nil
+		return buildStatRollView(state), nil
 	}
 
 	rolls, err := RollStatPool()
@@ -280,31 +288,28 @@ func (s *Service) GetOrCreateStatRoll(ctx context.Context, userID uuid.UUID) (*S
 		return nil, fmt.Errorf("roll stat pool: %w", err)
 	}
 
-	nextState := &UserStatRoll{Rolls: rolls}
-	if state != nil {
-		nextState.LastRerollAt = state.LastRerollAt
-		nextState.LastCharacterCreatedAt = state.LastCharacterCreatedAt
-	}
-
-	saved, err := s.repo.UpsertUserStatRoll(ctx, s.pool, userID, nextState)
+	saved, err := s.repo.UpsertUserStatRoll(ctx, s.pool, userID, &UserStatRoll{
+		Rolls:       rolls,
+		RerollsUsed: 0,
+	})
 	if err != nil {
 		return nil, err
 	}
-	return buildStatRollView(saved, now), nil
+	return buildStatRollView(saved), nil
 }
 
 func (s *Service) RerollStats(ctx context.Context, userID uuid.UUID) (*StatRollView, error) {
-	now := time.Now().UTC()
-
 	state, err := s.repo.GetUserStatRoll(ctx, s.pool, userID)
 	if err != nil {
 		return nil, err
 	}
-	if state != nil && state.LastCharacterCreatedAt != nil && now.Before(state.LastCharacterCreatedAt.Add(WeeklyCooldown)) {
-		return nil, ErrCreateCooldown
+
+	used := 0
+	if state != nil && len(state.Rolls) == 6 {
+		used = state.RerollsUsed
 	}
-	if state != nil && state.LastRerollAt != nil && now.Before(state.LastRerollAt.Add(WeeklyCooldown)) {
-		return nil, ErrRerollCooldown
+	if used >= MaxRerollsPerCharacter {
+		return nil, ErrNoRerollsLeft
 	}
 
 	rolls, err := RollStatPool()
@@ -312,24 +317,17 @@ func (s *Service) RerollStats(ctx context.Context, userID uuid.UUID) (*StatRollV
 		return nil, fmt.Errorf("roll stat pool: %w", err)
 	}
 
-	nextState := &UserStatRoll{
-		Rolls:        rolls,
-		LastRerollAt: &now,
-	}
-	if state != nil {
-		nextState.LastCharacterCreatedAt = state.LastCharacterCreatedAt
-	}
-
-	saved, err := s.repo.UpsertUserStatRoll(ctx, s.pool, userID, nextState)
+	saved, err := s.repo.UpsertUserStatRoll(ctx, s.pool, userID, &UserStatRoll{
+		Rolls:       rolls,
+		RerollsUsed: used + 1,
+	})
 	if err != nil {
 		return nil, err
 	}
-	return buildStatRollView(saved, now), nil
+	return buildStatRollView(saved), nil
 }
 
 func (s *Service) CreateWithStatRoll(ctx context.Context, character *Character, ownerID uuid.UUID) (*Character, error) {
-	now := time.Now().UTC()
-
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return nil, err
@@ -347,9 +345,6 @@ func (s *Service) CreateWithStatRoll(ctx context.Context, character *Character, 
 	state, err := s.repo.GetUserStatRoll(ctx, tx, ownerID)
 	if err != nil {
 		return nil, err
-	}
-	if state != nil && state.LastCharacterCreatedAt != nil && now.Before(state.LastCharacterCreatedAt.Add(WeeklyCooldown)) {
-		return nil, ErrCreateCooldown
 	}
 	if state == nil || len(state.Rolls) != 6 {
 		return nil, ErrNoStatRoll

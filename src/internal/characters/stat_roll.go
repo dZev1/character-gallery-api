@@ -8,13 +8,17 @@ import (
 	"time"
 )
 
-const WeeklyCooldown = 7 * 24 * time.Hour
+const (
+	WeeklyCooldown         = 7 * 24 * time.Hour
+	MaxRerollsPerCharacter = 3
+)
 
 var (
-	ErrRerollCooldown        = errors.New("reroll is on weekly cooldown")
-	ErrCreateCooldown        = errors.New("character creation is on weekly cooldown")
-	ErrNoStatRoll            = errors.New("no active stat roll found; fetch stat roll first")
-	ErrInvalidStatAllocation = errors.New("stats must match the active server stat roll")
+	ErrNoRerollsLeft            = errors.New("no stat rerolls remaining for this character")
+	ErrDeleteRequiresFullRoster = errors.New("you can only delete a character once all 6 character slots are full")
+	ErrDeleteCooldown           = errors.New("you can only delete one character per week")
+	ErrNoStatRoll               = errors.New("no active stat roll found; fetch stat roll first")
+	ErrInvalidStatAllocation    = errors.New("stats must match the active server stat roll")
 )
 
 type StatModifiers struct {
@@ -43,17 +47,16 @@ var ClassModifiers = map[Class]StatModifiers{
 
 type UserStatRoll struct {
 	Rolls                  []int
-	LastRerollAt           *time.Time
-	LastCharacterCreatedAt *time.Time
+	RerollsUsed            int
+	LastCharacterDeletedAt *time.Time
 }
 
 type StatRollView struct {
-	Rolls          []int                   `json:"rolls"`
-	CanReroll      bool                    `json:"can_reroll"`
-	NextRerollAt   *time.Time              `json:"next_reroll_at,omitempty"`
-	CanCreate      bool                    `json:"can_create"`
-	NextCreateAt   *time.Time              `json:"next_create_at,omitempty"`
-	ClassModifiers map[Class]StatModifiers `json:"class_modifiers"`
+	Rolls            []int                   `json:"rolls"`
+	RerollsRemaining int                     `json:"rerolls_remaining"`
+	MaxRerolls       int                     `json:"max_rerolls"`
+	CanReroll        bool                    `json:"can_reroll"`
+	ClassModifiers   map[Class]StatModifiers `json:"class_modifiers"`
 }
 
 // RollStatPool rolls 6 ability scores using 4d6 drop lowest (cryptographically random).

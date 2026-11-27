@@ -22,4 +22,5 @@ type Repository interface {
 	GetUserStatRoll(ctx context.Context, exec db.DBTX, userID uuid.UUID) (*UserStatRoll, error)
 	UpsertUserStatRoll(ctx context.Context, exec db.DBTX, userID uuid.UUID, roll *UserStatRoll) (*UserStatRoll, error)
 	ConsumeUserStatRoll(ctx context.Context, exec db.DBTX, userID uuid.UUID) error
+	RecordUserCharacterDelete(ctx context.Context, exec db.DBTX, userID uuid.UUID) error
 }

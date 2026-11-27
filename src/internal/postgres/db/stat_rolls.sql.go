@@ -9,16 +9,16 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const consumeUserStatRoll = `-- name: ConsumeUserStatRoll :one
 UPDATE user_stat_rolls
 SET rolls = '{}',
+    rerolls_used = 0,
     last_character_created_at = NOW(),
     updated_at = NOW()
 WHERE user_id = $1
-RETURNING user_id, rolls, last_reroll_at, last_character_created_at, updated_at
+RETURNING user_id, rolls, rerolls_used, last_reroll_at, last_character_created_at, last_character_deleted_at, updated_at
 `
 
 func (q *Queries) ConsumeUserStatRoll(ctx context.Context, userID uuid.UUID) (*UserStatRoll, error) {
@@ -27,15 +27,17 @@ func (q *Queries) ConsumeUserStatRoll(ctx context.Context, userID uuid.UUID) (*U
 	err := row.Scan(
 		&i.UserID,
 		&i.Rolls,
+		&i.RerollsUsed,
 		&i.LastRerollAt,
 		&i.LastCharacterCreatedAt,
+		&i.LastCharacterDeletedAt,
 		&i.UpdatedAt,
 	)
 	return &i, err
 }
 
 const getUserStatRoll = `-- name: GetUserStatRoll :one
-SELECT user_id, rolls, last_reroll_at, last_character_created_at, updated_at FROM user_stat_rolls
+SELECT user_id, rolls, rerolls_used, last_reroll_at, last_character_created_at, last_character_deleted_at, updated_at FROM user_stat_rolls
 WHERE user_id = $1
 `
 
@@ -45,8 +47,37 @@ func (q *Queries) GetUserStatRoll(ctx context.Context, userID uuid.UUID) (*UserS
 	err := row.Scan(
 		&i.UserID,
 		&i.Rolls,
+		&i.RerollsUsed,
 		&i.LastRerollAt,
 		&i.LastCharacterCreatedAt,
+		&i.LastCharacterDeletedAt,
+		&i.UpdatedAt,
+	)
+	return &i, err
+}
+
+const recordUserCharacterDelete = `-- name: RecordUserCharacterDelete :one
+INSERT INTO user_stat_rolls (
+    user_id, rolls, rerolls_used, last_character_deleted_at, updated_at
+) VALUES (
+    $1, '{}', 0, NOW(), NOW()
+)
+ON CONFLICT (user_id) DO UPDATE SET
+    last_character_deleted_at = NOW(),
+    updated_at = NOW()
+RETURNING user_id, rolls, rerolls_used, last_reroll_at, last_character_created_at, last_character_deleted_at, updated_at
+`
+
+func (q *Queries) RecordUserCharacterDelete(ctx context.Context, userID uuid.UUID) (*UserStatRoll, error) {
+	row := q.db.QueryRow(ctx, recordUserCharacterDelete, userID)
+	var i UserStatRoll
+	err := row.Scan(
+		&i.UserID,
+		&i.Rolls,
+		&i.RerollsUsed,
+		&i.LastRerollAt,
+		&i.LastCharacterCreatedAt,
+		&i.LastCharacterDeletedAt,
 		&i.UpdatedAt,
 	)
 	return &i, err
@@ -54,38 +85,33 @@ func (q *Queries) GetUserStatRoll(ctx context.Context, userID uuid.UUID) (*UserS
 
 const upsertUserStatRoll = `-- name: UpsertUserStatRoll :one
 INSERT INTO user_stat_rolls (
-    user_id, rolls, last_reroll_at, last_character_created_at, updated_at
+    user_id, rolls, rerolls_used, updated_at
 ) VALUES (
-    $1, $2, $3, $4, NOW()
+    $1, $2, $3, NOW()
 )
 ON CONFLICT (user_id) DO UPDATE SET
     rolls = EXCLUDED.rolls,
-    last_reroll_at = EXCLUDED.last_reroll_at,
-    last_character_created_at = EXCLUDED.last_character_created_at,
+    rerolls_used = EXCLUDED.rerolls_used,
     updated_at = NOW()
-RETURNING user_id, rolls, last_reroll_at, last_character_created_at, updated_at
+RETURNING user_id, rolls, rerolls_used, last_reroll_at, last_character_created_at, last_character_deleted_at, updated_at
 `
 
 type UpsertUserStatRollParams struct {
-	UserID                 uuid.UUID
-	Rolls                  []int32
-	LastRerollAt           pgtype.Timestamptz
-	LastCharacterCreatedAt pgtype.Timestamptz
+	UserID      uuid.UUID
+	Rolls       []int32
+	RerollsUsed int32
 }
 
 func (q *Queries) UpsertUserStatRoll(ctx context.Context, arg UpsertUserStatRollParams) (*UserStatRoll, error) {
-	row := q.db.QueryRow(ctx, upsertUserStatRoll,
-		arg.UserID,
-		arg.Rolls,
-		arg.LastRerollAt,
-		arg.LastCharacterCreatedAt,
-	)
+	row := q.db.QueryRow(ctx, upsertUserStatRoll, arg.UserID, arg.Rolls, arg.RerollsUsed)
 	var i UserStatRoll
 	err := row.Scan(
 		&i.UserID,
 		&i.Rolls,
+		&i.RerollsUsed,
 		&i.LastRerollAt,
 		&i.LastCharacterCreatedAt,
+		&i.LastCharacterDeletedAt,
 		&i.UpdatedAt,
 	)
 	return &i, err

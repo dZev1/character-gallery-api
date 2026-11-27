@@ -47,14 +47,11 @@ func (g *Gallery) HandleRerollStats(w http.ResponseWriter, r *http.Request) {
 
 	view, err := g.characterService.RerollStats(r.Context(), claims.UserID)
 	if err != nil {
-		switch {
-		case errors.Is(err, characters.ErrCreateCooldown):
-			writeError(w, http.StatusConflict, "CHARACTER_CREATE_COOLDOWN", "You can only create one character per week")
-		case errors.Is(err, characters.ErrRerollCooldown):
-			writeError(w, http.StatusConflict, "REROLL_COOLDOWN", "You can only reroll stats once per week")
-		default:
-			writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Error rerolling stats")
+		if errors.Is(err, characters.ErrNoRerollsLeft) {
+			writeError(w, http.StatusConflict, "NO_REROLLS_LEFT", "You have used all 3 stat rerolls for this character")
+			return
 		}
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Error rerolling stats")
 		return
 	}
 	writeJSON(w, http.StatusOK, view)
@@ -90,8 +87,6 @@ func (g *Gallery) HandleCreateCharacter(w http.ResponseWriter, r *http.Request) 
 		switch {
 		case errors.Is(err, characters.ErrCharacterLimitReached):
 			writeError(w, http.StatusConflict, "CHARACTER_LIMIT_REACHED", "Maximum of 6 characters per user reached")
-		case errors.Is(err, characters.ErrCreateCooldown):
-			writeError(w, http.StatusConflict, "CHARACTER_CREATE_COOLDOWN", "You can only create one character per week")
 		case errors.Is(err, characters.ErrNoStatRoll):
 			writeError(w, http.StatusBadRequest, "NO_STAT_ROLL", "You must roll stats before creating a character")
 		case errors.Is(err, characters.ErrInvalidStatAllocation):
@@ -235,11 +230,16 @@ func (g *Gallery) HandleDeleteCharacter(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if err = g.characterService.Delete(r.Context(), characters.ID(id), ownerIDForRequest(claims)); err != nil {
-		if isCharacterNotFound(err) {
+		switch {
+		case isCharacterNotFound(err):
 			writeError(w, http.StatusNotFound, "NOT_FOUND", "Character not found")
-			return
+		case errors.Is(err, characters.ErrDeleteRequiresFullRoster):
+			writeError(w, http.StatusConflict, "DELETE_REQUIRES_FULL_ROSTER", "You can only delete a character once all 6 slots are full")
+		case errors.Is(err, characters.ErrDeleteCooldown):
+			writeError(w, http.StatusConflict, "DELETE_COOLDOWN", "You can only delete one character per week")
+		default:
+			writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Error deleting character")
 		}
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Error deleting character")
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"result": "success"})
