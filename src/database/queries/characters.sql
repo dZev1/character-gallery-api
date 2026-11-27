@@ -35,32 +35,35 @@ SELECT * FROM customizations
 WHERE character_id = $1;
 
 -- name: SelectCharacterFull :one
-SELECT c.id, c.owner_id, c.name, c.body_type, c.species, c.class,
+SELECT c.id, c.owner_id, u.username AS owner_username, c.name, c.body_type, c.species, c.class,
        c.level, c.xp, c.hp_max, c.hp_current, c.prestige,
        s.strength, s.dexterity, s.constitution, s.intelligence, s.wisdom, s.charisma,
        cu.hair, cu.beard, cu.skin_tone, cu.hair_color, cu.cloak, cu.accent_color
 FROM characters c
+JOIN users u ON u.id = c.owner_id
 JOIN stats s ON s.character_id = c.id
 JOIN customizations cu ON cu.character_id = c.id
 WHERE c.id = $1;
 
 -- name: SelectAllCharactersFull :many
-SELECT c.id, c.owner_id, c.name, c.body_type, c.species, c.class,
+SELECT c.id, c.owner_id, u.username AS owner_username, c.name, c.body_type, c.species, c.class,
        c.level, c.xp, c.hp_max, c.hp_current, c.prestige,
        s.strength, s.dexterity, s.constitution, s.intelligence, s.wisdom, s.charisma,
        cu.hair, cu.beard, cu.skin_tone, cu.hair_color, cu.cloak, cu.accent_color
 FROM characters c
+JOIN users u ON u.id = c.owner_id
 JOIN stats s ON s.character_id = c.id
 JOIN customizations cu ON cu.character_id = c.id
 ORDER BY c.id
 LIMIT $1 OFFSET $2;
 
 -- name: SelectCharactersByOwnerFull :many
-SELECT c.id, c.owner_id, c.name, c.body_type, c.species, c.class,
+SELECT c.id, c.owner_id, u.username AS owner_username, c.name, c.body_type, c.species, c.class,
        c.level, c.xp, c.hp_max, c.hp_current, c.prestige,
        s.strength, s.dexterity, s.constitution, s.intelligence, s.wisdom, s.charisma,
        cu.hair, cu.beard, cu.skin_tone, cu.hair_color, cu.cloak, cu.accent_color
 FROM characters c
+JOIN users u ON u.id = c.owner_id
 JOIN stats s ON s.character_id = c.id
 JOIN customizations cu ON cu.character_id = c.id
 WHERE c.owner_id = $1

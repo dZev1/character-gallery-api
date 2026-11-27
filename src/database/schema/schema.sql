@@ -154,3 +154,11 @@ CREATE INDEX IF NOT EXISTS idx_daily_scores_leaderboard
 
 ALTER TABLE items ADD COLUMN IF NOT EXISTS image_url TEXT;
 ALTER TABLE enemies ADD COLUMN IF NOT EXISTS image_url TEXT;
+
+CREATE TABLE IF NOT EXISTS user_stat_rolls (
+    user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    rolls INT[] NOT NULL DEFAULT '{}',
+    last_reroll_at TIMESTAMPTZ,
+    last_character_created_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);

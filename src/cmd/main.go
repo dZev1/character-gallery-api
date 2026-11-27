@@ -182,8 +182,11 @@ func registerRoutes(
 	}
 
 	// Characters
+	mux.HandleFunc("GET "+baseURL+"/characters/stat-roll", gallery.HandleGetStatRoll)
+	mux.HandleFunc("POST "+baseURL+"/characters/stat-roll/reroll", gallery.HandleRerollStats)
 	mux.HandleFunc("POST "+baseURL+"/characters", gallery.HandleCreateCharacter)
 	mux.HandleFunc("GET "+baseURL+"/characters", gallery.HandleGetAllCharacters)
+	mux.HandleFunc("QUERY "+baseURL+"/characters", gallery.HandleQueryCharacters)
 	mux.HandleFunc("GET "+baseURL+"/characters/{characterId}", gallery.HandleGetCharacter)
 	mux.HandleFunc("PUT "+baseURL+"/characters/{characterId}", gallery.HandleUpdateCharacter)
 	mux.HandleFunc("DELETE "+baseURL+"/characters/{characterId}", gallery.HandleDeleteCharacter)

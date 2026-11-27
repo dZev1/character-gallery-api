@@ -24,7 +24,8 @@ const formatString = "\nName: %v\nSpecies: %v\nBody Type: %v\nClass: %v\nLevel: 
 
 type Character struct {
 	ID            ID             `db:"id" json:"id" redis:"id"`
-	OwnerID       uuid.UUID      `db:"owner_id" json:"-"`
+	OwnerID       uuid.UUID      `db:"owner_id" json:"owner_id,omitempty" redis:"owner_id"`
+	OwnerUsername string         `db:"owner_username" json:"owner_username,omitempty" redis:"owner_username"`
 	Name          string         `db:"name" json:"name" redis:"name"`
 	BodyType      BodyType       `db:"body_type" json:"body_type" redis:"body_type"`
 	Species       Species        `db:"species" json:"species" redis:"species"`

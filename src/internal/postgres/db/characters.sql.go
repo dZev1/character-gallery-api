@@ -294,11 +294,12 @@ func (q *Queries) PrestigeCharacter(ctx context.Context, arg PrestigeCharacterPa
 }
 
 const selectAllCharactersFull = `-- name: SelectAllCharactersFull :many
-SELECT c.id, c.owner_id, c.name, c.body_type, c.species, c.class,
+SELECT c.id, c.owner_id, u.username AS owner_username, c.name, c.body_type, c.species, c.class,
        c.level, c.xp, c.hp_max, c.hp_current, c.prestige,
        s.strength, s.dexterity, s.constitution, s.intelligence, s.wisdom, s.charisma,
        cu.hair, cu.beard, cu.skin_tone, cu.hair_color, cu.cloak, cu.accent_color
 FROM characters c
+JOIN users u ON u.id = c.owner_id
 JOIN stats s ON s.character_id = c.id
 JOIN customizations cu ON cu.character_id = c.id
 ORDER BY c.id
@@ -311,29 +312,30 @@ type SelectAllCharactersFullParams struct {
 }
 
 type SelectAllCharactersFullRow struct {
-	ID           int64
-	OwnerID      uuid.UUID
-	Name         string
-	BodyType     string
-	Species      string
-	Class        string
-	Level        int32
-	Xp           int32
-	HpMax        int32
-	HpCurrent    int32
-	Prestige     int32
-	Strength     int16
-	Dexterity    int16
-	Constitution int16
-	Intelligence int16
-	Wisdom       int16
-	Charisma     int16
-	Hair         int16
-	Beard        int16
-	SkinTone     int16
-	HairColor    int16
-	Cloak        int16
-	AccentColor  int16
+	ID            int64
+	OwnerID       uuid.UUID
+	OwnerUsername string
+	Name          string
+	BodyType      string
+	Species       string
+	Class         string
+	Level         int32
+	Xp            int32
+	HpMax         int32
+	HpCurrent     int32
+	Prestige      int32
+	Strength      int16
+	Dexterity     int16
+	Constitution  int16
+	Intelligence  int16
+	Wisdom        int16
+	Charisma      int16
+	Hair          int16
+	Beard         int16
+	SkinTone      int16
+	HairColor     int16
+	Cloak         int16
+	AccentColor   int16
 }
 
 func (q *Queries) SelectAllCharactersFull(ctx context.Context, arg SelectAllCharactersFullParams) ([]*SelectAllCharactersFullRow, error) {
@@ -348,6 +350,7 @@ func (q *Queries) SelectAllCharactersFull(ctx context.Context, arg SelectAllChar
 		if err := rows.Scan(
 			&i.ID,
 			&i.OwnerID,
+			&i.OwnerUsername,
 			&i.Name,
 			&i.BodyType,
 			&i.Species,
@@ -425,40 +428,42 @@ func (q *Queries) SelectCharacterCustomization(ctx context.Context, characterID 
 }
 
 const selectCharacterFull = `-- name: SelectCharacterFull :one
-SELECT c.id, c.owner_id, c.name, c.body_type, c.species, c.class,
+SELECT c.id, c.owner_id, u.username AS owner_username, c.name, c.body_type, c.species, c.class,
        c.level, c.xp, c.hp_max, c.hp_current, c.prestige,
        s.strength, s.dexterity, s.constitution, s.intelligence, s.wisdom, s.charisma,
        cu.hair, cu.beard, cu.skin_tone, cu.hair_color, cu.cloak, cu.accent_color
 FROM characters c
+JOIN users u ON u.id = c.owner_id
 JOIN stats s ON s.character_id = c.id
 JOIN customizations cu ON cu.character_id = c.id
 WHERE c.id = $1
 `
 
 type SelectCharacterFullRow struct {
-	ID           int64
-	OwnerID      uuid.UUID
-	Name         string
-	BodyType     string
-	Species      string
-	Class        string
-	Level        int32
-	Xp           int32
-	HpMax        int32
-	HpCurrent    int32
-	Prestige     int32
-	Strength     int16
-	Dexterity    int16
-	Constitution int16
-	Intelligence int16
-	Wisdom       int16
-	Charisma     int16
-	Hair         int16
-	Beard        int16
-	SkinTone     int16
-	HairColor    int16
-	Cloak        int16
-	AccentColor  int16
+	ID            int64
+	OwnerID       uuid.UUID
+	OwnerUsername string
+	Name          string
+	BodyType      string
+	Species       string
+	Class         string
+	Level         int32
+	Xp            int32
+	HpMax         int32
+	HpCurrent     int32
+	Prestige      int32
+	Strength      int16
+	Dexterity     int16
+	Constitution  int16
+	Intelligence  int16
+	Wisdom        int16
+	Charisma      int16
+	Hair          int16
+	Beard         int16
+	SkinTone      int16
+	HairColor     int16
+	Cloak         int16
+	AccentColor   int16
 }
 
 func (q *Queries) SelectCharacterFull(ctx context.Context, id int64) (*SelectCharacterFullRow, error) {
@@ -467,6 +472,7 @@ func (q *Queries) SelectCharacterFull(ctx context.Context, id int64) (*SelectCha
 	err := row.Scan(
 		&i.ID,
 		&i.OwnerID,
+		&i.OwnerUsername,
 		&i.Name,
 		&i.BodyType,
 		&i.Species,
@@ -513,11 +519,12 @@ func (q *Queries) SelectCharacterStats(ctx context.Context, characterID int64) (
 }
 
 const selectCharactersByOwnerFull = `-- name: SelectCharactersByOwnerFull :many
-SELECT c.id, c.owner_id, c.name, c.body_type, c.species, c.class,
+SELECT c.id, c.owner_id, u.username AS owner_username, c.name, c.body_type, c.species, c.class,
        c.level, c.xp, c.hp_max, c.hp_current, c.prestige,
        s.strength, s.dexterity, s.constitution, s.intelligence, s.wisdom, s.charisma,
        cu.hair, cu.beard, cu.skin_tone, cu.hair_color, cu.cloak, cu.accent_color
 FROM characters c
+JOIN users u ON u.id = c.owner_id
 JOIN stats s ON s.character_id = c.id
 JOIN customizations cu ON cu.character_id = c.id
 WHERE c.owner_id = $1
@@ -532,29 +539,30 @@ type SelectCharactersByOwnerFullParams struct {
 }
 
 type SelectCharactersByOwnerFullRow struct {
-	ID           int64
-	OwnerID      uuid.UUID
-	Name         string
-	BodyType     string
-	Species      string
-	Class        string
-	Level        int32
-	Xp           int32
-	HpMax        int32
-	HpCurrent    int32
-	Prestige     int32
-	Strength     int16
-	Dexterity    int16
-	Constitution int16
-	Intelligence int16
-	Wisdom       int16
-	Charisma     int16
-	Hair         int16
-	Beard        int16
-	SkinTone     int16
-	HairColor    int16
-	Cloak        int16
-	AccentColor  int16
+	ID            int64
+	OwnerID       uuid.UUID
+	OwnerUsername string
+	Name          string
+	BodyType      string
+	Species       string
+	Class         string
+	Level         int32
+	Xp            int32
+	HpMax         int32
+	HpCurrent     int32
+	Prestige      int32
+	Strength      int16
+	Dexterity     int16
+	Constitution  int16
+	Intelligence  int16
+	Wisdom        int16
+	Charisma      int16
+	Hair          int16
+	Beard         int16
+	SkinTone      int16
+	HairColor     int16
+	Cloak         int16
+	AccentColor   int16
 }
 
 func (q *Queries) SelectCharactersByOwnerFull(ctx context.Context, arg SelectCharactersByOwnerFullParams) ([]*SelectCharactersByOwnerFullRow, error) {
@@ -569,6 +577,7 @@ func (q *Queries) SelectCharactersByOwnerFull(ctx context.Context, arg SelectCha
 		if err := rows.Scan(
 			&i.ID,
 			&i.OwnerID,
+			&i.OwnerUsername,
 			&i.Name,
 			&i.BodyType,
 			&i.Species,

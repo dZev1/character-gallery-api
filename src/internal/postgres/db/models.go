@@ -127,3 +127,11 @@ type User struct {
 	Role         string
 	CreatedAt    pgtype.Timestamptz
 }
+
+type UserStatRoll struct {
+	UserID                 uuid.UUID
+	Rolls                  []int32
+	LastRerollAt           pgtype.Timestamptz
+	LastCharacterCreatedAt pgtype.Timestamptz
+	UpdatedAt              pgtype.Timestamptz
+}

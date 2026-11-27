@@ -6,9 +6,11 @@ import (
 	"dZev1/character-gallery/internal/postgres/db"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -83,7 +85,7 @@ func (c *characterRepo) FindCharacter(ctx context.Context, exec db.DBTX, id char
 		return nil, fmt.Errorf("character %d: %w", id, characters.ErrNotFound)
 	}
 	return toDomainCharacterFull(
-		row.ID, row.OwnerID, row.Name, row.BodyType, row.Species, row.Class,
+		row.ID, row.OwnerID, row.OwnerUsername, row.Name, row.BodyType, row.Species, row.Class,
 		row.Level, row.Xp, row.HpMax, row.HpCurrent, row.Prestige,
 		row.Strength, row.Dexterity, row.Constitution, row.Intelligence, row.Wisdom, row.Charisma,
 		row.Hair, row.Beard, row.SkinTone, row.HairColor, row.Cloak, row.AccentColor,
@@ -109,7 +111,7 @@ func (c *characterRepo) FindAllCharacters(ctx context.Context, exec db.DBTX, lim
 	result := make([]characters.Character, len(rows))
 	for i, row := range rows {
 		result[i] = *toDomainCharacterFull(
-			row.ID, row.OwnerID, row.Name, row.BodyType, row.Species, row.Class,
+			row.ID, row.OwnerID, row.OwnerUsername, row.Name, row.BodyType, row.Species, row.Class,
 			row.Level, row.Xp, row.HpMax, row.HpCurrent, row.Prestige,
 			row.Strength, row.Dexterity, row.Constitution, row.Intelligence, row.Wisdom, row.Charisma,
 			row.Hair, row.Beard, row.SkinTone, row.HairColor, row.Cloak, row.AccentColor,
@@ -138,7 +140,7 @@ func (c *characterRepo) FindCharactersByOwner(ctx context.Context, exec db.DBTX,
 	result := make([]characters.Character, len(rows))
 	for i, row := range rows {
 		result[i] = *toDomainCharacterFull(
-			row.ID, row.OwnerID, row.Name, row.BodyType, row.Species, row.Class,
+			row.ID, row.OwnerID, row.OwnerUsername, row.Name, row.BodyType, row.Species, row.Class,
 			row.Level, row.Xp, row.HpMax, row.HpCurrent, row.Prestige,
 			row.Strength, row.Dexterity, row.Constitution, row.Intelligence, row.Wisdom, row.Charisma,
 			row.Hair, row.Beard, row.SkinTone, row.HairColor, row.Cloak, row.AccentColor,
@@ -315,17 +317,78 @@ func (c *characterRepo) DeleteCharacter(ctx context.Context, exec db.DBTX, id ch
 	return nil
 }
 
+func (c *characterRepo) GetUserStatRoll(ctx context.Context, exec db.DBTX, userID uuid.UUID) (*characters.UserStatRoll, error) {
+	row, err := c.q(exec).GetUserStatRoll(ctx, userID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("get user stat roll %s: %w", userID, err)
+	}
+	return toDomainStatRoll(row), nil
+}
+
+func (c *characterRepo) UpsertUserStatRoll(ctx context.Context, exec db.DBTX, userID uuid.UUID, roll *characters.UserStatRoll) (*characters.UserStatRoll, error) {
+	rolls32 := make([]int32, len(roll.Rolls))
+	for i, v := range roll.Rolls {
+		rolls32[i] = int32(v)
+	}
+
+	row, err := c.q(exec).UpsertUserStatRoll(ctx, db.UpsertUserStatRollParams{
+		UserID:                 userID,
+		Rolls:                  rolls32,
+		LastRerollAt:           toTimestamptz(roll.LastRerollAt),
+		LastCharacterCreatedAt: toTimestamptz(roll.LastCharacterCreatedAt),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("upsert user stat roll %s: %w", userID, err)
+	}
+	return toDomainStatRoll(row), nil
+}
+
+func (c *characterRepo) ConsumeUserStatRoll(ctx context.Context, exec db.DBTX, userID uuid.UUID) error {
+	if _, err := c.q(exec).ConsumeUserStatRoll(ctx, userID); err != nil {
+		return fmt.Errorf("consume user stat roll %s: %w", userID, err)
+	}
+	return nil
+}
+
+func toTimestamptz(t *time.Time) pgtype.Timestamptz {
+	if t == nil {
+		return pgtype.Timestamptz{}
+	}
+	return pgtype.Timestamptz{Time: *t, Valid: true}
+}
+
+func toDomainStatRoll(row *db.UserStatRoll) *characters.UserStatRoll {
+	rolls := make([]int, len(row.Rolls))
+	for i, v := range row.Rolls {
+		rolls[i] = int(v)
+	}
+	res := &characters.UserStatRoll{Rolls: rolls}
+	if row.LastRerollAt.Valid {
+		t := row.LastRerollAt.Time
+		res.LastRerollAt = &t
+	}
+	if row.LastCharacterCreatedAt.Valid {
+		t := row.LastCharacterCreatedAt.Time
+		res.LastCharacterCreatedAt = &t
+	}
+	return res
+}
+
 func toDomainCharacterFull(
-	id int64, ownerID uuid.UUID, name, bodyType, species, class string,
+	id int64, ownerID uuid.UUID, ownerUsername, name, bodyType, species, class string,
 	level, xp, hpMax, hpCurrent, prestige int32,
 	strength, dexterity, constitution, intelligence, wisdom, charisma int16,
 	hair, beard, skinTone, hairColor, cloak, accentColor int16,
 ) *characters.Character {
 	charID := characters.ID(id)
 	return &characters.Character{
-		ID:        charID,
-		OwnerID:   ownerID,
-		Name:      name,
+		ID:            charID,
+		OwnerID:       ownerID,
+		OwnerUsername: ownerUsername,
+		Name:          name,
 		BodyType:  characters.BodyType(bodyType),
 		Species:   characters.Species(species),
 		Class:     characters.Class(class),
