@@ -87,6 +87,72 @@ func (q *Queries) CreateItem(ctx context.Context, arg CreateItemParams) (*Item, 
 	return &i, err
 }
 
+const createItemIfNotExists = `-- name: CreateItemIfNotExists :one
+INSERT INTO items (
+    name, type, description, equippable, rarity,
+    damage, defense, heal_amount, mana_cost, duration,
+    cooldown, capacity, image_url
+) VALUES (
+    $1, $2, $3, $4, $5,
+    $6, $7, $8, $9, $10,
+    $11, $12, $13
+)
+ON CONFLICT (name, rarity) DO NOTHING
+RETURNING id, name, type, description, equippable, rarity, damage, defense, heal_amount, mana_cost, duration, cooldown, capacity, image_url
+`
+
+type CreateItemIfNotExistsParams struct {
+	Name        string
+	Type        string
+	Description string
+	Equippable  bool
+	Rarity      int32
+	Damage      pgtype.Int4
+	Defense     pgtype.Int4
+	HealAmount  pgtype.Int4
+	ManaCost    pgtype.Int4
+	Duration    pgtype.Int4
+	Cooldown    pgtype.Int4
+	Capacity    pgtype.Int4
+	ImageUrl    pgtype.Text
+}
+
+func (q *Queries) CreateItemIfNotExists(ctx context.Context, arg CreateItemIfNotExistsParams) (*Item, error) {
+	row := q.db.QueryRow(ctx, createItemIfNotExists,
+		arg.Name,
+		arg.Type,
+		arg.Description,
+		arg.Equippable,
+		arg.Rarity,
+		arg.Damage,
+		arg.Defense,
+		arg.HealAmount,
+		arg.ManaCost,
+		arg.Duration,
+		arg.Cooldown,
+		arg.Capacity,
+		arg.ImageUrl,
+	)
+	var i Item
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Type,
+		&i.Description,
+		&i.Equippable,
+		&i.Rarity,
+		&i.Damage,
+		&i.Defense,
+		&i.HealAmount,
+		&i.ManaCost,
+		&i.Duration,
+		&i.Cooldown,
+		&i.Capacity,
+		&i.ImageUrl,
+	)
+	return &i, err
+}
+
 const deleteItem = `-- name: DeleteItem :execrows
 DELETE FROM items
 WHERE id = $1

@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"dZev1/character-gallery/internal/dice"
-	"encoding/json"
 	"errors"
 	"net/http"
 )
@@ -15,9 +14,7 @@ type rollRequest struct {
 
 func (g *Gallery) HandleRollDice(w http.ResponseWriter, r *http.Request) {
 	var req rollRequest
-	limitBody(w, r)
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "Error parsing request body")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 
@@ -33,6 +30,5 @@ func (g *Gallery) HandleRollDice(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-
 	writeJSON(w, http.StatusOK, res)
 }

@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"dZev1/character-gallery/internal/auth"
 	"dZev1/character-gallery/internal/uuidv7"
 	"io"
 	"net/http"
@@ -45,13 +44,7 @@ func NewUploadHandler(dir string) *UploadHandler {
 }
 
 func (h *UploadHandler) HandleUpload(w http.ResponseWriter, r *http.Request) {
-	claims, ok := auth.ClaimsFromContext(r.Context())
-	if !ok {
-		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
-		return
-	}
-	if claims.Role != "admin" {
-		writeError(w, http.StatusForbidden, "FORBIDDEN", "Admin role required")
+	if _, ok := requireAdmin(w, r); !ok {
 		return
 	}
 

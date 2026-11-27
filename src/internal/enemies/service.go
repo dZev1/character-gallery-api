@@ -134,6 +134,51 @@ func (s *Service) Create(ctx context.Context, enemy *Enemy) (*Enemy, error) {
 	return enemy, nil
 }
 
+type BulkCreateResult struct {
+	Created      []Enemy  `json:"created"`
+	Skipped      []string `json:"skipped"`
+	CreatedCount int      `json:"created_count"`
+	SkippedCount int      `json:"skipped_count"`
+}
+
+func (s *Service) BulkCreate(ctx context.Context, list []Enemy) (*BulkCreateResult, error) {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		log.Println("Error starting transaction:", err)
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+
+	result := &BulkCreateResult{
+		Created: make([]Enemy, 0, len(list)),
+		Skipped: make([]string, 0),
+	}
+
+	for i := range list {
+		item := list[i]
+		item.ID = 0
+		saved, inserted, err := s.repo.SaveEnemyIfNotExists(ctx, tx, &item)
+		if err != nil {
+			log.Println("Error bulk saving enemy:", err)
+			return nil, err
+		}
+		if inserted {
+			result.Created = append(result.Created, *saved)
+		} else {
+			result.Skipped = append(result.Skipped, fmt.Sprintf("%s (Tier %d)", item.Name, item.Tier))
+		}
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		log.Println("Error committing transaction:", err)
+		return nil, err
+	}
+
+	result.CreatedCount = len(result.Created)
+	result.SkippedCount = len(result.Skipped)
+	return result, nil
+}
+
 func (s *Service) Update(ctx context.Context, enemy *Enemy) (*Enemy, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {

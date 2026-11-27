@@ -83,6 +83,68 @@ func (q *Queries) CreateEnemy(ctx context.Context, arg CreateEnemyParams) (*Enem
 	return &i, err
 }
 
+const createEnemyIfNotExists = `-- name: CreateEnemyIfNotExists :one
+INSERT INTO enemies (
+    name,
+    type,
+    tier,
+    description,
+    hp_max,
+    ac,
+    damage,
+    xp_reward,
+    score_reward,
+    image_url
+) VALUES (
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
+)
+ON CONFLICT (name, tier) DO NOTHING
+RETURNING id, name, type, tier, description, hp_max, ac, damage, xp_reward, score_reward, image_url
+`
+
+type CreateEnemyIfNotExistsParams struct {
+	Name        string
+	Type        string
+	Tier        int16
+	Description string
+	HpMax       int32
+	Ac          int32
+	Damage      int32
+	XpReward    int32
+	ScoreReward int32
+	ImageUrl    pgtype.Text
+}
+
+func (q *Queries) CreateEnemyIfNotExists(ctx context.Context, arg CreateEnemyIfNotExistsParams) (*Enemy, error) {
+	row := q.db.QueryRow(ctx, createEnemyIfNotExists,
+		arg.Name,
+		arg.Type,
+		arg.Tier,
+		arg.Description,
+		arg.HpMax,
+		arg.Ac,
+		arg.Damage,
+		arg.XpReward,
+		arg.ScoreReward,
+		arg.ImageUrl,
+	)
+	var i Enemy
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Type,
+		&i.Tier,
+		&i.Description,
+		&i.HpMax,
+		&i.Ac,
+		&i.Damage,
+		&i.XpReward,
+		&i.ScoreReward,
+		&i.ImageUrl,
+	)
+	return &i, err
+}
+
 const deleteEnemy = `-- name: DeleteEnemy :execrows
 DELETE FROM enemies
 WHERE id = $1

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"unicode"
 
+	"dZev1/character-gallery/internal/auth"
 	"dZev1/character-gallery/internal/characters"
 	"dZev1/character-gallery/internal/items"
 )
@@ -95,6 +96,40 @@ func writeError(w http.ResponseWriter, status int, code, msg string) {
 		Error: msg,
 		Code:  code,
 	})
+}
+
+func requireClaims(w http.ResponseWriter, r *http.Request) (*auth.Claims, bool) {
+	claims, ok := auth.ClaimsFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
+		return nil, false
+	}
+	return claims, true
+}
+
+func requireAdmin(w http.ResponseWriter, r *http.Request) (*auth.Claims, bool) {
+	claims, ok := requireClaims(w, r)
+	if !ok {
+		return nil, false
+	}
+	if claims.Role != "admin" {
+		writeError(w, http.StatusForbidden, "FORBIDDEN", "Admin role required")
+		return nil, false
+	}
+	return claims, true
+}
+
+func decodeBody(w http.ResponseWriter, r *http.Request, dst any, errMsg ...string) bool {
+	limitBody(w, r)
+	if err := json.NewDecoder(r.Body).Decode(dst); err != nil {
+		msg := "Error parsing request body"
+		if len(errMsg) > 0 && errMsg[0] != "" {
+			msg = errMsg[0]
+		}
+		writeError(w, http.StatusBadRequest, "BAD_REQUEST", msg)
+		return false
+	}
+	return true
 }
 
 func parseID(r *http.Request, name string) (uint64, error) {

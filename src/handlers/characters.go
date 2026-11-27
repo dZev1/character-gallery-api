@@ -3,7 +3,6 @@ package handlers
 import (
 	"dZev1/character-gallery/internal/auth"
 	"dZev1/character-gallery/internal/characters"
-	"encoding/json"
 	"errors"
 	"net/http"
 
@@ -18,29 +17,21 @@ func ownerIDForRequest(claims *auth.Claims) uuid.UUID {
 }
 
 func (g *Gallery) HandleCreateCharacter(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	claims, ok := auth.ClaimsFromContext(ctx)
+	claims, ok := requireClaims(w, r)
 	if !ok {
-		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
 		return
 	}
 
 	character := &characters.Character{}
-
-	limitBody(w, r)
-	err := json.NewDecoder(r.Body).Decode(character)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "Error parsing request body")
+	if !decodeBody(w, r, character) {
 		return
 	}
-
 	if !character.IsValid() {
 		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "Invalid character")
 		return
 	}
 
-	character, err = g.characterService.Create(ctx, character, claims.UserID)
+	created, err := g.characterService.Create(r.Context(), character, claims.UserID)
 	if err != nil {
 		if errors.Is(err, characters.ErrCharacterLimitReached) {
 			writeError(w, http.StatusConflict, "CHARACTER_LIMIT_REACHED", "Maximum of 6 characters per user reached")
@@ -49,22 +40,19 @@ func (g *Gallery) HandleCreateCharacter(w http.ResponseWriter, r *http.Request) 
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Error creating character")
 		return
 	}
-
-	writeJSON(w, http.StatusCreated, character)
+	writeJSON(w, http.StatusCreated, created)
 }
 
 func (g *Gallery) HandleGetAllCharacters(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
 	page, limit := paginationParams(r)
 
-	chars, total, err := g.characterService.GetAll(ctx, page, limit)
+	chars, total, err := g.characterService.GetAll(r.Context(), page, limit)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Error getting all characters")
 		return
 	}
 
-	data := paginatedResponse{
+	writeJSON(w, http.StatusOK, paginatedResponse{
 		Data: chars,
 		Pagination: pagination{
 			Page:    page,
@@ -72,21 +60,17 @@ func (g *Gallery) HandleGetAllCharacters(w http.ResponseWriter, r *http.Request)
 			Total:   total,
 			HasNext: total > uint64(page*limit),
 		},
-	}
-
-	writeJSON(w, http.StatusOK, data)
+	})
 }
 
 func (g *Gallery) HandleGetCharacter(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
 	id, err := parseID(r, "characterId")
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "Invalid character id")
 		return
 	}
 
-	char, err := g.characterService.GetByID(ctx, characters.ID(id))
+	char, err := g.characterService.GetByID(r.Context(), characters.ID(id))
 	if err != nil {
 		if isCharacterNotFound(err) {
 			writeError(w, http.StatusNotFound, "NOT_FOUND", "Character not found")
@@ -95,12 +79,14 @@ func (g *Gallery) HandleGetCharacter(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Error getting character")
 		return
 	}
-
 	writeJSON(w, http.StatusOK, char)
 }
 
 func (g *Gallery) HandleUpdateCharacter(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
+	claims, ok := requireClaims(w, r)
+	if !ok {
+		return
+	}
 
 	id, err := parseID(r, "characterId")
 	if err != nil {
@@ -108,27 +94,17 @@ func (g *Gallery) HandleUpdateCharacter(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	ownerID, ok := auth.ClaimsFromContext(ctx)
-	if !ok {
-		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
-		return
-	}
-
 	character := &characters.Character{}
-	limitBody(w, r)
-	err = json.NewDecoder(r.Body).Decode(character)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "Error parsing request body")
+	if !decodeBody(w, r, character) {
 		return
 	}
-
 	character.ID = characters.ID(id)
 	if !character.IsValid() {
 		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "Invalid character")
 		return
 	}
 
-	character, err = g.characterService.Update(ctx, character, ownerIDForRequest(ownerID))
+	updated, err := g.characterService.Update(r.Context(), character, ownerIDForRequest(claims))
 	if err != nil {
 		if isCharacterNotFound(err) {
 			writeError(w, http.StatusNotFound, "NOT_FOUND", "Character not found")
@@ -137,12 +113,14 @@ func (g *Gallery) HandleUpdateCharacter(w http.ResponseWriter, r *http.Request) 
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Error updating character")
 		return
 	}
-
-	writeJSON(w, http.StatusOK, character)
+	writeJSON(w, http.StatusOK, updated)
 }
 
 func (g *Gallery) HandleDeleteCharacter(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
+	claims, ok := requireClaims(w, r)
+	if !ok {
+		return
+	}
 
 	id, err := parseID(r, "characterId")
 	if err != nil {
@@ -150,14 +128,7 @@ func (g *Gallery) HandleDeleteCharacter(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	claims, ok := auth.ClaimsFromContext(ctx)
-	if !ok {
-		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
-		return
-	}
-
-	err = g.characterService.Delete(ctx, characters.ID(id), ownerIDForRequest(claims))
-	if err != nil {
+	if err = g.characterService.Delete(r.Context(), characters.ID(id), ownerIDForRequest(claims)); err != nil {
 		if isCharacterNotFound(err) {
 			writeError(w, http.StatusNotFound, "NOT_FOUND", "Character not found")
 			return
@@ -165,12 +136,14 @@ func (g *Gallery) HandleDeleteCharacter(w http.ResponseWriter, r *http.Request) 
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Error deleting character")
 		return
 	}
-
 	writeJSON(w, http.StatusOK, map[string]string{"result": "success"})
 }
 
 func (g *Gallery) HandlePrestigeCharacter(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
+	claims, ok := requireClaims(w, r)
+	if !ok {
+		return
+	}
 
 	id, err := parseID(r, "characterId")
 	if err != nil {
@@ -178,13 +151,7 @@ func (g *Gallery) HandlePrestigeCharacter(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	claims, ok := auth.ClaimsFromContext(ctx)
-	if !ok {
-		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
-		return
-	}
-
-	char, err := g.characterService.Prestige(ctx, characters.ID(id), ownerIDForRequest(claims))
+	char, err := g.characterService.Prestige(r.Context(), characters.ID(id), ownerIDForRequest(claims))
 	if err != nil {
 		switch {
 		case isCharacterNotFound(err):
@@ -196,6 +163,5 @@ func (g *Gallery) HandlePrestigeCharacter(w http.ResponseWriter, r *http.Request
 		}
 		return
 	}
-
 	writeJSON(w, http.StatusOK, char)
 }

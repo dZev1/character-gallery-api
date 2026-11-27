@@ -22,6 +22,19 @@ INSERT INTO items (
 )
 RETURNING *;
 
+-- name: CreateItemIfNotExists :one
+INSERT INTO items (
+    name, type, description, equippable, rarity,
+    damage, defense, heal_amount, mana_cost, duration,
+    cooldown, capacity, image_url
+) VALUES (
+    $1, $2, $3, $4, $5,
+    $6, $7, $8, $9, $10,
+    $11, $12, $13
+)
+ON CONFLICT (name, rarity) DO NOTHING
+RETURNING *;
+
 -- name: SeedItems :copyfrom
 INSERT INTO items (
     name, type, description, equippable, rarity,

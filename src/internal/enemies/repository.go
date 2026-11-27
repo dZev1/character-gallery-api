@@ -11,6 +11,7 @@ type Repository interface {
 	FindEnemiesByTier(ctx context.Context, exec db.DBTX, tier uint8) ([]Enemy, error)
 	FindEnemiesByTierAndType(ctx context.Context, exec db.DBTX, tier uint8, enemyType Type) ([]Enemy, error)
 	SaveEnemy(ctx context.Context, exec db.DBTX, enemy *Enemy) (*Enemy, error)
+	SaveEnemyIfNotExists(ctx context.Context, exec db.DBTX, enemy *Enemy) (*Enemy, bool, error)
 	UpdateEnemy(ctx context.Context, exec db.DBTX, enemy *Enemy) (*Enemy, error)
 	DeleteEnemy(ctx context.Context, exec db.DBTX, enemyID ID) error
 	SeedEnemies(ctx context.Context, exec db.DBTX, enemies []Enemy) error

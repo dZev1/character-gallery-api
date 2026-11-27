@@ -34,10 +34,38 @@ WHERE character_id = $1;
 SELECT * FROM customizations
 WHERE character_id = $1;
 
--- name: SelectAllCharacters :many
-SELECT * FROM characters
-ORDER BY id
+-- name: SelectCharacterFull :one
+SELECT c.id, c.owner_id, c.name, c.body_type, c.species, c.class,
+       c.level, c.xp, c.hp_max, c.hp_current, c.prestige,
+       s.strength, s.dexterity, s.constitution, s.intelligence, s.wisdom, s.charisma,
+       cu.hair, cu.beard, cu.skin_tone, cu.hair_color, cu.cloak, cu.accent_color
+FROM characters c
+JOIN stats s ON s.character_id = c.id
+JOIN customizations cu ON cu.character_id = c.id
+WHERE c.id = $1;
+
+-- name: SelectAllCharactersFull :many
+SELECT c.id, c.owner_id, c.name, c.body_type, c.species, c.class,
+       c.level, c.xp, c.hp_max, c.hp_current, c.prestige,
+       s.strength, s.dexterity, s.constitution, s.intelligence, s.wisdom, s.charisma,
+       cu.hair, cu.beard, cu.skin_tone, cu.hair_color, cu.cloak, cu.accent_color
+FROM characters c
+JOIN stats s ON s.character_id = c.id
+JOIN customizations cu ON cu.character_id = c.id
+ORDER BY c.id
 LIMIT $1 OFFSET $2;
+
+-- name: SelectCharactersByOwnerFull :many
+SELECT c.id, c.owner_id, c.name, c.body_type, c.species, c.class,
+       c.level, c.xp, c.hp_max, c.hp_current, c.prestige,
+       s.strength, s.dexterity, s.constitution, s.intelligence, s.wisdom, s.charisma,
+       cu.hair, cu.beard, cu.skin_tone, cu.hair_color, cu.cloak, cu.accent_color
+FROM characters c
+JOIN stats s ON s.character_id = c.id
+JOIN customizations cu ON cu.character_id = c.id
+WHERE c.owner_id = $1
+ORDER BY c.id
+LIMIT $2 OFFSET $3;
 
 -- name: CountAllCharacters :one
 SELECT COUNT(*) FROM characters;
@@ -76,12 +104,6 @@ WHERE id = $1;
 -- name: DeleteCharacterOwned :execrows
 DELETE FROM characters
 WHERE id = $1 AND owner_id = $2;
-
--- name: SelectCharactersByOwner :many
-SELECT * FROM characters
-WHERE owner_id = $1
-ORDER BY id
-LIMIT $2 OFFSET $3;
 
 -- name: CountCharactersByOwner :one
 SELECT COUNT(*) FROM characters

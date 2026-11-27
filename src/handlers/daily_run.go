@@ -1,12 +1,10 @@
 package handlers
 
 import (
-	"dZev1/character-gallery/internal/auth"
 	"dZev1/character-gallery/internal/characters"
 	"dZev1/character-gallery/internal/daily_run"
 	"dZev1/character-gallery/internal/inventory"
 	"dZev1/character-gallery/internal/items"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"strconv"
@@ -28,8 +26,7 @@ type dailyActionRequest struct {
 }
 
 func parseTier(r *http.Request) (uint8, error) {
-	raw := r.PathValue("tier")
-	val, err := strconv.Atoi(raw)
+	val, err := strconv.Atoi(r.PathValue("tier"))
 	if err != nil || val < 1 || val > 5 {
 		return 0, daily_run.ErrInvalidTier
 	}
@@ -37,32 +34,25 @@ func parseTier(r *http.Request) (uint8, error) {
 }
 
 func (g *Gallery) HandleGetDaily(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	claims, ok := auth.ClaimsFromContext(ctx)
+	claims, ok := requireClaims(w, r)
 	if !ok {
-		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
 		return
 	}
-
 	tier, err := parseTier(r)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "Tier must be between 1 and 5")
 		return
 	}
 
-	view, err := g.dailyService.GetDailyView(ctx, claims.UserID, tier)
+	view, err := g.dailyService.GetDailyView(r.Context(), claims.UserID, tier)
 	if err != nil {
 		writeDailyError(w, err)
 		return
 	}
-
 	writeJSON(w, http.StatusOK, view)
 }
 
 func (g *Gallery) HandleGetDailyLeaderboard(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
 	tier, err := parseTier(r)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "Tier must be between 1 and 5")
@@ -70,7 +60,7 @@ func (g *Gallery) HandleGetDailyLeaderboard(w http.ResponseWriter, r *http.Reque
 	}
 
 	page, limit := paginationParams(r)
-	scores, total, err := g.dailyService.GetLeaderboard(ctx, tier, page, limit)
+	scores, total, err := g.dailyService.GetLeaderboard(r.Context(), tier, page, limit)
 	if err != nil {
 		writeDailyError(w, err)
 		return
@@ -88,67 +78,62 @@ func (g *Gallery) HandleGetDailyLeaderboard(w http.ResponseWriter, r *http.Reque
 }
 
 func (g *Gallery) HandleStartDailyRun(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	claims, ok := auth.ClaimsFromContext(ctx)
+	claims, ok := requireClaims(w, r)
 	if !ok {
-		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
 		return
 	}
 
 	var req dailyStartRequest
-	limitBody(w, r)
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.CharacterID == 0 {
+	if !decodeBody(w, r, &req, "Valid character_id is required") {
+		return
+	}
+	if req.CharacterID == 0 {
 		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "Valid character_id is required")
 		return
 	}
 
-	resp, err := g.dailyService.StartOrResumeRun(ctx, claims.UserID, claims.Role == "admin", characters.ID(req.CharacterID))
+	resp, err := g.dailyService.StartOrResumeRun(r.Context(), claims.UserID, claims.Role == "admin", characters.ID(req.CharacterID))
 	if err != nil {
 		writeDailyError(w, err)
 		return
 	}
-
 	writeJSON(w, http.StatusOK, resp)
 }
 
 func (g *Gallery) HandleMoveDailyRun(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	claims, ok := auth.ClaimsFromContext(ctx)
+	claims, ok := requireClaims(w, r)
 	if !ok {
-		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
 		return
 	}
 
 	var req dailyMoveRequest
-	limitBody(w, r)
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.CharacterID == 0 || req.NodeID == "" {
+	if !decodeBody(w, r, &req, "Valid character_id and node_id are required") {
+		return
+	}
+	if req.CharacterID == 0 || req.NodeID == "" {
 		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "Valid character_id and node_id are required")
 		return
 	}
 
-	resp, err := g.dailyService.Move(ctx, claims.UserID, claims.Role == "admin", characters.ID(req.CharacterID), req.NodeID)
+	resp, err := g.dailyService.Move(r.Context(), claims.UserID, claims.Role == "admin", characters.ID(req.CharacterID), req.NodeID)
 	if err != nil {
 		writeDailyError(w, err)
 		return
 	}
-
 	writeJSON(w, http.StatusOK, resp)
 }
 
 func (g *Gallery) HandleDailyCombatAction(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	claims, ok := auth.ClaimsFromContext(ctx)
+	claims, ok := requireClaims(w, r)
 	if !ok {
-		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
 		return
 	}
 
 	var req dailyActionRequest
-	limitBody(w, r)
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.CharacterID == 0 {
+	if !decodeBody(w, r, &req, "Valid character_id and action are required") {
+		return
+	}
+	if req.CharacterID == 0 {
 		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "Valid character_id and action are required")
 		return
 	}
@@ -159,12 +144,11 @@ func (g *Gallery) HandleDailyCombatAction(w http.ResponseWriter, r *http.Request
 		itemID = &id
 	}
 
-	resp, err := g.dailyService.CombatAction(ctx, claims.UserID, claims.Role == "admin", characters.ID(req.CharacterID), req.Action, itemID)
+	resp, err := g.dailyService.CombatAction(r.Context(), claims.UserID, claims.Role == "admin", characters.ID(req.CharacterID), req.Action, itemID)
 	if err != nil {
 		writeDailyError(w, err)
 		return
 	}
-
 	writeJSON(w, http.StatusOK, resp)
 }
 

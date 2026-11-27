@@ -37,6 +37,24 @@ INSERT INTO enemies (
 )
 RETURNING *;
 
+-- name: CreateEnemyIfNotExists :one
+INSERT INTO enemies (
+    name,
+    type,
+    tier,
+    description,
+    hp_max,
+    ac,
+    damage,
+    xp_reward,
+    score_reward,
+    image_url
+) VALUES (
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
+)
+ON CONFLICT (name, tier) DO NOTHING
+RETURNING *;
+
 -- name: UpdateEnemy :one
 UPDATE enemies
 SET name         = $2,
